@@ -1,0 +1,5 @@
+{
+  "name": "CeyHallo Admin",
+  "description": "Admin dashboard for CeyHallo with Restaurant and User management using Firebase Realtime Database.",
+  "requestFramePermissions": []
+}

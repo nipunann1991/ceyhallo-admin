@@ -1,0 +1,25 @@
+
+
+app-sidebar {
+  width: 245px;
+  color: white;
+}
+
+app-sidebar nav {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 #1e293b;
+}
+
+
+app-sidebar nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+app-sidebar nav::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+app-sidebar nav::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 2px;
+}

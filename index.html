@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>CeyHallo Admin</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+    <style>
+      html { font-size: 14.5px; }
+      body { font-family: 'Inter', sans-serif; }
+      /* Custom scrollbar for webkit */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+      /* Utility to hide scrollbar but allow scrolling */
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      .no-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+      }
+      
+      /* Quill Overrides for Tailwind conflict or aesthetics */
+      .ql-toolbar {
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+        border-color: #e2e8f0 !important;
+        background-color: #f8fafc;
+        flex-shrink: 0; /* Prevent toolbar shrinking */
+      }
+      .ql-container {
+        border-bottom-left-radius: 0.75rem;
+        border-bottom-right-radius: 0.75rem;
+        border-color: #e2e8f0 !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.875rem !important; /* 14px */
+        /* Flex setup to fill parent */
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+      }
+      .ql-editor {
+        /* Remove fixed min-height, allow flex growth */
+        flex: 1;
+        overflow-y: auto;
+        height: 100%;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "rxjs": "https://esm.sh/rxjs@^7.8.2?conditions=es2015",
+    "rxjs/operators": "https://esm.sh/rxjs@^7.8.2/operators?conditions=es2015",
+    "rxjs/ajax": "https://esm.sh/rxjs@^7.8.2/ajax?conditions=es2015",
+    "rxjs/webSocket": "https://esm.sh/rxjs@^7.8.2/webSocket?conditions=es2015",
+    "rxjs/testing": "https://esm.sh/rxjs@^7.8.2/testing?conditions=es2015",
+    "rxjs/fetch": "https://esm.sh/rxjs@^7.8.2/fetch?conditions=es2015",
+    "firebase/firestore": "https://esm.sh/firebase@^12.7.0/firestore?external=rxjs",
+    "firebase/auth": "https://esm.sh/firebase@^12.7.0/auth?external=rxjs",
+    "firebase/storage": "https://esm.sh/firebase@^12.7.0/storage?external=rxjs",
+    "firebase/app": "https://esm.sh/firebase@^12.7.0/app?external=rxjs",
+    "firebase/functions": "https://esm.sh/firebase@^12.7.0/functions?external=rxjs",
+    "@angular/common": "https://esm.sh/@angular/common@^21.0.8?external=rxjs",
+    "@angular/forms": "https://esm.sh/@angular/forms@^21.0.8?external=rxjs",
+    "@angular/compiler": "https://esm.sh/@angular/compiler@^21.0.8?external=rxjs",
+    "@angular/platform-browser": "https://esm.sh/@angular/platform-browser@^21.0.8?external=rxjs",
+    "@angular/core": "https://esm.sh/@angular/core@^21.0.8?external=rxjs",
+    "@angular/router": "https://esm.sh/@angular/router@^21.0.8?external=rxjs",
+    "quill": "https://esm.sh/quill@2.0.2",
+    "d3": "https://esm.sh/d3@7.8.5",
+    "firebase/": "https://esm.sh/firebase@^12.9.0/",
+    "rxjs/": "https://esm.sh/rxjs@^7.8.2/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-slate-50 text-slate-900 antialiased overflow-hidden">
+    <app-root></app-root>
+  </body>
+</html>

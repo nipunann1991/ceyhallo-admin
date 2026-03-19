@@ -1,0 +1,280 @@
+
+<div class="space-y-6 relative min-h-[500px]" (dragover)="onDragOver($event)">
+  
+  <!-- Drag & Drop Overlay -->
+  @if (isDragging()) {
+    <div class="absolute inset-0 z-50 bg-white/90 border-2 border-indigo-500 border-dashed rounded-xl flex items-center justify-center backdrop-blur-sm transition-all animate-in fade-in duration-200"
+         (dragleave)="onDragLeave($event)"
+         (drop)="onDrop($event)"
+         (dragover)="$event.preventDefault()">
+       <div class="flex flex-col items-center gap-4 pointer-events-none animate-bounce">
+          <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">
+             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="text-center">
+             <span class="block text-xl font-bold text-slate-800">Drop files to upload</span>
+             <span class="block text-sm text-slate-500 mt-1">Files will be added to <strong>{{ currentPath() }}</strong></span>
+          </div>
+       </div>
+    </div>
+  }
+
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800">Media Library</h2>
+      <!-- Breadcrumbs -->
+      <nav class="flex items-center text-sm text-slate-500 mt-1">
+         @for (crumb of breadcrumbs(); track crumb.path; let i = $index) {
+            <div class="flex items-center">
+               @if (i > 0) { <span class="mx-2 text-slate-300">/</span> }
+               <button 
+                  (click)="navigateTo(crumb.path)" 
+                  class="hover:text-orange-600 hover:underline font-medium transition-colors"
+                  [class.text-slate-800]="i === breadcrumbs().length - 1"
+                  [disabled]="i === breadcrumbs().length - 1">
+                  {{ crumb.name }}
+               </button>
+            </div>
+         }
+      </nav>
+    </div>
+    
+    <div class="flex gap-2">
+        <button (click)="loadFiles()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm" title="Refresh">
+            <svg [class.animate-spin]="isLoading()" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+        </button>
+
+        <button (click)="openCreateFolder()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><line x1="12" y1="10" x2="12" y2="16"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+            New Folder
+        </button>
+
+<label class="cursor-pointer bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-bold font-weight-700 transition-colors shadow-sm relative overflow-hidden group">
+        @if (isUploading()) {
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <span>Uploading {{ uploadProgress() }}%</span>
+        } @else {
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Upload</span>
+        }
+        <input type="file" multiple (change)="onFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer" [disabled]="isUploading()">
+        </label>
+    </div>
+  </div>
+
+  <!-- Bulk Actions & Filters -->
+  <div class="flex flex-col md:flex-row gap-4">
+    <!-- Select All / Filter Container -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 flex-1">
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll()" class="w-5 h-5 rounded border-slate-300 text-orange-600 focus:ring-orange-500">
+            <span class="text-sm font-medium text-slate-700">Select All</span>
+        </label>
+        
+        <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+        <div class="relative flex-1">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input 
+                type="text" 
+                placeholder="Search files..." 
+                [value]="searchQuery()"
+                (input)="updateSearch($event)"
+                class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm" 
+            />
+        </div>
+    </div>
+
+    <!-- Bulk Toolbar -->
+    @if (selectedPaths().size > 0) {
+        <div class="bg-indigo-600 text-white p-4 rounded-xl shadow-sm flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+            <span class="font-bold text-sm whitespace-nowrap">{{ selectedPaths().size }} Selected</span>
+            
+            <button (click)="openMoveModal()" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border border-transparent hover:border-white/40">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M15 19l4-4-4-4"/><path d="M19 15H9"/></svg>
+                Move
+            </button>
+
+            <button (click)="requestBulkDelete()" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border border-transparent hover:border-white/40">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                Delete
+            </button>
+
+            <button (click)="clearSelection()" class="text-indigo-200 hover:text-white text-xs font-medium underline">
+                Cancel
+            </button>
+        </div>
+    }
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoading()) {
+     <div class="flex justify-center py-12">
+        <div class="flex flex-col items-center gap-3 text-slate-400">
+           <svg class="animate-spin h-8 w-8 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+           <span class="text-sm font-medium">Loading storage files...</span>
+        </div>
+     </div>
+  } @else {
+    
+    @if (breadcrumbs().length > 1) {
+       <button (click)="navigateUp()" class="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm font-medium mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+       </button>
+    }
+
+    <!-- Grid -->
+    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+        <!-- Folders -->
+        @for (folder of filteredFolders(); track folder.path) {
+           <div (click)="navigateTo(folder.path)" class="bg-white rounded-xl border border-slate-200 shadow-sm p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:shadow-md hover:border-orange-200 hover:bg-orange-50 transition-all aspect-square group">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="currentColor" class="text-amber-300 group-hover:text-amber-400 transition-colors"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+              <span class="text-xs font-medium text-slate-700 group-hover:text-orange-800 text-center truncate w-full px-2">{{ folder.name }}</span>
+           </div>
+        }
+
+        <!-- Files -->
+        @for (file of paginatedFiles(); track file.id) {
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group flex flex-col hover:shadow-md transition-shadow relative" [class.ring-2]="selectedPaths().has(file.path)" [class.ring-indigo-500]="selectedPaths().has(file.path)">
+            
+            <!-- Selection Checkbox -->
+            <div class="absolute top-2 left-2 z-10">
+                <input 
+                    type="checkbox" 
+                    [checked]="selectedPaths().has(file.path)" 
+                    (change)="toggleSelection(file.path)"
+                    class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 shadow-sm cursor-pointer bg-white"
+                >
+            </div>
+
+            <!-- Preview Area -->
+            <div class="aspect-square bg-slate-100 relative flex items-center justify-center overflow-hidden border-b border-slate-100 cursor-pointer" (click)="toggleSelection(file.path)">
+                @if (file.type.startsWith('image/')) {
+                    <img [src]="file.url" class="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy">
+                } @else {
+                    <div class="text-slate-400 flex flex-col items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span class="text-[10px] uppercase font-bold">{{ file.type.split('/')[1] || 'FILE' }}</span>
+                    </div>
+                }
+                
+                <!-- Hover Overlay Buttons -->
+                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
+                    <button (click)="$event.stopPropagation(); copyUrl(file.url)" class="pointer-events-auto p-1.5 bg-white text-slate-800 rounded-full hover:bg-slate-100 shadow-sm" title="Copy Link">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    </button>
+                    <a [href]="file.url" target="_blank" (click)="$event.stopPropagation()" class="pointer-events-auto p-1.5 bg-white text-slate-800 rounded-full hover:bg-slate-100 shadow-sm" title="Open">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Meta Info -->
+            <div class="p-2">
+                <div class="flex justify-between items-start gap-1">
+                    <div class="font-medium text-slate-800 text-xs truncate flex-1" [title]="file.name">{{ file.name }}</div>
+                    <button (click)="$event.stopPropagation(); requestDelete(file)" class="text-slate-400 hover:text-red-600 transition-colors p-0.5 rounded hover:bg-red-50" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-center mt-1 text-[10px] text-slate-500">
+                    <span>{{ formatBytes(file.size) }}</span>
+                    <span>{{ file.createdAt | date:'shortDate' }}</span>
+                </div>
+            </div>
+            </div>
+        } 
+        
+        @if (paginatedFiles().length === 0 && filteredFolders().length === 0) {
+            <div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+            <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            <p>Folder is empty.</p>
+            </div>
+        }
+    </div>
+
+    <app-pagination-controls 
+        [currentPage]="currentPage()"
+        [totalItems]="filteredFiles().length"
+        [pageSize]="itemsPerPage"
+        (pageChange)="currentPage.set($event)">
+    </app-pagination-controls>
+  }
+</div>
+
+<!-- Modals -->
+
+<!-- Create Folder -->
+@if (showCreateFolderModal()) {
+  <app-modal title="Create New Folder" (close)="showCreateFolderModal.set(false)">
+     <div body class="space-y-4">
+        <p class="text-sm text-slate-500">Enter a name for the new folder. It will be created inside <strong>{{ currentPath() }}</strong>.</p>
+        <input 
+           type="text" 
+           [(ngModel)]="newFolderName" 
+           placeholder="Folder Name" 
+           class="w-full border-slate-300 rounded-lg p-2.5 border focus:ring-orange-500 focus:border-orange-500" 
+           (keyup.enter)="createFolder()">
+     </div>
+     <div footer class="flex gap-3">
+<button (click)="createFolder()" [disabled]="!newFolderName().trim() || isCreatingFolder()" class="bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2 rounded-lg text-sm font-bold font-weight-700 disabled:opacity-50">
+            {{ isCreatingFolder() ? 'Creating...' : 'Create Folder' }}
+        </button>
+        <button (click)="showCreateFolderModal.set(false)" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">Cancel</button>
+     </div>
+  </app-modal>
+}
+
+<!-- Move Modal -->
+@if (showMoveModal()) {
+  <app-modal title="Move Items" (close)="showMoveModal.set(false)">
+     <div body class="h-[300px] flex flex-col">
+        <p class="text-sm text-slate-500 mb-3">Select destination folder:</p>
+        
+        <!-- Breadcrumb Picker -->
+        <div class="bg-slate-50 p-2 rounded border border-slate-200 text-xs font-mono text-slate-600 mb-2 flex items-center gap-2">
+           <button (click)="navigatePickerUp()" [disabled]="movePickerPath() === 'uploads'" class="p-1 hover:bg-slate-200 rounded disabled:opacity-30">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+           </button>
+           <span>{{ movePickerPath() }}</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+           @if (movePickerFolders().length === 0) {
+              <div class="p-4 text-center text-slate-400 text-sm">No subfolders here.</div>
+           }
+           @for (folder of movePickerFolders(); track folder.path) {
+              <button (click)="navigatePicker(folder.path)" class="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 text-slate-700">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="text-amber-300"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+                 <span class="font-medium text-sm">{{ folder.name }}</span>
+              </button>
+           }
+        </div>
+     </div>
+     <div footer class="flex gap-3">
+        <button (click)="confirmMove()" [disabled]="isMoving()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+           {{ isMoving() ? 'Moving...' : 'Move Here' }}
+        </button>
+        <button (click)="showMoveModal.set(false)" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">Cancel</button>
+     </div>
+  </app-modal>
+}
+
+@if (showConfirmModal()) {
+  <app-confirm-modal 
+    title="Delete File" 
+    message="Are you sure you want to delete this file? It will be removed from storage."
+    (confirm)="confirmDelete()"
+    (cancel)="closeConfirmModal()">
+  </app-confirm-modal>
+}
+
+@if (showBulkDeleteModal()) {
+  <app-confirm-modal 
+    title="Delete Selected Files" 
+    [message]="'Are you sure you want to delete ' + selectedPaths().size + ' files? This action cannot be undone.'"
+    (confirm)="confirmBulkDelete()"
+    (cancel)="closeBulkDeleteModal()">
+  </app-confirm-modal>
+}

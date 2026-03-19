@@ -1,0 +1,74 @@
+<div>
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div>
+       <h3 class="text-lg font-bold text-slate-700">{{ title() }}</h3>
+       <p class="text-sm text-slate-500">{{ description() }}</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Add Form -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
+        <h4 class="font-bold text-slate-800 mb-4">Add New Category</h4>
+        <div class="flex gap-2">
+            <input 
+              type="text" 
+              [ngModel]="newItemName()" 
+              (ngModelChange)="newItemName.set($event)" 
+              (keyup.enter)="add()"
+              placeholder="e.g. Technology, Healthcare..." 
+              class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2.5 border text-sm"
+            >
+            <button 
+              (click)="add()" 
+              [disabled]="!newItemName().trim() || isAdding() || !authService.isAdmin()"
+              class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2">
+              @if (isAdding()) {
+                 <span class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+              }
+              Add
+            </button>
+        </div>
+    </div>
+
+    <!-- List -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="bg-slate-50 px-6 py-3 border-b border-slate-200">
+            <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wide">Existing Categories ({{ items().length }})</h4>
+        </div>
+        <ul class="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+            @for (item of items(); track item.id) {
+                <li class="px-6 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                    <span class="text-slate-700 font-medium">{{ item.name }}</span>
+                    <div class="flex items-center gap-4">
+                      <label class="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+                        <input type="checkbox" [checked]="item.isExcluded" (change)="toggleExcluded(item, $event)" class="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500">
+                        Exclude
+                      </label>
+
+
+                      @if (authService.isAdmin()) {
+                          <button (click)="delete(item.id)" class="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100" title="Delete">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                      }
+                    </div>
+                </li>
+            } @empty {
+                <li class="px-6 py-8 text-center text-slate-400 text-sm">
+                    No categories defined yet.
+                </li>
+            }
+        </ul>
+    </div>
+  </div>
+</div>
+
+@if (showConfirmModal()) {
+  <app-confirm-modal 
+    title="Delete Category" 
+    message="Are you sure you want to delete this category? Items using it will not be updated automatically."
+    (confirm)="confirmDelete()"
+    (cancel)="closeConfirmModal()">
+  </app-confirm-modal>
+}

@@ -1,0 +1,385 @@
+<div class="max-w-7xl pb-10">
+  <div class="flex items-center gap-4 mb-6">
+    <a routerLink="/businesses" class="p-2 rounded-full hover:bg-slate-200 text-[#083594] hover:text-[#062a71] transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <h1 class="text-2xl font-bold text-slate-800">{{ isEditing() ? 'Edit Business' : 'Add New Business' }}</h1>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+      
+      <!-- Basic Details -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 animate-in fade-in">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Business Name</label>
+          <input formControlName="title" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border text-lg font-medium">
+        </div>
+
+        <div class="relative">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+            <div class="relative">
+                <input 
+                    type="text" 
+                    [value]="categorySearch()"
+                    (input)="onCategoryInput($event)"
+                    (focus)="showCategoryDropdown.set(true)"
+                    placeholder="Search category..."
+                    class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white"
+                >
+                @if (showCategoryDropdown() && filteredCategories().length > 0) {
+                    <div class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        @for (cat of filteredCategories(); track cat.id) {
+                            <button 
+                                type="button"
+                                (click)="selectCategory(cat.name)"
+                                class="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm transition-colors"
+                            >
+                                {{ cat.name }}
+                            </button>
+                        }
+                    </div>
+                }
+                @if (showCategoryDropdown()) {
+                    <div class="fixed inset-0 z-40" (click)="showCategoryDropdown.set(false)"></div>
+                }
+            </div>
+            @if (categories().length === 0) {
+              <p class="text-xs text-[#083594]-500 mt-1">No categories found. Add them in Settings > Biz Cats.</p>
+            }
+        </div>
+
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <label class="block text-sm font-medium text-slate-700">Business Type</label>
+                <label class="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+                    <input type="checkbox" formControlName="useCategoryAsType" (change)="syncTypeWithCategory()" class="rounded border-slate-300 text-[#083594] focus:ring-[#083594]-500">
+                    Use Category Name
+                </label>
+            </div>
+            <input formControlName="type" type="text" placeholder="e.g. Restaurant, Spa, Agency" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border" [attr.readonly]="form.get('useCategoryAsType')?.value ? true : null" [class.bg-slate-50]="form.get('useCategoryAsType')?.value">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Price Range (Optional)</label>
+            <select formControlName="priceRange" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                <option value="">Not Specified</option>
+                <option value="$">$ (Budget)</option>
+                <option value="$$">$$ (Moderate)</option>
+                <option value="$$$">$$$ (Expensive)</option>
+                <option value="$$$$">$$$$ (Luxury)</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <app-rich-text-editor formControlName="description" height="200px" placeholder="Describe the business..."></app-rich-text-editor>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Catalog / Flyer / Menu (PDF Link)</label>
+            <div class="flex gap-2">
+                <input formControlName="menuUrl" type="text" placeholder="https://..." class="flex-1 w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+                <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-center transition-colors">
+                    <span class="sr-only">Upload PDF</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <input type="file" (change)="onMenuFileSelected($event)" accept="application/pdf" class="sr-only" [disabled]="isUploading()">
+                </label>
+            </div>
+            @if (form.get('menuUrl')?.value) {
+                <a [href]="form.get('menuUrl')?.value" target="_blank" class="inline-flex items-center gap-1 mt-2 text-sm text-[#083594] hover:underline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 1-2 2v16a2 2 0 0 1 2 2h12a2 2 0 0 1 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    View Current Catalog
+                </a>
+            }
+        </div>
+      </div>
+
+      <!-- Services & Hours -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 animate-in fade-in">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Services (Comma Separated)</label>
+            <input formControlName="services" type="text" placeholder="Deep Cleaning, Maid Service, Moving" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+          </div>
+
+          <div>
+              <div class="flex justify-between items-center mb-2">
+                <h4 class="text-sm font-bold text-slate-700">Opening Hours</h4>
+                <button type="button" (click)="addOpeningHourRow()" class="text-xs text-[#083594] font-medium hover:underline">+ Add Row</button>
+              </div>
+              <div formArrayName="openingHours" class="space-y-2">
+                  @for (row of openingHoursArray.controls; track $index) {
+                    <div [formGroupName]="$index" class="flex items-center gap-2">
+                        <input formControlName="day" type="text" placeholder="Day" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
+                        <input formControlName="hours" type="text" placeholder="Hours" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
+                        <button type="button" (click)="removeOpeningHourRow($index)" class="text-slate-400 hover:text-red-500 p-1">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                  }
+              </div>
+          </div>
+      </div>
+
+      <!-- Location Section -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
+          <h3 class="text-base font-bold text-slate-800 mb-4">Location Details</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Country</label>
+                <select formControlName="countryCode" (change)="onCountryChange()" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                  @for (country of locations(); track country.code) {
+                    <option [value]="country.code">{{ country.name }}</option>
+                  }
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">City</label>
+                <select formControlName="cityCode" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                  @for (city of availableCities(); track city.code) {
+                    <option [value]="city.code">{{ city.name }} ({{ city.code }})</option>
+                  }
+                </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Address / Area</label>
+            <input formControlName="location" type="text" placeholder="e.g. Business Bay" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+          </div>
+      </div>
+
+      <!-- Contact Information -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Contact Information</h3>
+         
+         <div class="space-y-6 mb-6">
+            <!-- Phones -->
+            <div>
+               <div class="flex justify-between items-center mb-2">
+                  <label class="block text-sm font-medium text-slate-700">Contact Numbers</label>
+                  <button type="button" (click)="addPhone()" class="text-xs text-[#083594] font-medium hover:underline">+ Add Phone</button>
+               </div>
+               <div formArrayName="contactPhones" class="space-y-2">
+                  @for (ctrl of phonesArray.controls; track $index) {
+                     <div class="flex gap-2">
+                        <input [formControlName]="$index" type="text" placeholder="+971..." class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2 border text-sm">
+                        <button type="button" (click)="removePhone($index)" class="text-slate-400 hover:text-red-500 p-1">
+                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                     </div>
+                  }
+               </div>
+            </div>
+
+            <!-- Social -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Website</label>
+                  <input formControlName="contactWebsite" type="text" placeholder="www.example.com" class="w-full border-slate-300 rounded-lg text-sm p-2.5 border">
+               </div>
+               <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Instagram</label>
+                  <input formControlName="contactInstagram" type="text" placeholder="https://instagram.com/..." class="w-full border-slate-300 rounded-lg text-sm p-2.5 border">
+               </div>
+               <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Facebook</label>
+                  <input formControlName="contactFacebook" type="text" placeholder="https://facebook.com/..." class="w-full border-slate-300 rounded-lg text-sm p-2.5 border">
+               </div>
+               <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">TikTok</label>
+                  <input formControlName="contactTiktok" type="text" placeholder="https://tiktok.com/..." class="w-full border-slate-300 rounded-lg text-sm p-2.5 border">
+               </div>
+            </div>
+         </div>
+
+         <div class="border-t border-slate-100 pt-4">
+             <h4 class="text-sm font-bold text-slate-700 mb-3">Booking Button Action</h4>
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="md:col-span-1">
+                   <label class="block text-xs font-medium text-slate-500 mb-1">Action Type</label>
+                   <select formControlName="actionType" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                      <option value="none">No Action</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="call">Phone Call</option>
+                   </select>
+                </div>
+                <div class="md:col-span-2">
+                   <label class="block text-xs font-medium text-slate-500 mb-1">
+                      @if (form.get('actionType')?.value === 'whatsapp') { WhatsApp Number }
+                      @else if (form.get('actionType')?.value === 'call') { Phone Number }
+                      @else { Target Number }
+                   </label>
+                   <input 
+                      formControlName="actionTarget" 
+                      type="text" 
+                      [placeholder]="form.get('actionType')?.value === 'none' ? 'Disabled' : '+97150...'"
+                      class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border disabled:bg-slate-100 disabled:text-slate-400"
+                      [attr.disabled]="form.get('actionType')?.value === 'none' ? true : null">
+                </div>
+             </div>
+         </div>
+      </div>
+
+      <!-- Delivery Section -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-3">
+               <h3 class="text-base font-bold text-slate-800">Delivery Available</h3>
+               <label class="relative inline-flex items-center cursor-pointer scale-75">
+<input type="checkbox" formControlName="isDeliveryAvailable" class="sr-only peer">
+  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+               </label>
+            </div>
+            <button type="button" (click)="addDeliveryInfoRow()" class="text-xs text-[#083594] font-medium hover:underline" [disabled]="!form.get('isDeliveryAvailable')?.value" [class.opacity-50]="!form.get('isDeliveryAvailable')?.value">+ Add Delivery Area</button>
+          </div>
+          <div formArrayName="deliveryInfo" class="space-y-3" [class.opacity-50]="!form.get('isDeliveryAvailable')?.value" [class.pointer-events-none]="!form.get('isDeliveryAvailable')?.value">
+              @for (row of deliveryInfoArray.controls; track $index) {
+                <div [formGroupName]="$index" class="flex items-center gap-2">
+                    <div class="flex-1">
+                       <input formControlName="location" type="text" placeholder="Location (e.g. Dubai Marina)" class="w-full border-slate-300 rounded-lg text-sm p-2 border">
+                    </div>
+                    <div class="w-32">
+                       <input formControlName="charge" type="text" placeholder="Charge (e.g. 10 AED)" class="w-full border-slate-300 rounded-lg text-sm p-2 border">
+                    </div>
+                    <button type="button" (click)="removeDeliveryInfoRow($index)" class="text-slate-400 hover:text-red-500 p-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+              }
+              @if (deliveryInfoArray.length === 0) {
+                <p class="text-sm text-slate-400 italic">No delivery areas added. Click + Add Delivery Area to specify.</p>
+              }
+          </div>
+      </div>
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+       
+       <!-- Publish -->
+       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4 border-b pb-2">Publish</h3>
+         
+         <div class="mb-4 flex items-center justify-between">
+            <span class="text-sm font-medium text-slate-700">Published</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" formControlName="isPublished" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+            </label>
+         </div>
+
+         <div class="space-y-4 mb-6 pt-2 border-t border-slate-100">
+           <div class="flex items-center justify-between">
+             <span class="text-sm font-medium text-slate-700">Verified</span>
+             <label class="relative inline-flex items-center cursor-pointer">
+               <input type="checkbox" formControlName="isVerified" class="sr-only peer">
+               <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+             </label>
+           </div>
+           
+           <div class="flex items-center justify-between">
+             <span class="text-sm font-medium text-slate-700">Premium</span>
+             <label class="relative inline-flex items-center cursor-pointer">
+               <input type="checkbox" formControlName="isPremium" class="sr-only peer">
+               <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+             </label>
+           </div>
+
+           <div class="flex items-center justify-between">
+             <span class="text-sm font-medium text-slate-700">Featured</span>
+             <label class="relative inline-flex items-center cursor-pointer">
+               <input type="checkbox" formControlName="isFeatured" class="sr-only peer">
+               <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+             </label>
+           </div>
+
+           <div class="flex items-center justify-between">
+               <span class="text-sm font-medium text-red-600 font-bold">
+               {{ form.get('isArchived')?.value ? 'Archived' : 'Archive' }}
+             </span>
+             <label class="relative inline-flex items-center cursor-pointer">
+               <input type="checkbox" formControlName="isArchived" class="sr-only peer">
+               <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+             </label>
+           </div>
+         </div>
+
+
+<button type="submit" [disabled]="isUploading()" class="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-[#083594] hover:bg-[#062a71] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#083594]-500 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            {{ isEditing() ? 'Update Business' : 'Create Business' }}
+         </button>
+
+       </div>
+
+      <!-- Logo -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Logo</h3>
+         <div class="space-y-4">
+            <div class="w-full aspect-square rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center relative overflow-hidden bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 32px;">
+               @if (form.get('logoUrl')?.value) {
+                  <img [src]="form.get('logoUrl')?.value" class="w-full h-full object-contain bg-white p-2" onerror="this.style.display='none'">
+               }
+               @if (isUploading()) {
+                  <div class="absolute inset-0 bg-white/80 flex items-center justify-center">
+                     <span class="animate-spin w-6 h-6 border-2 border-[#083594] border-t-transparent rounded-full"></span>
+                  </div>
+               }
+            </div>
+            <div class="flex gap-2">
+               <input formControlName="logoUrl" type="text" class="flex-1 min-w-0 border-slate-300 rounded-lg text-xs p-2 border" placeholder="https://...">
+               <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-center transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <input type="file" (change)="onLogoSelected($event)" accept="image/*" class="sr-only" [disabled]="isUploading()">
+               </label>
+            </div>
+         </div>
+      </div>
+
+      <!-- Image -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Featured Image</h3>
+         <div class="space-y-4">
+            <div class="aspect-video w-full rounded-lg bg-slate-100 border border-slate-200 overflow-hidden relative flex items-center justify-center bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 48px;">
+               @if (form.get('imageUrl')?.value) {
+                  <img [src]="form.get('imageUrl')?.value" class="w-full h-full object-cover bg-white" onerror="this.style.display='none'">
+               }
+               
+               @if (isUploading()) {
+                  <div class="absolute inset-0 bg-white/80 flex items-center justify-center">
+                     <span class="animate-spin w-6 h-6 border-2 border-[#083594] border-t-transparent rounded-full"></span>
+                  </div>
+               }
+            </div>
+            
+            <div class="flex gap-2">
+               <input formControlName="imageUrl" type="text" class="flex-1 min-w-0 border-slate-300 rounded-lg text-xs p-2 border" placeholder="https://...">
+               <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-center transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <input type="file" (change)="onMainImageSelected($event)" accept="image/*" class="sr-only" [disabled]="isUploading()">
+               </label>
+            </div>
+         </div>
+      </div>
+
+       <!-- Stats Card -->
+       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Stats</h3>
+         <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                   <label class="block text-sm font-medium text-slate-700 mb-1">Rating</label>
+                   <input formControlName="rating" type="number" step="0.1" class="w-full border-slate-300 rounded-lg text-sm p-2 border">
+                </div>
+                <div>
+                   <label class="block text-sm font-medium text-slate-700 mb-1">Reviews</label>
+                   <input formControlName="reviews" type="number" class="w-full border-slate-300 rounded-lg text-sm p-2 border">
+                </div>
+            </div>
+         </div>
+      </div>
+    </div>
+  </form>
+</div>

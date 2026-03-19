@@ -1,0 +1,30 @@
+<div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-slate-900 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" (click)="close.emit()"></div>
+    
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    
+    <!-- Modal Panel -->
+    <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+      <!-- Header & Body -->
+      <div class="bg-white px-6 pt-6 pb-4">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-slate-900" id="modal-title">
+            {{ title() }}
+            </h3>
+            <!-- Header Actions Slot -->
+            <div class="flex items-center gap-3">
+                <ng-content select="[header]"></ng-content>
+            </div>
+        </div>
+        <ng-content select="[body]"></ng-content>
+      </div>
+      
+      <!-- Footer Actions -->
+      <div class="bg-slate-50 px-6 py-4 flex flex-row-reverse gap-3 border-t border-slate-100">
+         <ng-content select="[footer]"></ng-content>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,57 @@
+<app-toast></app-toast>
+
+@if (authService.isLoading()) {
+  <div class="flex items-center justify-center h-screen bg-slate-50">
+    <div class="flex flex-col items-center gap-4">
+      <div class="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
+      <p class="text-slate-500 font-medium animate-pulse">Loading CeyHallo Admin...</p>
+    </div>
+  </div>
+} @else {
+  <div class="flex h-screen bg-slate-50 overflow-hidden">
+    @if (authService.currentUser()) {
+      
+      <!-- Mobile Backdrop -->
+      @if (isMobile() && isSidebarOpen()) {
+        <div 
+          class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity" 
+          (click)="isSidebarOpen.set(false)"
+          aria-hidden="true">
+        </div>
+      }
+
+      <!-- Sidebar -->
+      <app-sidebar class="w-[260px] flex-shrink-0" [isSidebarOpen]="isSidebarOpen()" [isMobile]="isMobile()" (logout)="authService.logout()"></app-sidebar>
+
+      <!-- Main Content -->
+      <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 z-30">
+          <div class="flex items-center gap-3">
+            <button (click)="toggleSidebar()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="flex items-center gap-4">
+            <button class="p-2 text-slate-400 hover:text-slate-600 relative">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 01 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 003.4 0"/></svg>
+              <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Scrollable Content Area -->
+        <div class="flex-1 overflow-auto bg-slate-50 p-4 sm:p-6 w-full">
+          <router-outlet></router-outlet>
+        </div>
+      </main>
+
+    } @else {
+      <!-- Full screen login/other content -->
+      <div class="w-full h-full overflow-auto">
+        <router-outlet></router-outlet>
+      </div>
+    }
+  </div>
+}
+

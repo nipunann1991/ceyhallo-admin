@@ -1,0 +1,264 @@
+{
+  "users": {
+    "admin-seed-id": {
+      "name": "Super Admin",
+      "email": "admin@ceyhallo.com",
+      "role": "admin",
+      "status": "active"
+    }
+  },
+  "restaurants": {
+    "restaurant-seed-id": {
+      "title": "CeyHallo Signature",
+      "description": "Authentic Sri Lankan cuisine in the heart of Dubai.",
+      "cuisine": "Sri Lankan",
+      "location": "Downtown Dubai",
+      "priceRange": "$$",
+      "rating": 4.8,
+      "reviews": 120,
+      "imageUrl": "https://picsum.photos/400/300",
+      "tags": ["Spicy", "Authentic", "Curry"],
+      "isFeatured": true,
+      "isVerified": true,
+      "isPremium": true,
+      "countryCode": "AE",
+      "cityCode": "DXB"
+    }
+  },
+  "groceries": {
+    "grocery-seed-001": {
+      "title": "Fresh Mart Dubai",
+      "description": "Premium organic vegetables and fruits sourced locally.",
+      "location": "Jumeirah Lake Towers, Cluster R",
+      "rating": 4.6,
+      "reviews": 45,
+      "imageUrl": "https://picsum.photos/400/302",
+      "tags": ["Organic", "Fresh", "Vegetables"],
+      "isFeatured": true,
+      "isVerified": true,
+      "deliveryAvailable": true,
+      "countryCode": "AE",
+      "cityCode": "DXB"
+    }
+  },
+  "banners": {
+    "banner-seed-001": {
+      "title": "Summer Food Festival",
+      "image": "https://picsum.photos/800/400",
+      "description": "Join us for the biggest food festival of the year!",
+      "isActive": true,
+      "tag": "Events",
+      "icon": "fa-calendar",
+      "navigationType": "bannerDetail",
+      "targetId": "summer-fest-2025",
+      "publishedDate": "2024-06-01",
+      "publishedBy": "CeyHallo Events",
+      "content": "Experience a culinary journey like no other at the Summer Food Festival. Featuring top chefs, live music, and a vibrant atmosphere. Full details will be available on the event page."
+    },
+    "banner-seed-002": {
+      "title": "New User Promo",
+      "image": "https://picsum.photos/800/401",
+      "description": "Get 20% off your first order.",
+      "isActive": false,
+      "tag": "Promotion",
+      "icon": "fa-tag",
+      "navigationType": "externalLink",
+      "targetId": "/promos/new-user",
+      "publishedDate": "2024-01-15",
+      "publishedBy": "Marketing Team",
+      "content": "Sign up today and get 20% off your first order. Terms and conditions apply. This offer is valid for a limited time only."
+    }
+  },
+  "countries": {
+    "AE": {
+      "name": "United Arab Emirates",
+      "flagUrl": "https://flagcdn.com/w40/ae.png",
+      "cities": [
+        { "code": "DXB", "name": "Dubai" },
+        { "code": "AUH", "name": "Abu Dhabi" },
+        { "code": "SHJ", "name": "Sharjah" },
+        { "code": "AJM", "name": "Ajman" },
+        { "code": "RAK", "name": "Ras Al Khaimah" }
+      ]
+    },
+    "LK": {
+      "name": "Sri Lanka",
+      "flagUrl": "https://flagcdn.com/w40/lk.png",
+      "cities": [
+        { "code": "CMB", "name": "Colombo" },
+        { "code": "KDY", "name": "Kandy" },
+        { "code": "GLL", "name": "Galle" },
+        { "code": "NEG", "name": "Negombo" },
+        { "code": "JAF", "name": "Jaffna" }
+      ]
+    },
+    "US": {
+      "name": "United States",
+      "flagUrl": "https://flagcdn.com/w40/us.png",
+      "cities": [
+        { "code": "NYC", "name": "New York" },
+        { "code": "LAX", "name": "Los Angeles" },
+        { "code": "CHI", "name": "Chicago" },
+        { "code": "HOU", "name": "Houston" },
+        { "code": "MIA", "name": "Miami" }
+      ]
+    },
+    "GB": {
+      "name": "United Kingdom",
+      "flagUrl": "https://flagcdn.com/w40/gb.png",
+      "cities": [
+        { "code": "LON", "name": "London" },
+        { "code": "MAN", "name": "Manchester" },
+        { "code": "BIR", "name": "Birmingham" },
+        { "code": "LIV", "name": "Liverpool" }
+      ]
+    },
+    "SG": {
+      "name": "Singapore",
+      "flagUrl": "https://flagcdn.com/w40/sg.png",
+      "cities": [
+        { "code": "SIN", "name": "Singapore" }
+      ]
+    },
+    "AU": {
+      "name": "Australia",
+      "flagUrl": "https://flagcdn.com/w40/au.png",
+      "cities": [
+        { "code": "SYD", "name": "Sydney" },
+        { "code": "MEL", "name": "Melbourne" },
+        { "code": "BNE", "name": "Brisbane" },
+        { "code": "PER", "name": "Perth" }
+      ]
+    }
+  },
+  "events": {
+    "event-seed-001": {
+      "title": "Community BBQ at the Park",
+      "description": "Join us for a fun-filled day with food, music, and games at Zabeel Park. A great chance to meet new people!",
+      "fullDate": "25 December 2024",
+      "startTime": "12:00",
+      "endTime": "18:00",
+      "allDayEvent": false,
+      "location": "Zabeel Park, Gate 4",
+      "imageUrl": "https://picsum.photos/400/401",
+      "organizer": "CeyHallo Community",
+      "category": "Social",
+      "isFeatured": true,
+      "isPublished": true,
+      "countryCode": "AE",
+      "cityCode": "DXB",
+      "publishedDate": "2024-10-01T10:00:00Z",
+      "createdDate": "2024-09-28T10:00:00Z"
+    },
+    "event-seed-002": {
+      "title": "Tech Networking Night",
+      "description": "An evening for tech professionals to connect, share ideas, and build networks. Hosted at Dubai Internet City.",
+      "fullDate": "15 November 2024",
+      "startTime": "19:00",
+      "endTime": "22:00",
+      "allDayEvent": false,
+      "location": "Radisson Blu, DIC",
+      "imageUrl": "https://picsum.photos/400/402",
+      "organizer": "Techies Connect",
+      "category": "Professional",
+      "isFeatured": false,
+      "isPublished": false,
+      "countryCode": "AE",
+      "cityCode": "DXB",
+      "publishedDate": "2024-10-15T12:00:00Z",
+      "createdDate": "2024-10-15T12:00:00Z"
+    }
+  },
+  "news": {
+    "news-seed-001": {
+      "title": "CeyHallo Expands to New Markets",
+      "excerpt": "Exciting news! CeyHallo is now available in Sri Lanka and the United Kingdom, bringing authentic tastes to more people around the globe.",
+      "content": "Full article content about the expansion...",
+      "imageUrl": "https://picsum.photos/400/250",
+      "author": "CeyHallo Team",
+      "publishedDate": "2024-10-20T14:00:00Z",
+      "category": "Expansion",
+      "isFeatured": true,
+      "isPublished": true,
+      "isNewsPageBanner": true
+    },
+    "news-seed-002": {
+      "title": "Top 5 Must-Try Dishes in Dubai",
+      "excerpt": "Our editors pick the top 5 must-try Sri Lankan dishes you can find right here in Dubai through the CeyHallo app.",
+      "content": "Full article content about the dishes...",
+      "imageUrl": "https://picsum.photos/400/251",
+      "author": "Food Critic",
+      "publishedDate": "2024-10-18T09:00:00Z",
+      "category": "Food",
+      "isFeatured": false,
+      "isPublished": true,
+      "isNewsPageBanner": false
+    }
+  },
+  "categories": {
+    "cat-1": {
+      "id": "cat-1",
+      "label": "Jobs",
+      "icon": "https://i.ibb.co/n9PDvvM/2-1.png",
+      "tab": "jobs",
+      "order": 1,
+      "hasNotification": false
+    },
+    "cat-2": {
+      "id": "cat-2",
+      "label": "Business",
+      "icon": "https://i.ibb.co/d08wd96V/2-1-1.png",
+      "tab": "business",
+      "order": 2,
+      "hasNotification": false
+    },
+    "cat-3": {
+      "id": "cat-3",
+      "label": "Restaurants",
+      "icon": "https://i.ibb.co/4ZcWqYnG/2-1-2.png",
+      "tab": "restaurants",
+      "order": 3,
+      "hasNotification": false
+    },
+    "cat-4": {
+      "id": "cat-4",
+      "label": "Events",
+      "icon": "https://i.ibb.co/Nn1B28Hk/2-1-3.png",
+      "tab": "events",
+      "order": 4,
+      "hasNotification": false
+    },
+    "cat-5": {
+      "id": "cat-5",
+      "label": "News",
+      "icon": "https://i.ibb.co/0RKbHwDh/2-1-4.png",
+      "tab": "news",
+      "order": 5,
+      "hasNotification": true
+    },
+    "cat-6": {
+      "id": "cat-6",
+      "label": "Housing",
+      "icon": "https://i.ibb.co/p6WQFvyd/2-1-5.png",
+      "tab": "housing",
+      "order": 6,
+      "hasNotification": false
+    },
+    "cat-7": {
+      "id": "cat-7",
+      "label": "Buy & Sell",
+      "icon": "https://i.ibb.co/h1hRndQb/2-1-6.png",
+      "tab": "buySell",
+      "order": 7,
+      "hasNotification": false
+    },
+    "cat-8": {
+      "id": "cat-8",
+      "label": "Services",
+      "icon": "https://i.ibb.co/gMXLbTfZ/2-1-7.png",
+      "tab": "services",
+      "order": 8,
+      "hasNotification": false
+    }
+  }
+}

@@ -1,0 +1,201 @@
+<div class="max-w-7xl pb-10">
+  <div class="flex items-center gap-4 mb-6">
+    <a routerLink="/jobs" class="p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <h1 class="text-2xl font-bold text-slate-800">{{ isEditing() ? 'Edit Job' : 'Post New Job' }}</h1>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2 space-y-6">
+      
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Job Title</label>
+          <input formControlName="title" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border text-lg font-medium">
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+               <label class="block text-sm font-medium text-slate-700 mb-1">Company</label>
+               <input formControlName="company" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            </div>
+            <div>
+               <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+               <select formControlName="category" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                   <option value="" disabled>Select Category</option>
+                   @for (cat of categories(); track cat.id) {
+                      <option [value]="cat.name">{{ cat.name }}</option>
+                   }
+                </select>
+                @if (categories().length === 0) {
+                   <p class="text-xs text-[#083594]-500 mt-1">No categories found. Add them in Settings > Categories.</p>
+                }
+            </div>
+        </div>
+
+        <div>
+           <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+           <app-rich-text-editor formControlName="description" height="200px" placeholder="Describe the role..."></app-rich-text-editor>
+        </div>
+      </div>
+
+      <!-- Lists -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
+         <!-- Responsibilities -->
+         <div>
+            <div class="flex justify-between mb-2">
+                <label class="block text-sm font-bold text-slate-700">Responsibilities</label>
+                <button type="button" (click)="addItem(responsibilitiesArray)" class="text-xs text-[#083594] font-medium">+ Add Item</button>
+            </div>
+            <div formArrayName="responsibilities" class="space-y-2">
+                @for (ctrl of responsibilitiesArray.controls; track $index) {
+                    <div class="flex gap-2">
+                        <input [formControlName]="$index" type="text" class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 text-sm p-2 border">
+                        <button type="button" (click)="removeItem(responsibilitiesArray, $index)" class="text-red-500 p-1">x</button>
+                    </div>
+                }
+            </div>
+         </div>
+
+         <!-- Qualifications -->
+         <div>
+            <div class="flex justify-between mb-2">
+                <label class="block text-sm font-bold text-slate-700">Qualifications</label>
+                <button type="button" (click)="addItem(qualificationsArray)" class="text-xs text-[#083594] font-medium">+ Add Item</button>
+            </div>
+            <div formArrayName="qualifications" class="space-y-2">
+                @for (ctrl of qualificationsArray.controls; track $index) {
+                    <div class="flex gap-2">
+                        <input [formControlName]="$index" type="text" class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 text-sm p-2 border">
+                        <button type="button" (click)="removeItem(qualificationsArray, $index)" class="text-red-500 p-1">x</button>
+                    </div>
+                }
+            </div>
+         </div>
+      </div>
+
+      <!-- Location -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Location Details</h3>
+         <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+               <label class="block text-sm font-medium text-slate-700 mb-1">Country</label>
+               <select formControlName="countryCode" (change)="onCountryChange()" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                 @for (country of locations(); track country.code) {
+                   <option [value]="country.code">{{ country.name }}</option>
+                 }
+               </select>
+            </div>
+            <div>
+               <label class="block text-sm font-medium text-slate-700 mb-1">City</label>
+               <select formControlName="cityCode" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                 @for (city of availableCities(); track city.code) {
+                   <option [value]="city.code">{{ city.name }} ({{ city.code }})</option>
+                 }
+               </select>
+            </div>
+         </div>
+         <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Address / Office</label>
+            <input formControlName="location" type="text" placeholder="e.g. Dubai Media City" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+         </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4 border-b pb-2">Publish</h3>
+         
+         <div class="mb-4 flex items-center justify-between">
+            <span class="text-sm font-medium text-slate-700">Published</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" formControlName="isPublished" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+            </label>
+         </div>
+
+         <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Posted Date</label>
+            <input formControlName="postedDate" type="date" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+         </div>
+
+         <div class="space-y-3 mb-6 pt-2 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+               <span class="text-sm font-medium text-slate-700">Featured Job</span>
+               <label class="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" formControlName="isFeatured" class="sr-only peer">
+                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+               </label>
+            </div>
+         </div>
+
+
+<button type="submit" [disabled]="isUploading()" class="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-[#083594] hover:bg-[#062a71] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 shadow-sm disabled:opacity-50 transition-colors">
+            {{ isEditing() ? 'Update Job' : 'Post Job' }}
+         </button>
+
+      </div>
+
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Company Logo</h3>
+         <div class="space-y-4">
+            <div class="w-full h-32 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center relative overflow-hidden bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 32px;">
+               @if (form.get('companyLogo')?.value) {
+                  <img [src]="form.get('companyLogo')?.value" class="w-full h-full object-contain p-2 bg-white" onerror="this.style.display='none'">
+               }
+               @if (isUploading()) {
+                  <div class="absolute inset-0 bg-white/80 flex items-center justify-center">
+                     <span class="animate-spin w-6 h-6 border-2 border-[#083594] border-t-transparent rounded-full"></span>
+                  </div>
+               }
+            </div>
+            <div class="flex gap-2">
+               <input formControlName="companyLogo" type="text" class="flex-1 min-w-0 border-slate-300 rounded-lg text-xs p-2 border" placeholder="https://...">
+               <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200">
+                  <span class="sr-only">Upload</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <input type="file" (change)="onLogoSelected($event)" accept="image/*" class="sr-only">
+               </label>
+            </div>
+         </div>
+      </div>
+      
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Details</h3>
+         <div class="space-y-4">
+             <div>
+               <label class="block text-sm font-medium text-slate-700 mb-1">Job Type</label>
+               <select formControlName="jobType" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                <option value="Full-time">Full-time</option>
+                <option value="Part-time">Part-time</option>
+                <option value="Contract">Contract</option>
+                <option value="Remote">Remote</option>
+              </select>
+             </div>
+             <div>
+               <label class="block text-sm font-medium text-slate-700 mb-1">Salary Range</label>
+               <input formControlName="salaryRange" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            </div>
+             
+             <div>
+                <div class="flex justify-between mb-2">
+                    <label class="block text-sm font-bold text-slate-700">Skills</label>
+                    <button type="button" (click)="addItem(skillsArray)" class="text-xs text-[#083594] font-medium">+ Add</button>
+                </div>
+                <div formArrayName="skills" class="space-y-2">
+                    @for (ctrl of skillsArray.controls; track $index) {
+                        <div class="flex gap-2">
+                            <input [formControlName]="$index" type="text" class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 text-xs p-2 border">
+                            <button type="button" (click)="removeItem(skillsArray, $index)" class="text-red-500 p-1">x</button>
+                        </div>
+                    }
+                </div>
+             </div>
+         </div>
+      </div>
+
+    </div>
+  </form>
+</div>

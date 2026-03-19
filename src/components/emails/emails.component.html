@@ -1,0 +1,100 @@
+<div class="space-y-6">
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800">Email Templates</h2>
+      <p class="text-slate-500 text-sm">Manage, preview, and send marketing or transactional emails.</p>
+    </div>
+    <a routerLink="/emails/new" class="bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l9 7-9 7-9-7 9-7z"/><path d="M12 22V12"/></svg>
+      New Template
+    </a>
+  </div>
+
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <div class="relative flex-1">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input 
+        type="text" 
+        placeholder="Search templates by name or subject..." 
+        [value]="searchQuery()"
+        (input)="updateSearch($event)"
+        class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm" 
+      />
+    </div>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-slate-600">
+        <thead class="bg-slate-50 text-[0.82rem] leading-[1.2rem] uppercase font-semibold text-slate-500 border-b border-slate-200">
+          <tr>
+            <th class="px-6 py-4 w-12 text-center">#</th>
+            <th class="px-6 py-4">Template Name</th>
+            <th class="px-6 py-4">Subject</th>
+            <th class="px-6 py-4">Last Updated</th>
+            @if (authService.isAdmin()) {
+              <th class="px-6 py-4 text-right">Actions</th>
+            }
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (template of paginatedTemplates(); track template.id; let i = $index) {
+            <tr class="hover:bg-slate-50 transition-colors">
+              <td class="px-6 py-6 text-center text-slate-400 text-xs font-mono">
+                {{ (currentPage() - 1) * itemsPerPage + i + 1 }}
+              </td>
+              <td class="px-6 py-6">
+                 <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-lg bg-slate-100 text-slate-500">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+                    </div>
+                    <div>
+                       <h3 class="font-bold text-slate-900">{{ template.name }}</h3>
+                       <p class="text-xs text-slate-400 font-mono">{{ template.id }}</p>
+                    </div>
+                 </div>
+              </td>
+              <td class="px-6 py-6 text-slate-500">{{ template.subject }}</td>
+              <td class="px-6 py-6 text-slate-500">{{ template.updatedAt | date:'medium' }}</td>
+              @if (authService.isAdmin()) {
+                <td class="px-6 py-6 text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <a [routerLink]="['/emails/edit', template.id]" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                    </a>
+                    <button (click)="delete(template.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                  </div>
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="authService.isAdmin() ? 5 : 4" class="px-6 py-12 text-center text-slate-400">
+                <p>No email templates found.</p>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    
+    <app-pagination-controls 
+      [currentPage]="currentPage()"
+      [totalItems]="filteredTemplates().length"
+      [pageSize]="itemsPerPage"
+      (pageChange)="currentPage.set($event)">
+    </app-pagination-controls>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+@if (showConfirmModal()) {
+  <app-confirm-modal 
+    title="Delete Template" 
+    message="Are you sure you want to delete this email template?"
+    (confirm)="confirmDelete()"
+    (cancel)="closeConfirmModal()">
+  </app-confirm-modal>
+}

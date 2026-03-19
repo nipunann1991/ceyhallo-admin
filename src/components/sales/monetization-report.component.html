@@ -1,0 +1,138 @@
+
+<div class="max-w-4xl mx-auto bg-white min-h-screen p-8 print:p-0 print:w-full">
+  
+  <!-- Navigation / Actions (Hidden in Print) -->
+  <div class="flex justify-between items-center mb-8 print:hidden">
+    <a routerLink="/sales" class="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to Sales
+    </a>
+    <button (click)="printReport()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-md transition-colors flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+      Download / Print PDF
+    </button>
+  </div>
+
+  <!-- Document Header -->
+  <div class="border-b-2 border-slate-900 pb-6 mb-8 flex justify-between items-end">
+    <div>
+      <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">Monetization & Features</h1>
+      <p class="text-slate-500 mt-2 text-lg">CeyHallo Admin Platform</p>
+    </div>
+    <div class="text-right">
+      <p class="text-sm font-bold text-slate-900">CONFIDENTIAL</p>
+      <p class="text-sm text-slate-500">{{ generatedDate | date:'longDate' }}</p>
+    </div>
+  </div>
+
+  <!-- Executive Summary -->
+  <div class="mb-10">
+    <h2 class="text-xl font-bold text-slate-800 mb-3 uppercase tracking-wide border-b border-slate-200 pb-1">Executive Summary</h2>
+    <p class="text-slate-600 leading-relaxed">
+      This document outlines the active revenue streams and technical capabilities of the CeyHallo application ecosystem. 
+      The platform utilizes a hybrid monetization model combining recurring subscriptions for partners (B2B) 
+      and transactional fees for promotional visibility (Ad-hoc), supported by a robust suite of directory and engagement features.
+    </p>
+  </div>
+
+  <!-- Platform Features Grid -->
+  <div class="mb-12 break-inside-avoid">
+    <h2 class="text-xl font-bold text-slate-800 mb-6 uppercase tracking-wide border-b border-slate-200 pb-1">Platform Capabilities</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      @for (featureGroup of coreFeatures(); track featureGroup.category) {
+        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 print:border-slate-300">
+          <h3 class="font-bold text-slate-900 mb-3 text-lg">{{ featureGroup.category }}</h3>
+          <ul class="space-y-2">
+            @for (feat of featureGroup.items; track feat) {
+              <li class="flex items-start gap-2 text-sm text-slate-700">
+                <svg class="w-4 h-4 text-green-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                {{ feat }}
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Detailed Streams -->
+  <div class="space-y-10">
+    <h2 class="text-xl font-bold text-slate-800 mb-6 uppercase tracking-wide border-b border-slate-200 pb-1">Revenue Models</h2>
+    @for (stream of revenueStreams(); track stream.title) {
+      <div class="break-inside-avoid">
+        <div class="mb-4">
+           <h3 class="text-lg font-bold text-slate-900">{{ stream.title }}</h3>
+           <p class="text-sm text-slate-500 italic">{{ stream.description }}</p>
+        </div>
+        
+        <table class="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-600 border-b border-slate-300">
+              <th class="py-3 px-4 w-1/3">Product Name</th>
+              <th class="py-3 px-4 w-1/4">Price Point</th>
+              <th class="py-3 px-4">Key Features / Deliverables</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 border-b border-slate-200">
+            @for (item of stream.items; track item.name) {
+              <tr>
+                <td class="py-3 px-4 font-bold text-slate-800">{{ item.name }}</td>
+                <td class="py-3 px-4 font-mono text-slate-600">{{ item.price }}</td>
+                <td class="py-3 px-4">
+                  <ul class="list-disc list-inside text-slate-600">
+                    @for (feature of item.features; track feature) {
+                      <li>{{ feature }}</li>
+                    }
+                  </ul>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- Implementation Notes -->
+  <div class="mt-12 p-6 bg-slate-50 border border-slate-200 rounded-xl print:bg-white print:border-slate-300 break-inside-avoid">
+    <h3 class="text-lg font-bold text-slate-800 mb-2">Technical Implementation Notes</h3>
+    <ul class="list-disc list-outside ml-5 text-sm text-slate-600 space-y-1">
+      <li><strong>Banner Management:</strong> Admin controls active status and navigation targets via the Banners module.</li>
+      <li><strong>Premium Status:</strong> Toggled manually in Restaurant/Business editors upon payment verification.</li>
+      <li><strong>Push Notifications:</strong> Executed via Cloud Functions payload; requires user permission on device.</li>
+      <li><strong>Payment Gateway:</strong> Currently manual invoicing/verification. API integration recommended for V2.</li>
+    </ul>
+  </div>
+
+  <!-- Footer -->
+  <div class="mt-16 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
+    <p>&copy; {{ generatedDate | date:'yyyy' }} CeyHallo Platform. All rights reserved.</p>
+    <p>Generated via Admin Dashboard.</p>
+  </div>
+
+</div>
+
+<!-- Print Styles to hide the main app sidebar/header -->
+<style>
+  @media print {
+    @page { margin: 0.5cm; }
+    body { background-color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    
+    /* Hide the app sidebar and top header */
+    app-root > div > aside, 
+    app-root > div > main > header {
+      display: none !important;
+    }
+
+    /* Reset main container margins/padding for print */
+    app-root > div > main {
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: visible !important;
+    }
+    
+    app-root > div > main > div {
+      padding: 0 !important;
+    }
+  }
+</style>

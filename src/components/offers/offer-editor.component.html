@@ -1,0 +1,184 @@
+<div class="max-w-7xl pb-10">
+  <div class="flex items-center gap-4 mb-6">
+    <a routerLink="/offers" class="p-2 rounded-full hover:bg-slate-200 text-[#083594] hover:text-[#062a71] transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <h1 class="text-2xl font-bold text-slate-800">{{ isEditing() ? 'Edit Offer' : 'Add New Offer' }}</h1>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+      
+      <!-- Link Target Section -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Link Target</h3>
+         
+         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-1">
+               <label class="block text-sm font-medium text-slate-700 mb-1">Link Type</label>
+               <select formControlName="linkType" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                  <option value="none">No Link (Display Only)</option>
+                  <option value="external">External URL</option>
+                  <option value="businesses">Businesses</option>
+               </select>
+            </div>
+            
+            <div class="md:col-span-2">
+               @if (form.get('linkType')?.value === 'businesses') {
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Select Business</label>
+                  <select formControlName="targetId" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                     <option value="" disabled>Choose a business...</option>
+                     @for (b of sortedBusinesses(); track b.id) {
+                        <option [value]="b.id">{{ b.title }}</option>
+                     }
+                  </select>
+               } @else if (form.get('linkType')?.value === 'external') {
+                  <label class="block text-sm font-medium text-slate-700 mb-1">External URL</label>
+                  <input formControlName="externalUrl" type="text" placeholder="https://..." class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+               } @else {
+                  <p class="text-sm text-slate-400 italic">This offer will not be clickable.</p>
+               }
+            </div>
+         </div>
+      </div>
+
+      <!-- Basic Details -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Offer Title</label>
+          <input formControlName="title" type="text" placeholder="e.g. 50% Off Lunch Special" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border text-lg font-medium">
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">General Category</label>
+          <select formControlName="generalCategory" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+            <option value="Food">Food</option>
+            <option value="Business">Business</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Promo Image</label>
+          <div class="flex gap-2">
+             <input formControlName="image" type="text" placeholder="https://..." class="flex-1 w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+             <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-center transition-colors">
+                <input type="file" (change)="onFileSelected($event)" accept="image/*" class="sr-only" [disabled]="isUploading()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+             </label>
+          </div>
+          @if (isUploading()) { <p class="text-xs text-[#083594]-500 mt-1">Uploading...</p> }
+          
+          <div class="mt-4 rounded-lg overflow-hidden border border-slate-200 aspect-[2/1] bg-slate-50 bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 48px;">
+             @if (form.get('image')?.value) {
+                <img [src]="form.get('image')?.value" class="w-full h-full object-cover bg-white" onerror="this.style.display='none'">
+             }
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Short Description</label>
+          <app-rich-text-editor formControlName="description" height="120px" placeholder="Brief summary of the offer..."></app-rich-text-editor>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Full Offer Details</label>
+          <app-rich-text-editor formControlName="content" height="250px" placeholder="Terms, conditions, and full details..."></app-rich-text-editor>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+       <!-- Publish -->
+       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4 border-b pb-2">Publish</h3>
+         
+         <div class="mb-4 flex items-center justify-between">
+            <span class="text-sm font-medium text-slate-700">Published</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" formControlName="isActive" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+            </label>
+         </div>
+
+
+
+         <div class="mb-6 pt-2 border-t border-slate-100">
+            <label class="block text-sm font-medium text-slate-700 mb-2">Published Date</label>
+            <input formControlName="publishedDate" type="date" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+         </div>
+
+
+         <button type="submit" [disabled]="isUploading()" class="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-[#083594] hover:bg-[#062a71] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#083594]-500 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            {{ isEditing() ? 'Update Offer' : 'Create Offer' }}
+         </button>
+       </div>
+
+      <!-- Visibility Options -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+         <h3 class="text-base font-bold text-slate-800 mb-2">Visibility</h3>
+         
+         <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                   <span class="text-sm font-medium text-slate-700 block">Show on Home Page</span>
+                   <span class="text-xs text-slate-500">Carousel feature</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" formControlName="isHomeBanner" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+                </label>
+            </div>
+            
+            <div class="flex items-center justify-between">
+                <div>
+                   <span class="text-sm font-medium text-slate-700 block">Show in Category</span>
+                   <span class="text-xs text-slate-500">Top banner in tab</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" formControlName="isSectionBanner" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+                </label>
+            </div>
+
+            @if (form.get('isSectionBanner')?.value) {
+               <div class="pt-2 border-t border-slate-100">
+                 <label class="block text-sm font-medium text-slate-700 mb-2">Select Categories</label>
+                 <div class="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto p-3 border border-slate-200 rounded-lg bg-slate-50">
+                   @for (cat of categories(); track cat.id) {
+                     <label class="flex items-center gap-2 cursor-pointer group">
+                       <input type="checkbox" 
+                              [checked]="form.get('categories')?.value?.includes(cat.name)"
+                              (change)="toggleCategory(cat.name)"
+                              class="rounded border-slate-300 text-[#083594] focus:ring-[#083594]-500">
+                       <span class="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{{ cat.name }}</span>
+                     </label>
+                   }
+                 </div>
+                 <p class="text-xs text-slate-500 mt-2">The offer will appear in all selected categories.</p>
+               </div>
+            }
+         </div>
+      </div>
+
+      <!-- Meta -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+         <h3 class="text-base font-bold text-slate-800 mb-2">Meta</h3>
+         
+         <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Tag / Label</label>
+            <input formControlName="tag" type="text" placeholder="e.g. Limited Time" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+         </div>
+         
+         <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Author</label>
+            <input formControlName="publishedBy" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+         </div>
+      </div>
+    </div>
+  </form>
+</div>
+

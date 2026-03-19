@@ -1,0 +1,26 @@
+{
+  "users": {
+    "admin-user-001": {
+      "name": "Super Admin",
+      "email": "admin@ceyhallo.com",
+      "role": "admin",
+      "status": "active"
+    }
+  },
+  "restaurants": {
+    "sample-rest-001": {
+      "title": "CeyHallo Signature",
+      "description": "Authentic Sri Lankan cuisine in the heart of Dubai.",
+      "cuisine": "Sri Lankan",
+      "location": "Downtown Dubai",
+      "priceRange": "$$",
+      "rating": 4.8,
+      "reviews": 120,
+      "imageUrl": "https://picsum.photos/400/300",
+      "tags": ["Spicy", "Authentic", "Curry"],
+      "isFeatured": true,
+      "isVerified": true,
+      "isPremium": true
+    }
+  }
+}

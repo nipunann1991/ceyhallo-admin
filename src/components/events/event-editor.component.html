@@ -1,0 +1,268 @@
+<div class="max-w-7xl pb-10">
+  <div class="flex items-center gap-4 mb-6">
+    <a routerLink="/events" class="p-2 rounded-full hover:bg-slate-200 text-[#083594] hover:text-[#062a71] transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <h1 class="text-2xl font-bold text-slate-800">{{ isEditing() ? 'Edit Event' : 'Add New Event' }}</h1>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2 space-y-6">
+      
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Event Title</label>
+          <input formControlName="title" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border text-lg font-medium">
+        </div>
+        
+        <div>
+           <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+           <input formControlName="category" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+        </div>
+
+        <!-- Organizer Section -->
+        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <h4 class="text-sm font-bold text-slate-700 mb-3">Organizer Details</h4>
+            
+            <div class="mb-3">
+                <label class="block text-xs font-medium text-slate-500 mb-1">Select Business</label>
+                <select formControlName="organizerId" (change)="onEntitySelect($event)" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white text-sm">
+                    <option value="" disabled>Select Business</option>
+                    @for (item of sortedBusinesses(); track item.id) {
+                        <option [value]="item.id">{{ item.title }}</option>
+                    }
+                </select>
+            </div>
+            
+            <!-- Hidden input to store snapshot name when an entity is selected, mostly for display if ID fails -->
+            <input type="hidden" formControlName="organizer">
+            <input type="hidden" formControlName="organizerType">
+        </div>
+
+        <div>
+           <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+           <app-rich-text-editor formControlName="description" height="200px" placeholder="Event details..."></app-rich-text-editor>
+        </div>
+      </div>
+
+      <!-- Action & Registration -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Registration & Action</h3>
+         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-1">
+               <label class="block text-sm font-medium text-slate-700 mb-1">Action Type</label>
+               <select formControlName="actionType" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                  <option value="none">No Action (Info Only)</option>
+                  <option value="external">External Website</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="call">Phone Call</option>
+               </select>
+            </div>
+            <div class="md:col-span-2">
+               <label class="block text-sm font-medium text-slate-700 mb-1">
+                  @if (form.get('actionType')?.value === 'external') { Website URL }
+                  @else if (form.get('actionType')?.value === 'whatsapp') { WhatsApp Number }
+                  @else if (form.get('actionType')?.value === 'call') { Phone Number }
+                  @else { Target }
+               </label>
+               <input 
+                  formControlName="actionTarget" 
+                  type="text" 
+                  [placeholder]="form.get('actionType')?.value === 'external' ? 'https://tickets.com/event' : (form.get('actionType')?.value === 'none' ? 'Disabled' : '+97150...')"
+                  class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border disabled:bg-slate-100 disabled:text-slate-400"
+                  [attr.disabled]="form.get('actionType')?.value === 'none' ? true : null">
+            </div>
+         </div>
+      </div>
+
+      <!-- Gallery -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <div class="flex justify-between items-center mb-4">
+             <h3 class="text-base font-bold text-slate-800">Gallery Images</h3>
+             <div class="flex items-center gap-3">
+                 <button type="button" (click)="toggleUrlInput()" class="text-sm text-slate-600 font-medium hover:text-[#083594] hover:underline">
+                     + Add via URL
+                 </button>
+                 <span class="text-slate-300">|</span>
+                 <label class="relative cursor-pointer text-sm text-[#083594] font-medium hover:underline flex items-center gap-2">
+                     @if (isGalleryUploading()) { <span class="animate-spin w-4 h-4 border-2 border-[#083594] border-t-transparent rounded-full"></span> }
+                     <span>+ Upload</span>
+                     <input type="file" (change)="onGalleryFileSelected($event)" accept="image/*" class="sr-only" [disabled]="isGalleryUploading()">
+                 </label>
+             </div>
+         </div>
+         
+         @if (showUrlInput()) {
+            <div class="flex gap-2 mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200 animate-in fade-in slide-in-from-top-2 duration-200">
+                <input #urlInput type="text" placeholder="https://example.com/image.jpg" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border focus:ring-[#083594]-500 focus:border-[#083594]-500" (keyup.enter)="addGalleryUrl(urlInput.value); urlInput.value=''">
+                <button type="button" (click)="addGalleryUrl(urlInput.value); urlInput.value=''" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800">Add</button>
+                <button type="button" (click)="toggleUrlInput()" class="text-slate-400 hover:text-slate-600 p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+         }
+
+         <div class="grid grid-cols-3 sm:grid-cols-4 gap-4" formArrayName="gallery">
+             @for (ctrl of galleryArray.controls; track $index) {
+                 <div class="relative group aspect-square rounded-lg overflow-hidden bg-slate-50 border border-slate-200 bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 32px;">
+                     <img [src]="ctrl.value" class="w-full h-full object-cover bg-white" onerror="this.style.display='none'">
+                     <button type="button" (click)="removeGalleryItem($index)" class="absolute top-1 right-1 bg-black/50 hover:bg-red-600 text-white rounded-full p-1 transition-colors opacity-0 group-hover:opacity-100">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                     </button>
+                 </div>
+             }
+             @if (galleryArray.length === 0) {
+                 <div class="col-span-full py-12 text-center text-slate-400 text-sm border-2 border-dashed border-slate-300 rounded-lg">
+                     No images in gallery.
+                 </div>
+             }
+         </div>
+      </div>
+
+      <!-- Schedule -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Date & Time</h3>
+         <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Event Date</label>
+                <input formControlName="fullDate" type="date" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            </div>
+            
+            <div class="flex items-center pt-2">
+               <label class="flex items-center gap-2 cursor-pointer">
+                 <input type="checkbox" formControlName="allDayEvent" class="w-4 h-4 text-[#083594] rounded border-slate-300 focus:ring-[#083594]-500">
+                 <span class="text-sm font-medium text-slate-700">All Day Event</span>
+               </label>
+            </div>
+            <div><!-- Spacer --></div>
+
+            @if (!form.get('allDayEvent')?.value) {
+                <div>
+                   <label class="block text-sm font-medium text-slate-700 mb-1">Start Time</label>
+                   <input formControlName="startTime" type="time" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+                </div>
+                <div>
+                   <label class="block text-sm font-medium text-slate-700 mb-1">End Time</label>
+                   <input formControlName="endTime" type="time" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+                </div>
+            }
+         </div>
+      </div>
+
+      <!-- Location -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Location Details</h3>
+         <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+               <label class="block text-sm font-medium text-slate-700 mb-1">Country</label>
+               <select formControlName="countryCode" (change)="onCountryChange()" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                 @for (country of locations(); track country.code) {
+                   <option [value]="country.code">{{ country.name }}</option>
+                 }
+               </select>
+            </div>
+            <div>
+               <label class="block text-sm font-medium text-slate-700 mb-1">City</label>
+               <select formControlName="cityCode" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                 @for (city of availableCities(); track city.code) {
+                   <option [value]="city.code">{{ city.name }} ({{ city.code }})</option>
+                 }
+               </select>
+            </div>
+         </div>
+         <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Venue / Address</label>
+            <input formControlName="location" type="text" placeholder="e.g. Dubai Opera" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+         </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4 border-b pb-2">Publish</h3>
+         
+         <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Publish Date</label>
+            <input formControlName="publishedDate" type="date" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+         </div>
+
+
+
+         <div class="space-y-4 mb-6">
+            <div class="flex items-center justify-between">
+               <span class="text-sm font-medium text-slate-700">Published</span>
+               <label class="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" formControlName="isPublished" class="sr-only peer">
+                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+               </label>
+            </div>
+            
+            <div class="flex items-center justify-between">
+               <span class="text-sm font-medium text-slate-700">Featured Event</span>
+               <label class="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" formControlName="isFeatured" class="sr-only peer">
+                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+               </label>
+            </div>
+
+            
+            <div class="flex items-center justify-between">
+               <span class="text-sm font-medium text-slate-700">Expired</span>
+               <label class="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" formControlName="isExpired" class="sr-only peer">
+                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+               </label>
+            </div>
+            
+            <div class="flex items-center justify-between">
+               <span class="text-sm font-medium text-slate-700">Archived</span>
+               <label class="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" formControlName="isArchived" class="sr-only peer">
+                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-600"></div>
+               </label>
+            </div>
+         </div>
+
+
+         <button type="submit" [disabled]="isUploading() || isGalleryUploading()" class="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-[#083594] hover:bg-[#062a71] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#083594]-500 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            {{ isEditing() ? 'Update Event' : 'Create Event' }}
+         </button>
+       </div>
+
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+         <h3 class="text-base font-bold text-slate-800 mb-4">Event Image</h3>
+         <div class="space-y-4">
+            <div class="aspect-square w-full rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center relative overflow-hidden bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 48px;">
+               @if (form.get('imageUrl')?.value) {
+                  <img [src]="form.get('imageUrl')?.value" class="w-full h-full object-cover bg-white" onerror="this.style.display='none'">
+               }
+               @if (isUploading()) {
+                  <div class="absolute inset-0 bg-white/80 flex items-center justify-center">
+                     <span class="animate-spin w-6 h-6 border-2 border-[#083594] border-t-transparent rounded-full"></span>
+                  </div>
+               }
+            </div>
+            <div class="flex gap-2">
+               <input formControlName="imageUrl" type="text" class="flex-1 min-w-0 border-slate-300 rounded-lg text-xs p-2 border" placeholder="https://...">
+               <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200">
+                  <span class="sr-only">Upload</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <input type="file" (change)="onFileSelected($event)" accept="image/*" class="sr-only">
+               </label>
+            </div>
+         </div>
+      </div>
+      
+      @if (form.get('isFeatured')?.value) {
+         <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Sort Order</label>
+            <input formControlName="eventBannerOrder" type="number" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            <p class="text-xs text-slate-500 mt-2">Priority for featured events list.</p>
+         </div>
+      }
+
+    </div>
+  </form>
+</div>
+

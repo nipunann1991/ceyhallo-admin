@@ -1,0 +1,181 @@
+<div class="max-w-3xl">
+  <div class="mb-6">
+    <h3 class="text-lg font-bold text-slate-700">App Configuration</h3>
+    <p class="text-sm text-slate-500">Manage global application settings and access control.</p>
+  </div>
+
+  @if (isLoading()) {
+    <div class="h-64 flex items-center justify-center bg-slate-50 rounded-lg border border-slate-200">
+      <div class="flex flex-col items-center gap-2 text-slate-400">
+         <svg class="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+         </svg>
+         <span class="text-sm">Loading config...</span>
+      </div>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-8">
+      
+      <!-- General Settings -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+         <div class="bg-slate-50 px-6 py-3 border-b border-slate-200">
+            <h4 class="font-semibold text-slate-700">General Settings</h4>
+         </div>
+         <div class="p-6 space-y-4">
+            
+            <!-- Social Login -->
+            <div class="flex items-center justify-between">
+               <div>
+                  <label class="block text-sm font-medium text-slate-900">Social Media Login</label>
+               </div>
+               <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" formControlName="showSocialLogin" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+               </label>
+            </div>
+
+            <div class="border-t border-slate-100"></div>
+
+            <!-- Rate App Toggle -->
+            <div class="flex items-center justify-between">
+               <div>
+                  <label class="block text-sm font-medium text-slate-900">Rate App Feature</label>
+               </div>
+               <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" formControlName="showRateApp" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+               </label>
+            </div>
+
+            <div class="border-t border-slate-100"></div>
+
+            <!-- Show Business Listing Toggle -->
+            <div class="flex items-center justify-between">
+               <div>
+                  <label class="block text-sm font-medium text-slate-900">Show Business Listing</label>
+               </div>
+               <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" formControlName="showBusinessListing" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+               </label>
+            </div>
+
+            <div class="border-t border-slate-100"></div>
+
+            <!-- AI Bot Toggle -->
+            <div class="flex items-center justify-between">
+               <div>
+                  <label class="block text-sm font-medium text-slate-900">AI Assistant Visibility</label>
+               </div>
+               <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" formControlName="showAiBot" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#083594]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#083594]"></div>
+               </label>
+            </div>
+
+         </div>
+      </div>
+
+      <!-- Maintenance Mode -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+         <div class="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
+            <h4 class="font-semibold text-slate-700">System Status</h4>
+         </div>
+         <div class="p-6">
+            <div class="flex items-center justify-between">
+               <div>
+                  <label class="block text-sm font-medium text-slate-900">Maintenance Mode</label>
+                  <p class="text-sm text-slate-500 mt-1">Temporarily disable app access for all users. Admin access remains.</p>
+               </div>
+               <button 
+                  type="button" 
+                  (click)="handleMaintenanceToggle($event)"
+                  class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-4 focus:ring-red-300"
+                  [class.bg-red-600]="maintenanceMode()"
+                  [class.bg-slate-200]="!maintenanceMode()">
+                  <span class="sr-only">Toggle maintenance mode</span>
+                  <span aria-hidden="true" 
+                     class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                     [class.translate-x-5]="maintenanceMode()"
+                     [class.translate-x-0]="!maintenanceMode()">
+                  </span>
+               </button>
+            </div>
+            
+            @if (maintenanceMode()) {
+               <div class="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span>The application is currently in maintenance mode. Users cannot access content.</span>
+               </div>
+            }
+         </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end pt-4">
+          <button type="submit" [disabled]="isSaving()" class="bg-[#083594] hover:bg-[#062a71] text-white px-8 py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2">
+              @if (isSaving()) {
+                  <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+              } @else {
+                  Save Configuration
+              }
+          </button>
+      </div>
+
+    </form>
+  }
+</div>
+
+<!-- Password Modal -->
+@if (showMaintenanceModal()) {
+  <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      
+      <div class="fixed inset-0 bg-slate-900 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" (click)="closeMaintenanceModal()"></div>
+      
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+      
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+              <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-slate-900" id="modal-title">Security Check</h3>
+              <div class="mt-2">
+                <p class="text-sm text-slate-500">
+                  Please enter your password to {{ maintenanceMode() ? 'disable' : 'enable' }} Maintenance Mode.
+                </p>
+                <form [formGroup]="verifyForm" (ngSubmit)="confirmMaintenanceSwitch()" class="mt-4">
+                   <input type="password" formControlName="password" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 p-2.5 border" placeholder="Enter password" autofocus>
+                   @if (verifyError()) {
+                      <p class="text-xs text-red-600 mt-2">{{ verifyError() }}</p>
+                   }
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
+          <button (click)="confirmMaintenanceSwitch()" [disabled]="isVerifying() || verifyForm.invalid" type="button" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm disabled:opacity-50">
+            @if (isVerifying()) {
+               <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            }
+            {{ isVerifying() ? 'Verifying...' : 'Confirm' }}
+          </button>
+          <button (click)="closeMaintenanceModal()" type="button" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 sm:text-sm">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
