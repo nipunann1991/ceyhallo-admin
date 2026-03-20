@@ -1,15 +1,29 @@
-
-
 app-sidebar {
   width: 245px;
   color: white;
+  font-size: 0.75rem; /* 12px base font-size - much smaller */
+}
+
+app-sidebar h1 {
+  font-size: 0.9375rem !important; /* 15px for header title */
+}
+
+app-sidebar .nav-icon {
+  font-size: 0.9375rem; /* 15px for nav icons - smaller */
+}
+
+app-sidebar .nav-link span:last-child {
+  font-size: 0.75rem; /* 12px for nav labels - smaller */
+}
+
+app-sidebar .user-name {
+  font-size: 0.625rem !important; /* 10px for user name */
 }
 
 app-sidebar nav {
   scrollbar-width: thin;
   scrollbar-color: #475569 #1e293b;
 }
-
 
 app-sidebar nav::-webkit-scrollbar {
   width: 4px;

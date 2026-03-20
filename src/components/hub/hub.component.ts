@@ -67,6 +67,9 @@ export class HubComponent implements OnInit {
   showArchiveConfirmModal = signal(false);
   itemToArchive = signal<HubItem | HubSection | null>(null);
 
+  // Accordion State
+  expandedSectionId = signal<string | null>(null);
+
   ngOnInit() {
     // Listen to sections (items are nested inside)
     this.firebaseService.listenToPath<HubSection>('hub_sections', (data) => {
@@ -76,11 +79,21 @@ export class HubComponent implements OnInit {
         items: (s.items || []).sort((a, b) => a.order - b.order)
       }));
       this.sections.set(processed);
+      
+      // Expand first section by default
+      const first = this.filteredSections()[0];
+      if (first) {
+        this.expandedSectionId.set(first.id);
+      }
     });
 
     this.firebaseService.listenToPath<any>('countries', (data) => {
       this.locations.set(data);
     });
+  }
+
+  toggleSection(id: string) {
+    this.expandedSectionId.set(this.expandedSectionId() === id ? null : id);
   }
 
   toggleSectionMenu(id: string) {

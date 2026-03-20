@@ -1,377 +1,349 @@
 import { Component, OnInit, signal, computed, effect, ViewChild, ElementRef, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { FirebaseService } from '../../services/firebase.service';
-import { BusinessStateService } from '../../services/business-state.service';
 import * as d3 from 'd3';
+
+interface KPIConfig {
+  label: string;
+  route: string;
+  countFn: () => number;
+  activeCountFn: () => number;
+  inactiveCountFn: () => number;
+  iconPath: string;
+  bgClass: string;
+  textClass: string;
+}
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
-  template: `
-<div class="space-y-8 animate-in fade-in duration-500">
-  <!-- Header -->
-  <div>
-    <div class="flex items-center gap-3">
-      <h2 class="text-2xl font-bold text-slate-800">Dashboard Overview</h2>
-      @if (maintenanceMode()) {
-        <span class="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold uppercase tracking-wider border border-red-200 flex items-center gap-1.5 shadow-sm">
-           <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-            </span>
-           Maintenance Mode
-        </span>
-      } @else {
-        <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wider border border-green-200 flex items-center gap-1.5 shadow-sm">
-           <span class="relative flex h-2 w-2">
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-           System Active
-        </span>
-      }
-    </div>
-    <p class="text-slate-500 text-sm mt-1">Real-time platform insights and activity.</p>
-  </div>
-  
-  <!-- Stats Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-    <!-- Stat Card 1: Users -->
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-      <div class="flex justify-between items-start">
-        <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Users</p>
-          <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ userCount() }}</h3>
-        </div>
-        <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </div>
-      </div>
-      <div class="mt-3 text-xs text-slate-400">
-        Registered platform users
-      </div>
-    </div>
-
-    <!-- Stat Card 2: Restaurants -->
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-      <div class="flex justify-between items-start">
-        <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Restaurants</p>
-          <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ restaurantCount() }}</h3>
-        </div>
-        <div class="p-2 bg-orange-50 text-orange-600 rounded-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
-        </div>
-      </div>
-      <div class="mt-3 text-xs text-slate-400">
-        Active dining partners
-      </div>
-    </div>
-
-    <!-- Stat Card 3: Businesses -->
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-      <div class="flex justify-between items-start">
-        <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Businesses</p>
-          <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ businessCount() }}</h3>
-        </div>
-        <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        </div>
-      </div>
-      <div class="mt-3 text-xs text-slate-400">
-        Service providers & shops
-      </div>
-    </div>
-
-    <!-- Stat Card 4: Jobs -->
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-      <div class="flex justify-between items-start">
-        <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Jobs</p>
-          <h3 class="text-2xl font-bold text-slate-800 mt-1">{{ jobCount() }}</h3>
-        </div>
-        <div class="p-2 bg-teal-50 text-teal-600 rounded-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-        </div>
-      </div>
-      <div class="mt-3 text-xs text-slate-400">
-        Current vacancies
-      </div>
-    </div>
-  </div>
-
-  <!-- Charts Section -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Growth Chart -->
-    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col">
-       <div class="flex justify-between items-center mb-6">
-          <h3 class="text-lg font-bold text-slate-800">User Growth</h3>
-          <select class="text-xs border-slate-200 rounded-lg text-slate-500 focus:ring-orange-500">
-             <option>Last 6 Months</option>
-          </select>
-       </div>
-       <div class="flex-1 w-full min-h-[300px] relative">
-          <div #userChart class="w-full h-full"></div>
-       </div>
-    </div>
-
-    <!-- Content Distribution Pie Chart -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col">
-       <h3 class="text-lg font-bold text-slate-800 mb-6">Business Categories</h3>
-       <div class="flex-1 w-full min-h-[250px] flex items-center justify-center relative">
-          <div #contentChart class="w-full h-full flex justify-center"></div>
-       </div>
-       <div class="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500">
-          @for (category of businessCategories(); track category.id || $index) {
-            <div class="flex items-center gap-1.5">
-               <span class="w-2 h-2 rounded-full" [style.background-color]="getCategoryColor($index)"></span>
-               <span class="truncate">{{ category.name }} ({{ category.count }})</span>
-            </div>
-          } @empty {
-            <div class="col-span-2 text-slate-400 text-center py-4">No categories yet</div>
-          }
-       </div>
-    </div>
-  </div>
-  
-`
+  imports: [CommonModule, RouterLink],
+  templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  // Data Signals
+  kpis = signal([
+    { label: 'Users', route: '/users', countFn: () => this.userCount(), activeCountFn: () => this.userActiveCount(), inactiveCountFn: () => this.userInactiveCount(), icon: 'group', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
+    { label: 'Restaurants', route: '/businesses', countFn: () => this.restaurantCount(), activeCountFn: () => this.restaurantActiveCount(), inactiveCountFn: () => this.restaurantInactiveCount(), icon: 'restaurant', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
+    { label: 'Businesses', route: '/businesses', countFn: () => this.businessCount(), activeCountFn: () => this.businessActiveCount(), inactiveCountFn: () => this.businessInactiveCount(), icon: 'store', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
+    { label: 'Jobs', route: '/jobs', countFn: () => this.jobCount(), activeCountFn: () => this.jobActiveCount(), inactiveCountFn: () => this.jobInactiveCount(), icon: 'work', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
+    { label: 'Banners', route: '/banners', countFn: () => this.bannerCount(), activeCountFn: () => this.bannerActiveCount(), inactiveCountFn: () => this.bannerInactiveCount(), icon: 'campaign', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
+    { label: 'Latest Offers', route: '/offers', countFn: () => this.offerCount(), activeCountFn: () => this.offerActiveCount(), inactiveCountFn: () => this.offerInactiveCount(), icon: 'local_offer', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' }
+  ]);
+
   users = signal<any[]>([]);
   restaurants = signal<any[]>([]);
-  groceries = signal<any[]>([]);
   businesses = signal<any[]>([]);
   jobs = signal<any[]>([]);
-  events = signal<any[]>([]);
   banners = signal<any[]>([]);
-  categories = signal<any[]>([]);
-  
-  // System Status
+  offers = signal<any[]>([]);
   maintenanceMode = signal(false);
-  
-  // Computed Counts
+
   userCount = computed(() => this.users().length);
-  restaurantCount = computed(() => this.restaurants().length);
-  groceryCount = computed(() => this.groceries().length);
+  restaurantCount = computed(() =>
+    this.businesses().filter((b: any) => (b?.category || '').toLowerCase() === 'restaurants').length
+  );
   businessCount = computed(() => this.businesses().length);
   jobCount = computed(() => this.jobs().length);
-  eventCount = computed(() => this.events().length);
-  bannerCount = computed(() => this.banners().filter(b => b.isActive).length);
+  bannerCount = computed(() => this.banners().length);
+  offerCount = computed(() => this.offers().length);
 
-  // Business Categories Distribution
-  businessCategories = computed(() => {
-    const allBusinesses = this.businesses();
-    const cats = this.categories();
-    return cats
-      .filter(c => c.published !== false && c.name !== 'Popular' && c.name !== 'Featured')
-      .map(cat => {
-        const count = allBusinesses.filter(b => b.category === cat.name).length;
-        return { ...cat, count };
-      })
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
-  });
+  userActiveCount = computed(() => this.users().filter((u: any) => this.isActiveStatus(u?.status)).length);
+  userInactiveCount = computed(() => this.users().filter((u: any) => !this.isActiveStatus(u?.status)).length);
 
-  // Chart References
-  @ViewChild('userChart') userChartRef!: ElementRef;
-  @ViewChild('contentChart') contentChartRef!: ElementRef;
+  restaurantActiveCount = computed(() =>
+    this.businesses().filter((b: any) => (b?.category || '').toLowerCase() === 'restaurants' && this.isPublished(b?.isPublished)).length
+  );
+  restaurantInactiveCount = computed(() =>
+    this.businesses().filter((b: any) => (b?.category || '').toLowerCase() === 'restaurants' && !this.isPublished(b?.isPublished)).length
+  );
+
+  businessActiveCount = computed(() =>
+    this.businesses().filter((b: any) => this.isPublished(b?.isPublished)).length
+  );
+  businessInactiveCount = computed(() =>
+    this.businesses().filter((b: any) => !this.isPublished(b?.isPublished)).length
+  );
+
+  jobActiveCount = computed(() => this.jobs().filter((j: any) => this.isPublished(j?.isPublished)).length);
+  jobInactiveCount = computed(() => this.jobs().filter((j: any) => !this.isPublished(j?.isPublished)).length);
+
+  bannerActiveCount = computed(() => this.banners().filter((b: any) => b?.isActive === true).length);
+  bannerInactiveCount = computed(() => this.banners().filter((b: any) => b?.isActive !== true).length);
+
+  offerActiveCount = computed(() => this.offers().filter((o: any) => o?.isActive === true).length);
+  offerInactiveCount = computed(() => this.offers().filter((o: any) => o?.isActive !== true).length);
+
+  @ViewChild('revenueChart') revenueChartRef!: ElementRef;
+  @ViewChild('weeklyChart') weeklyChartRef!: ElementRef;
+  @ViewChild('contentDistributionChart') contentDistributionChartRef!: ElementRef;
 
   private resizeObserver: ResizeObserver | undefined;
 
-  private router = inject(Router);
-  private businessStateService = inject(BusinessStateService);
-
   constructor(private firebaseService: FirebaseService) {
-    // Redraw user chart
     effect(() => {
-      const u = this.users();
-      if (u.length > 0) setTimeout(() => this.drawUserChart(), 100);
-    });
-
-    // Redraw pie chart on businesses/categories change
-    effect(() => {
-      const b = this.businessCount();
-      const c = this.categories().length;
-      if (b > 0 || c > 0) setTimeout(() => this.drawContentChart(), 100);
-    });
-
-    // Redraw pie on businessCategories change
-    effect(() => {
-      const cats = this.businessCategories();
-      if (cats.length > 0) setTimeout(() => this.drawContentChart(), 100);
+      this.userCount();
+      this.restaurantCount();
+      this.businessCount();
+      this.jobCount();
+      this.bannerCount();
+      setTimeout(() => {
+        this.drawRevenueChart();
+        this.drawWeeklyActivityChart();
+        this.drawContentDistributionChart();
+      }, 100);
     });
   }
 
   ngOnInit() {
-    // Fetch data
     this.firebaseService.listenToPath('users', (data) => this.users.set(data), (e) => console.warn('Dashboard: Users fetch denied', e.code));
     this.firebaseService.listenToPath('restaurants', (data) => this.restaurants.set(data));
-    this.firebaseService.listenToPath('groceries', (data) => this.groceries.set(data));
     this.firebaseService.listenToPath('businesses', (data) => this.businesses.set(data));
     this.firebaseService.listenToPath('jobs', (data) => this.jobs.set(data));
-    this.firebaseService.listenToPath('events', (data) => this.events.set(data));
     this.firebaseService.listenToPath('banners', (data) => this.banners.set(data));
-    this.firebaseService.listenToPath('taxonomy_business', (data) => this.categories.set(data));
+    this.firebaseService.listenToPath('offers', (data) => this.offers.set(data));
 
-    // System Status
-    this.firebaseService.getDocument('settings', 'app_config').then(doc => {
-      if (doc && doc.maintenanceMode) {
-        this.maintenanceMode.set(true);
-      }
-    }).catch(err => console.error('Failed to load system status', err));
-
-    // Resize observer
     this.resizeObserver = new ResizeObserver(() => {
-      this.drawUserChart();
-      this.drawContentChart();
+      this.drawRevenueChart();
+      this.drawWeeklyActivityChart();
+      this.drawContentDistributionChart();
     });
   }
 
   ngAfterViewInit() {
-    if (this.userChartRef) this.resizeObserver?.observe(this.userChartRef.nativeElement);
-    if (this.contentChartRef) this.resizeObserver?.observe(this.contentChartRef.nativeElement);
+    if (this.revenueChartRef) this.resizeObserver?.observe(this.revenueChartRef.nativeElement);
+    if (this.weeklyChartRef) this.resizeObserver?.observe(this.weeklyChartRef.nativeElement);
+    if (this.contentDistributionChartRef) this.resizeObserver?.observe(this.contentDistributionChartRef.nativeElement);
   }
 
   ngOnDestroy() {
     this.resizeObserver?.disconnect();
   }
 
-  // User Growth Bar Chart
-  drawUserChart() {
-    if (!this.userChartRef?.nativeElement) return;
-    const el = this.userChartRef.nativeElement;
-    d3.select(el).selectAll('*').remove();
-
-    const width = el.offsetWidth || 600;
-    const height = 280;
-    const margin = { top: 20, right: 20, bottom: 40, left: 50 };
-
-    // Process users by month...
-    const users = this.users();
-    const counts = new Map<string, number>();
-    const today = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      counts.set(key, 0);
-    }
-    users.forEach(u => {
-      const d = u.createdAt ? new Date(u.createdAt) : new Date();
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    const data = Array.from(counts, ([date, value]) => ({ date: new Date(date + '-01'), value })).sort((a, b) => a.date.getTime() - b.date.getTime());
-
-    const x = d3.scaleBand().domain(data.map(d => d.date)).range([margin.left, width - margin.right]).padding(0.3);
-    const y = d3.scaleLinear().domain([0, d3.max(data, d => d.value) || 5]).nice().range([height - margin.bottom, margin.top]);
-
-    const svg = d3.select(el).append("svg").attr("width", width).attr("height", height).attr("viewBox", [0, 0, width, height]).attr("style", "max-width: 100%; height: auto;");
-
-    // Bars - solid #083594
-    svg.selectAll("rect").data(data).join("rect")
-      .attr("x", d => x(d.date)!)
-      .attr("y", d => y(d.value))
-      .attr("width", x.bandwidth())
-      .attr("height", d => height - margin.bottom - y(d.value))
-      .attr("fill", "#083594")
-      .attr("rx", 4);
-
-    // Labels - Original orange
-    svg.selectAll("text.value").data(data).join("text")
-      .attr("class", "value")
-      .attr("x", d => x(d.date)! + x.bandwidth() / 2)
-      .attr("y", d => y(d.value) - 5)
-      .attr("text-anchor", "middle")
-      .style("font-size", "11px")
-      .style("font-weight", "600")
-.style("fill", "#083594")
-      .text(d => d.value.toString());
-
-    // Axes
-    svg.append("g")
-      .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).tickFormat(d3.timeFormat("%b %y") as any))
-      .attr("color", "#94a3b8")
-      .selectAll("text").style("font-size", "11px");
-
-    svg.append("g")
-      .attr("transform", `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y).ticks(5))
-      .attr("color", "#94a3b8")
-      .call(g => g.select(".domain").remove())
-      .call(g => g.selectAll(".tick line").clone().attr("x2", width - margin.left - margin.right).attr("stroke-opacity", 0.1));
+  private isActiveStatus(status: any): boolean {
+    return String(status ?? '').toLowerCase() === 'active';
   }
 
-  // Business Categories Pie Chart
-  drawContentChart() {
-    if (!this.contentChartRef?.nativeElement) return;
-    const el = this.contentChartRef.nativeElement;
+  private isPublished(value: any): boolean {
+    return value === true;
+  }
+
+  drawRevenueChart() {
+    if (!this.revenueChartRef?.nativeElement) return;
+    const el = this.revenueChartRef.nativeElement;
     d3.select(el).selectAll('*').remove();
 
-    const width = el.offsetWidth || 300;
-    const height = 250;
-    const radius = Math.min(width, height) / 2 - 20;
+    const width = el.offsetWidth || 800;
+    const height = 300;
+    const margin = { top: 20, right: 20, bottom: 55, left: 50 };
 
-    const categories = this.businessCategories();
-    let data: { label: string; value: number; color: string }[] = categories.map((cat, index) => ({
-      label: cat.name,
-      value: cat.count,
-      color: this.getCategoryColor(index)
-    })).filter(d => d.value > 0);
+    const data = [
+      { month: 'Jan', revenue: 5000 },
+      { month: 'Feb', revenue: 7000 },
+      { month: 'Mar', revenue: 6000 },
+      { month: 'Apr', revenue: 8000 },
+      { month: 'May', revenue: 7500 },
+      { month: 'Jun', revenue: 9000 }
+    ];
 
-    if (data.length === 0) {
-      data = [{ label: 'No Businesses', value: 1, color: '#94a3b8' }];
-    }
+    const x = d3.scalePoint<string>()
+      .domain(data.map(d => d.month))
+      .range([margin.left, width - margin.right])
+      .padding(0.5);
+
+    const y = d3.scaleLinear()
+      .domain([0, 11000])
+      .range([height - margin.bottom, margin.top]);
 
     const svg = d3.select(el)
-      .append("svg")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("viewBox", [-width / 2, -height / 2, width, height])
-      .attr("style", "max-width: 100%; height: auto;");
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('style', 'max-width:100%;height:auto;');
 
-    const pie = d3.pie<{ label: string; value: number; color: string }>()
+    svg.append('g')
+      .attr('transform', `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x).tickSize(0))
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('text').attr('fill', '#6b7280').style('font-size', '12px'));
+    svg.append('g')
+      .attr('transform', `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y).tickValues([0, 2000, 4000, 6000, 8000, 10000]).tickSize(0))
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('text').attr('fill', '#6b7280').style('font-size', '12px'));
+
+    // Line generator
+    const line = d3.line<{month: string, revenue: number}>()
+      .x(d => x(d.month)!)
+      .y(d => y(d.revenue))
+      .curve(d3.curveMonotoneX);
+
+    // Area generator  
+    const area = d3.area<{month: string, revenue: number}>()
+      .x(d => x(d.month)!)
+      .y0(d => y(0))
+      .y1(d => y(d.revenue))
+      .curve(d3.curveMonotoneX);
+
+    // Draw area fill
+    svg.append('path')
+      .datum(data)
+      .attr('fill', '#083594')
+      .attr('fill-opacity', 0.1)
+      .attr('d', area);
+
+    // Draw line
+    svg.append('path')
+      .datum(data)
+      .attr('fill', 'none')
+      .attr('stroke', '#083594')
+      .attr('stroke-width', 3)
+      .attr('stroke-linecap', 'round')
+      .attr('stroke-linejoin', 'round')
+      .attr('d', line);
+
+    // Draw data points
+    svg.append('g')
+      .selectAll('circle')
+      .data(data)
+      .join('circle')
+      .attr('cx', d => x(d.month)!)
+      .attr('cy', d => y(d.revenue))
+      .attr('r', 5)
+      .attr('fill', '#083594')
+      .attr('stroke', 'white')
+      .attr('stroke-width', 2);
+  }
+
+  drawWeeklyActivityChart() {
+    
+    if (!this.weeklyChartRef?.nativeElement) return;
+    const el = this.weeklyChartRef.nativeElement;
+    d3.select(el).selectAll('*').remove();
+
+    const width = el.offsetWidth || 800;
+    const height = 360;
+    const margin = { top: 20, right: 20, bottom: 55, left: 45 };
+
+    const data = [
+      { day: 'Mon', value: 120 },
+      { day: 'Tue', value: 200 },
+      { day: 'Wed', value: 150 },
+      { day: 'Thu', value: 300 },
+      { day: 'Fri', value: 250 },
+      { day: 'Sat', value: 400 },
+      { day: 'Sun', value: 350 }
+    ];
+
+    const x = d3.scaleBand<string>()
+      .domain(data.map(d => d.day))
+      .range([margin.left, width - margin.right])
+      .padding(0.2);
+
+    const y = d3.scaleLinear()
+      .domain([0, 500])
+      .range([height - margin.bottom, margin.top]);
+
+    const svg = d3.select(el)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('style', 'max-width:100%;height:auto;');
+
+    svg.append('g')
+      .attr('transform', `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x).tickSize(0))
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('text').attr('fill', '#6b7280').style('font-size', '12px'));
+
+    svg.append('g')
+      .attr('transform', `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y).tickValues([0, 100, 200, 300, 400, 500]).tickSize(0))
+      .call(g => g.select('.domain').remove())
+      .call(g => g.selectAll('text').attr('fill', '#6b7280').style('font-size', '12px'));
+
+    svg.append('g')
+      .selectAll('line')
+      .data([0, 100, 200, 300, 400, 500])
+      .join('line')
+      .attr('x1', margin.left)  
+      .attr('x2', width - margin.right)
+      .attr('y1', d => y(d))
+      .attr('y2', d => y(d))
+      .attr('stroke', '#e5e7eb')
+      .attr('stroke-dasharray', '4,4');
+
+    svg.append('g')
+      .attr('fill', '#083594')
+      .selectAll('rect')
+      .data(data)
+      .join('rect')
+      .attr('x', d => x(d.day)!)
+      .attr('y', d => y(d.value))
+      .attr('width', x.bandwidth())
+      .attr('height', d => y(0) - y(d.value));
+  }
+
+  drawContentDistributionChart() {
+    if (!this.contentDistributionChartRef?.nativeElement) return;
+    const el = this.contentDistributionChartRef.nativeElement;
+    d3.select(el).selectAll('*').remove();
+
+    const width = el.offsetWidth || 400;
+    const height = 400;
+    const radius = Math.min(width, height) / 2 - 20;    
+    const data = [
+      { category: 'Restaurants', value: this.restaurantCount() },
+      { category: 'Businesses', value: this.businessCount() - this.restaurantCount() },
+      { category: 'Jobs', value: this.jobCount() },
+      { category: 'Banners', value: this.bannerCount() },
+      { category: 'Offers', value: this.offerCount() }
+    ];
+
+    const color = d3.scaleOrdinal<string>()
+      .domain(data.map(d => d.category))
+      .range(['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']);
+
+    const pie = d3.pie<{ category: string; value: number }>()
       .value(d => d.value)
       .sort(null);
 
-    const arc = d3.arc<d3.PieArcDatum<{ label: string; value: number; color: string }>>()
-      .innerRadius(radius * 0.6)
+    const arc = d3.arc<d3.PieArcDatum<{ category: string; value: number }>>()
+      .innerRadius(radius * 0.5)
       .outerRadius(radius);
 
-    svg.selectAll("path")
+    const labelArc = d3.arc<d3.PieArcDatum<{ category: string; value: number }>>()
+      .innerRadius(radius * 0.7)
+      .outerRadius(radius * 0.7);
+
+    const svg = d3.select(el)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('style', 'max-width:100%;height:auto;')
+      .append('g')
+      .attr('transform', `translate(${width / 2},${height / 2})`);
+
+    const arcs = svg.selectAll('.arc')
       .data(pie(data))
-      .join("path")
-      .attr("fill", d => d.data.color)
-      .attr("d", arc)
-      .attr("stroke", "white")
-      .style("stroke-width", "2px");
+      .join('g')
+      .attr('class', 'arc');
 
-    const total = d3.sum(data, d => d.value);
-    svg.append("text")
-      .attr("text-anchor", "middle")
-      .attr("dy", "-0.2em")
-      .style("font-size", "24px")
-      .style("font-weight", "bold")
-      .style("fill", "#1e293b")
-      .text(total.toString());
+    arcs.append('path')
+      .attr('d', arc as any)
+      .attr('fill', d => color(d.data.category) as string)
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 2);
 
-    svg.append("text")
-      .attr("text-anchor", "middle")
-      .attr("dy", "1.2em")
-      .style("font-size", "12px")
-      .style("fill", "#64748b")
-      .text('Businesses');
-  }
-
-  getCategoryColor(index: number): string {
-const themeColors = [
-'#083594',
-      '#f59e0b', '#14b8a6', '#6366f1', '#06b6d4', '#ef4444'
-    ];
-    return themeColors[index % themeColors.length];
+    arcs.append('text')
+      .attr('transform', d => `translate(${labelArc.centroid(d)})`)
+      .attr('text-anchor', 'middle')
+      .attr('alignment-baseline', 'middle')
+      .style('font-size', '12px')
+      .style('fill', '#fff')
+      .text(d => `${d.data.category}: ${d.data.value}`);    
   }
 }
-
