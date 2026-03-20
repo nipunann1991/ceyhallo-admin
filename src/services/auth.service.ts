@@ -42,24 +42,14 @@ export class AuthService {
           
           if (userDoc.exists()) {
             const userData = userDoc.data() as User;
-            
-            // SECURITY PATCH: Force Admin role for specific email if DB is incorrect
-            if (userData.email === 'admin@ceyhallo.com' && userData.role !== 'admin') {
-                userData.role = 'admin';
-                // Fix the DB asynchronously
-                setDoc(userDocRef, { role: 'admin' }, { merge: true });
-            }
-
             this.currentUser.set({ id: firebaseUser.uid, ...userData });
           } else {
             // Fallback: User in Auth but not in Firestore (e.g. deleted manually or create failed)
-            const isSuperAdmin = firebaseUser.email === 'admin@ceyhallo.com';
-            
             const newUser: User = {
               id: firebaseUser.uid,
               email: firebaseUser.email || '',
-              name: firebaseUser.displayName || (isSuperAdmin ? 'Super Admin' : 'User'),
-              role: isSuperAdmin ? 'admin' : 'user', // Correctly assign role based on email
+              name: firebaseUser.displayName || 'User',
+              role: 'user',
               status: 'active',
               createdAt: new Date().toISOString()
             };
@@ -108,7 +98,7 @@ export class AuthService {
         id: credential.user.uid,
         email: email,
         name: email.split('@')[0],
-        role: email === 'admin@ceyhallo.com' ? 'admin' : 'user', // Auto-admin for specific email
+        role: 'user', 
         status: 'active',
         createdAt: new Date().toISOString()
       };

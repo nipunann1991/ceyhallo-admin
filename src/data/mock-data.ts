@@ -2,16 +2,6 @@
 
 export const MOCK_DATA: any = {
   users: {
-    "admin-seed-id": {
-      "name": "Super Admin",
-      "email": "admin@ceyhallo.com",
-      "role": "admin",
-      "status": "active",
-      "createdAt": "2024-01-01T00:00:00Z",
-      "phoneNumber": "+971 50 123 4567",
-      "dateOfBirth": "1985-05-15",
-      "address": "Suite 404, Business Bay, Dubai, UAE"
-    },
     "user-seed-002": {
       "name": "John Doe",
       "email": "john@example.com",
