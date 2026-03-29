@@ -11,6 +11,7 @@ export interface Business {
   imageUrl: string;
   logoUrl?: string; // Added logo
   menuUrl?: string; // Added Catalog/Flyer
+  googlePlaceId?: string;
   rating: number;
   reviews: number;
   countryCode: string;

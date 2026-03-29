@@ -18,14 +18,6 @@
       </div>
       <p class="text-slate-500 text-sm mt-1.5">Welcome back, admin. Here's what's happening today.</p>
     </div>
-    <div class="flex items-center gap-3">
-      <button class="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm font-medium hover:bg-slate-50 transition-colors">
-        Download Report
-      </button>
-      <button class="px-5 py-2.5 rounded-xl bg-[#083594] text-white text-sm font-semibold hover:bg-[#072c7c] transition-colors">
-        New Project
-      </button>
-    </div>
   </div>
 
   <!-- KPI Cards -->
@@ -59,46 +51,47 @@
   </div>
 
   <!-- Charts -->
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-    <div class="xl:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-      <div class="flex items-start justify-between">
-        <div>
-          <h3 class="text-xl font-bold text-slate-900">Revenue Overview</h3>
-          <p class="text-slate-500 text-sm">Monthly revenue growth for the current year</p>
-        </div>
-        <select class="border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800">
-          <option>Last 7 months</option>
-        </select>
+  <div class="grid grid-cols-1 xl:grid-cols-[65fr_35fr] gap-6">
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+      <div>
+        <h3 class="text-xl font-bold text-slate-900">Revenue Overview</h3>
+        <p class="text-slate-500 text-sm">Monthly revenue growth for the current year</p>
       </div>
-      <div class="mt-6 min-h-[220px] w-full">
+      <div class="mt-6 min-h-[360px] w-full">
         <div #revenueChart class="w-full h-full"></div>
       </div>
     </div>
 
     <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-      <h3 class="text-xl font-bold text-slate-900">Weekly Activity</h3>
-      <p class="text-slate-500 text-sm">User engagement per day</p>
-      <div class="mt-6 min-h-[120px] w-full">
-        <div #weeklyChart class="w-full h-full"></div>
+      <div>
+        <h3 class="text-xl font-bold text-slate-900">Business Distribution</h3>
+        <p class="text-slate-500 text-sm">Category breakdown for every registered business</p>
+      </div>
+      <div class="mt-6 flex flex-col items-center gap-4">
+        <div class="w-full max-w-[260px]">
+          <div #businessDistributionChart class="w-full h-[260px]"></div>
+        </div>
+        <div class="w-full grid grid-cols-1 gap-2 text-[11px] text-slate-500 sm:grid-cols-2">
+          @for (item of businessDistributionLegend(); track item.category) {
+            <div class="flex items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+              <span class="w-3 h-3 rounded-full shrink-0" [style.backgroundColor]="item.color"></span>
+              <div class="flex-1 truncate">
+                <span class="block font-semibold text-slate-800 truncate">{{ item.category }}</span>
+                <span class="text-xs text-slate-500">{{ item.value }} · {{ item.percentage | number:'1.0-0' }}%</span>
+              </div>
+            </div>
+          }
+        </div>
       </div>
     </div>
   </div>
 
   <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-    <div class="inline-flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg bg-blue-50 text-[#083594] flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12c0 4.97-4.03 9-9 9"></path>
-          <path d="M3 12a9 9 0 1 1 18 0"></path>
-          <path d="M12 12L7 3"></path>
-        </svg>
-      </div>
-      <h3 class="text-lg font-semibold text-slate-900 leading-none">Content Distribution</h3>
-      <p class="text-lg font-bold text-slate-900 tabular-nums leading-none">{{ businessCount() }}</p>
-    </div>
-    <p class="text-slate-500 text-sm mt-1.5">Business categories with counts</p>
-    <div class="mt-6 min-h-[120px] w-full">
-      <div #contentDistributionChart class="w-full h-full"></div>
+    <h3 class="text-xl font-bold text-slate-900">Weekly Activity</h3>
+    <p class="text-slate-500 text-sm">User engagement per day</p>
+    <div class="mt-6 min-h-[340px] w-full">
+      <div #weeklyChart class="w-full h-full"></div>
     </div>
   </div>
+
 </div>

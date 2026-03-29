@@ -3,12 +3,19 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FirebaseService } from '../../services/firebase.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { RichTextEditorComponent } from '../ui/rich-text-editor.component';
 import { TaxonomyItem } from '../../models/taxonomy.model';
 import { optimizeImage } from '../../utils/image-optimizer';
+
+interface GoogleReviewStats {
+  rating: number;
+  reviews: number;
+  name?: string;
+}
 
 @Component({
   selector: 'app-business-editor',
@@ -27,11 +34,16 @@ export class BusinessEditorComponent implements OnInit {
   categories = signal<TaxonomyItem[]>([]);
   categorySearch = signal('');
   showCategoryDropdown = signal(false);
+  googleReviewStats = signal<GoogleReviewStats | null>(null);
+  googleReviewLoading = signal(false);
+  googleReviewError = signal('');
+  googleMapEmbedUrl = signal<SafeResourceUrl | null>(null);
 
   constructor(
     private authService: AuthService,
     private firebaseService: FirebaseService,
     private toastService: ToastService,
+    private sanitizer: DomSanitizer,
     private route: ActivatedRoute,
     private router: Router,
     private fb: FormBuilder
@@ -47,6 +59,7 @@ export class BusinessEditorComponent implements OnInit {
       imageUrl: [''],
       logoUrl: [''], 
       menuUrl: [''], // Added catalog/menu URL
+      googlePlaceId: [''],
       rating: [4.8, [Validators.required, Validators.min(0), Validators.max(5)]],
       reviews: [0, [Validators.required, Validators.min(0)]],
       countryCode: ['AE', Validators.required],
@@ -198,6 +211,7 @@ export class BusinessEditorComponent implements OnInit {
            imageUrl: doc.imageUrl,
            logoUrl: doc.logoUrl || '',
            menuUrl: doc.menuUrl || '', // Load catalog URL
+           googlePlaceId: doc.googlePlaceId || '',
            rating: doc.rating,
            reviews: doc.reviews,
            countryCode: doc.countryCode || 'AE',
@@ -218,6 +232,9 @@ export class BusinessEditorComponent implements OnInit {
         };
         this.form.patchValue(formData);
         this.categorySearch.set(doc.category || '');
+        if (doc.googlePlaceId) {
+          this.fetchGoogleReviewStats(doc.googlePlaceId, false);
+        }
 
         // Phones logic
         this.phonesArray.clear();
@@ -315,6 +332,105 @@ export class BusinessEditorComponent implements OnInit {
     }
   }
 
+  async fetchGoogleReviewStats(placeId?: string, showToast = true) {
+    const googlePlaceId = (placeId ?? this.form.get('googlePlaceId')?.value ?? '').trim();
+    if (!googlePlaceId) {
+      this.googleReviewError.set('Add a Google Place ID to fetch live reviews.');
+      this.googleReviewStats.set(null);
+      return;
+    }
+
+    this.googleReviewLoading.set(true);
+    this.googleReviewError.set('');
+    try {
+      const result = await this.firebaseService.callFunction('fetchGooglePlaceDetails', { placeId: googlePlaceId });
+      if (result?.success === false) {
+        throw new Error(result?.message || 'Failed to fetch Google review stats.');
+      }
+      const rating = Number(result?.rating ?? 0);
+      const reviews = Number(result?.reviews ?? 0);
+
+      this.googleReviewStats.set({
+        rating,
+        reviews,
+        name: result?.name
+      });
+
+      const lat = Number(result?.lat);
+      const lng = Number(result?.lng);
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+        const embedUrl = `https://www.google.com/maps?q=${lat},${lng}&z=16&output=embed`;
+        this.googleMapEmbedUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl));
+      } else {
+        this.googleMapEmbedUrl.set(null);
+      }
+
+      this.form.patchValue({
+        rating,
+        reviews
+      });
+      if (showToast) {
+        this.toastService.success('Google review stats loaded.');
+      }
+    } catch (e: any) {
+      this.googleReviewStats.set(null);
+      this.googleReviewError.set(e?.message || 'Failed to fetch Google review stats.');
+      if (showToast) {
+        this.toastService.error(this.googleReviewError());
+      }
+    } finally {
+      this.googleReviewLoading.set(false);
+    }
+  }
+
+  async resolveGooglePlaceFromAddress(address?: string, showToast = true) {
+    const trimmedAddress = String(address ?? this.form.get('location')?.value ?? '').trim();
+    if (!trimmedAddress) {
+      return null;
+    }
+
+    this.googleReviewLoading.set(true);
+    this.googleReviewError.set('');
+    try {
+      const result = await this.firebaseService.callFunction('resolveGooglePlaceFromAddress', {
+        address: trimmedAddress,
+        countryCode: this.form.get('countryCode')?.value || 'AE'
+      });
+
+      if (result?.success === false) {
+        throw new Error(result?.message || 'Failed to resolve address.');
+      }
+
+      const placeId = String(result?.placeId || '').trim();
+      if (!placeId) {
+        throw new Error('No Google Place ID was returned for this address.');
+      }
+
+      this.form.patchValue({ googlePlaceId: placeId }, { emitEvent: false });
+      await this.fetchGoogleReviewStats(placeId, false);
+      return result;
+    } catch (e: any) {
+      this.googleReviewError.set(e?.message || 'Failed to resolve Google Place ID from the address.');
+      this.googleReviewStats.set(null);
+      if (showToast) {
+        this.toastService.error(this.googleReviewError());
+      }
+      return null;
+    } finally {
+      this.googleReviewLoading.set(false);
+    }
+  }
+
+  async fetchMapAndReviews() {
+    const address = String(this.form.get('location')?.value || '').trim();
+    if (!address) {
+      this.toastService.error('Please enter an address first.');
+      return;
+    }
+
+    await this.resolveGooglePlaceFromAddress(address, true);
+  }
+
   async save() {
     if (!this.authService.isAdmin()) {
       this.toastService.error('Unauthorized');
@@ -327,6 +443,10 @@ export class BusinessEditorComponent implements OnInit {
     }
 
     const raw = this.form.getRawValue();
+    if ((!raw.googlePlaceId || !String(raw.googlePlaceId).trim()) && raw.location) {
+      await this.resolveGooglePlaceFromAddress(raw.location, false);
+    }
+
     const dataToSave = {
       title: raw.title,
       description: raw.description,
@@ -337,6 +457,7 @@ export class BusinessEditorComponent implements OnInit {
       imageUrl: raw.imageUrl,
       logoUrl: raw.logoUrl,
       menuUrl: raw.menuUrl, // Save catalog URL
+      googlePlaceId: String(this.form.get('googlePlaceId')?.value || raw.googlePlaceId || '').trim(),
       rating: Number(raw.rating),
       reviews: Number(raw.reviews),
       countryCode: raw.countryCode,

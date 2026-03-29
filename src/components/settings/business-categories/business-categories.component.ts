@@ -13,22 +13,25 @@ import { TaxonomyItem } from '../../../models/taxonomy.model';
   imports: [CommonModule, BusinessCategoryModalComponent, ConfirmModalComponent],
   template: `
     <div class="space-y-6">
-      <div class="flex justify-between items-center">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 class="text-lg font-bold text-slate-700">Business Categories</h3>
-          <p class="text-slate-500 text-sm">Manage business categories and select which to exclude from the app.</p>
+          <h3 class="text-2xl font-bold text-slate-900 tracking-tight">Business Categories</h3>
+          <p class="text-slate-500 text-sm mt-1">Manage business categories and select which to exclude from the app.</p>
         </div>
-        <button (click)="openModal()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors text-sm shadow-sm">
+        <button (click)="openModal()" class="bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors text-sm shadow-sm">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add Category
         </button>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <p class="text-lg font-semibold text-slate-700 mb-4">Manage & Exclude Categories</p>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-200 bg-slate-50/80">
+          <p class="text-lg font-semibold text-slate-900">Manage &amp; Exclude Categories</p>
+          <p class="text-sm text-slate-500 mt-1">Drag to reorder categories, toggle exclusions, and keep the app taxonomy organized.</p>
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-200">
+            <thead class="bg-white text-xs uppercase font-semibold text-slate-500 border-b border-slate-200">
               <tr>
                 <th class="px-6 py-3 w-16 text-center">Order</th>
                 <th class="px-6 py-3">Category Name</th>
@@ -54,21 +57,20 @@ import { TaxonomyItem } from '../../../models/taxonomy.model';
                     {{ category.order }}
                   </div>
                 </td>
-                <td class="px-6 py-4 font-medium text-slate-900">{{ category.name }}</td>
-                <td class="px-6 py-4 text-center">
-                  <input 
-                    type="checkbox" 
-                    [checked]="category.isExcluded"
-                    (change)="toggleCategoryExclusion(category)"
-                    class="form-checkbox h-5 w-5 text-orange-600 rounded border-slate-300 focus:ring-orange-500"
-                  />
+              <td class="px-6 py-4 font-medium text-slate-900">{{ category.name }}</td>
+              <td class="px-6 py-4 text-center">
+                  <input
+                    type="checkbox"
+                    [checked]="isCategoryExcluded(category.id)"
+                    (change)="toggleCategoryExclusion(category.id, $any($event.target).checked)"
+                    class="h-4 w-4 rounded border-slate-300 text-[#083594] focus:ring-[#083594] focus:ring-offset-0 cursor-pointer">
                 </td>
                 <td class="px-6 py-4 text-right">
                   <div class="flex items-center justify-end gap-2">
-                    <button (click)="openModal(category)" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Edit">
+                    <button (click)="openModal(category)" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                     </button>
-                    <button (click)="openConfirmModal(category)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete">
+                    <button (click)="openConfirmModal(category)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   </div>
@@ -122,11 +124,14 @@ export class BusinessCategoriesComponent implements OnInit {
     // The service already listens to excluded categories, so no need to listen here
   }
 
-  async toggleCategoryExclusion(category: TaxonomyItem) {
-    const newExcludedState = !category.isExcluded;
+  isCategoryExcluded(categoryId: string) {
+    return this.excludedCategories().includes(categoryId);
+  }
+
+  async toggleCategoryExclusion(categoryId: string, isExcluded: boolean) {
     try {
-      await this.firebaseService.update('taxonomy_business', category.id, { isExcluded: newExcludedState });
-      this.toastService.success(`'${category.name}' has been ${newExcludedState ? 'excluded' : 'included'}.`);
+      await this.excludedCategoriesService.setCategoryExclusion(categoryId, isExcluded);
+      this.toastService.success(isExcluded ? 'Category excluded.' : 'Category included.');
     } catch (e: any) {
       this.toastService.error(e.message);
     }

@@ -5,6 +5,184 @@ const nodemailer = require("nodemailer");
 // Initialize the Firebase Admin SDK
 admin.initializeApp();
 
+function buildNotificationMessage(data) {
+  const sanitizedData = {};
+  if (data.data) {
+    for (const [key, value] of Object.entries(data.data)) {
+      if (value !== null && value !== undefined) {
+        sanitizedData[key] = String(value);
+      }
+    }
+  }
+
+  if (data.imageUrl) sanitizedData.image = String(data.imageUrl);
+  if (data.title) sanitizedData.title = String(data.title);
+  if (data.body) sanitizedData.body = String(data.body);
+
+  const message = {
+    notification: {
+      title: data.title || "New Notification",
+      body: data.body || "",
+    },
+    data: sanitizedData,
+    fcmOptions: {
+      analyticsLabel: "admin_dashboard_blast"
+    },
+    android: {
+      priority: "high",
+      notification: {
+        imageUrl: data.imageUrl || undefined,
+        color: "#ea580c",
+        clickAction: "FCM_PLUGIN_ACTIVITY",
+        sound: "default",
+        defaultSound: true,
+        defaultVibrateTimings: true,
+        visibility: "public"
+      }
+    },
+    apns: {
+      payload: {
+        aps: {
+          alert: {
+            title: data.title,
+            body: data.body,
+          },
+          sound: "default",
+          badge: 1,
+          "mutable-content": 1
+        }
+      },
+      fcm_options: {
+        image: data.imageUrl || undefined,
+        analyticsLabel: "admin_dashboard_blast"
+      }
+    }
+  };
+
+  if (data.targetType === "topic") {
+    const topic = data.targetValue ? data.targetValue.trim() : "general";
+    if (!topic) throw new Error("Topic is empty");
+    message.topic = topic;
+    console.log(`Target: Topic '${message.topic}'`);
+  } else if (data.targetType === "token") {
+    const token = data.targetValue ? data.targetValue.trim() : "";
+    if (!token) throw new Error("Token is empty");
+    message.token = token;
+    console.log(`Target: Token '${message.token.substring(0, 10)}...'`);
+  } else {
+    throw new Error(`Invalid targetType: ${data.targetType}`);
+  }
+
+  return message;
+}
+
+exports.fetchGooglePlaceDetails = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    return { success: false, message: "Authentication required." };
+  }
+
+  const placeId = data && data.placeId ? String(data.placeId).trim() : "";
+  if (!placeId) {
+    return { success: false, message: "Place ID is required." };
+  }
+
+  const googleConfig = functions.config().google || {};
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || googleConfig.maps_api_key || googleConfig.api_key || googleConfig.places_key;
+  if (!apiKey) {
+    return { success: false, message: "Google Maps API key is not configured." };
+  }
+
+  const endpoint = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=name,rating,user_ratings_total,geometry/location,formatted_address&key=${encodeURIComponent(apiKey)}`;
+
+  const response = await fetch(endpoint);
+  if (!response.ok) {
+    return { success: false, message: `Google Places request failed with status ${response.status}.` };
+  }
+
+  const result = await response.json();
+  if (result.status !== "OK" || !result.result) {
+    return {
+      success: false,
+      message: result.error_message || `Google Places lookup failed with status ${result.status || "UNKNOWN"}.`
+    };
+  }
+
+  return {
+    success: true,
+    name: result.result.name || "",
+    rating: Number(result.result.rating || 0),
+    reviews: Number(result.result.user_ratings_total || 0),
+    lat: result.result.geometry?.location?.lat ?? null,
+    lng: result.result.geometry?.location?.lng ?? null,
+    formattedAddress: result.result.formatted_address || ""
+  };
+});
+
+exports.resolveGooglePlaceFromAddress = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    return { success: false, message: "Authentication required." };
+  }
+
+  const address = data && data.address ? String(data.address).trim() : "";
+  if (!address) {
+    return { success: false, message: "Address is required." };
+  }
+
+  const googleConfig = functions.config().google || {};
+  const apiKey = 'AIzaSyDTbMpP3qdCGKjoErRFnmWnH8liMndN0ew';
+  if (!apiKey) {
+    return { success: false, message: "Google Maps API key is not configured." };
+  }
+
+  const countryCode = data && data.countryCode ? String(data.countryCode).trim().toLowerCase() : "";
+  const params = new URLSearchParams({
+    address,
+    key: apiKey
+  });
+
+  if (countryCode) {
+    params.set("components", `country:${countryCode}`);
+  }
+
+  const endpoint = `https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`;
+  const response = await fetch(endpoint);
+  if (!response.ok) {
+    return { success: false, message: `Google Geocoding request failed with status ${response.status}.` };
+  }
+
+  const result = await response.json();
+  if (result.status !== "OK" || !Array.isArray(result.results) || !result.results[0]) {
+    return {
+      success: false,
+      message: result.error_message || `Google Geocoding lookup failed with status ${result.status || "UNKNOWN"}.`
+    };
+  }
+
+  const firstResult = result.results[0];
+  const location = firstResult.geometry?.location || {};
+
+  return {
+    success: true,
+    placeId: firstResult.place_id || "",
+    formattedAddress: firstResult.formatted_address || "",
+    name: firstResult.address_components?.[0]?.long_name || firstResult.formatted_address || "",
+    lat: location.lat ?? null,
+    lng: location.lng ?? null
+  };
+});
+
+async function deliverNotification(docRef, data) {
+  const message = buildNotificationMessage(data);
+  const response = await admin.messaging().send(message);
+  console.log("FCM Send Success:", response);
+
+  return docRef.update({
+    status: "sent",
+    sentAt: admin.firestore.FieldValue.serverTimestamp(),
+    fcmMessageId: response,
+  });
+}
+
 /**
  * Triggers when a new document is created in the 'push_queue' collection.
  * It reads the notification details and sends it via FCM.
@@ -23,93 +201,12 @@ exports.sendPushNotification = functions
       return null;
     }
 
+    if (data.scheduledAt && new Date(data.scheduledAt).getTime() > Date.now()) {
+      return null;
+    }
+
     try {
-      // 1. Sanitize Data (Values must be strings for FCM data payload)
-      const sanitizedData = {};
-      if (data.data) {
-        for (const [key, value] of Object.entries(data.data)) {
-          if (value !== null && value !== undefined) {
-             sanitizedData[key] = String(value);
-          }
-        }
-      }
-      // Add standard fields to data for background handling
-      if (data.imageUrl) sanitizedData['image'] = String(data.imageUrl);
-      if (data.title) sanitizedData['title'] = String(data.title);
-      if (data.body) sanitizedData['body'] = String(data.body);
-
-      // 2. Construct Cross-Platform Message
-      const message = {
-        notification: {
-          title: data.title || "New Notification",
-          body: data.body || "",
-        },
-        data: sanitizedData,
-        // Add analytics label
-        fcmOptions: {
-          analyticsLabel: 'admin_dashboard_blast' 
-        },
-        // Android Specific Config
-        android: {
-          priority: 'high',
-          notification: {
-            imageUrl: data.imageUrl || undefined,
-            // Remove explicit channelId/icon to use Manifest defaults
-            // channelId: 'default', 
-            // icon: 'ic_stat_icon',
-            color: '#ea580c', // CeyHallo Orange
-            clickAction: 'FCM_PLUGIN_ACTIVITY', // CRITICAL for Capacitor tap handling
-            sound: 'default',
-            defaultSound: true,
-            defaultVibrateTimings: true,
-            visibility: 'public'
-          }
-        },
-        // iOS (Apple) Specific Config
-        apns: {
-          payload: {
-            aps: {
-              alert: {
-                title: data.title,
-                body: data.body,
-              },
-              sound: 'default',
-              badge: 1,
-              'mutable-content': 1
-            }
-          },
-          fcm_options: {
-             image: data.imageUrl || undefined,
-             analyticsLabel: 'admin_dashboard_blast'
-          }
-        }
-      };
-
-      // 3. Determine Target
-      if (data.targetType === "topic") {
-        const topic = data.targetValue ? data.targetValue.trim() : "general";
-        if (!topic) throw new Error("Topic is empty");
-        message.topic = topic;
-        console.log(`Target: Topic '${message.topic}'`);
-      } else if (data.targetType === "token") {
-        const token = data.targetValue ? data.targetValue.trim() : "";
-        if (!token) throw new Error("Token is empty");
-        message.token = token;
-        console.log(`Target: Token '${message.token.substring(0, 10)}...'`);
-      } else {
-        throw new Error(`Invalid targetType: ${data.targetType}`);
-      }
-
-      // 4. Send
-      const response = await admin.messaging().send(message);
-      console.log("FCM Send Success:", response);
-
-      return snap.ref.update({
-        status: "sent",
-        sentAt: admin.firestore.FieldValue.serverTimestamp(),
-        fcmMessageId: response,
-      });
-
+      return await deliverNotification(snap.ref, data);
     } catch (error) {
       console.error("FCM Send Error:", error);
       try {
@@ -121,6 +218,53 @@ exports.sendPushNotification = functions
       } catch (e) { console.error(e); }
       return null;
     }
+  });
+
+exports.processScheduledPushNotifications = functions.pubsub
+  .schedule("every 1 minutes")
+  .timeZone("UTC")
+  .onRun(async () => {
+    const snapshot = await admin.firestore()
+      .collection("push_queue")
+      .where("status", "==", "scheduled")
+      .get();
+
+    const now = Date.now();
+    const dueDocs = snapshot.docs.filter((doc) => {
+      const scheduledAt = doc.data().scheduledAt;
+      if (!scheduledAt) return false;
+      return new Date(scheduledAt).getTime() <= now;
+    });
+
+    for (const doc of dueDocs) {
+      const claimed = await admin.firestore().runTransaction(async (tx) => {
+        const freshSnap = await tx.get(doc.ref);
+        const freshData = freshSnap.data();
+        if (!freshData || freshData.status !== "scheduled") return false;
+        if (!freshData.scheduledAt || new Date(freshData.scheduledAt).getTime() > Date.now()) return false;
+
+        tx.update(doc.ref, {
+          status: "sending",
+          sendingAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return true;
+      });
+
+      if (!claimed) continue;
+
+      try {
+        await deliverNotification(doc.ref, doc.data());
+      } catch (error) {
+        console.error("Scheduled FCM Send Error:", error);
+        await doc.ref.update({
+          status: "failed",
+          error: error.message || "Unknown error",
+          failedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    }
+
+    return null;
   });
 
 /**

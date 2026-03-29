@@ -22,13 +22,16 @@ interface KPIConfig {
   templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  private readonly businessPalette = ['#7dc1ff', '#f97316', '#facc15', '#22c55e', '#ec4899', '#6366f1', '#0ea5e9'];
+
   kpis = signal([
     { label: 'Users', route: '/users', countFn: () => this.userCount(), activeCountFn: () => this.userActiveCount(), inactiveCountFn: () => this.userInactiveCount(), icon: 'group', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
     { label: 'Restaurants', route: '/businesses', countFn: () => this.restaurantCount(), activeCountFn: () => this.restaurantActiveCount(), inactiveCountFn: () => this.restaurantInactiveCount(), icon: 'restaurant', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
     { label: 'Businesses', route: '/businesses', countFn: () => this.businessCount(), activeCountFn: () => this.businessActiveCount(), inactiveCountFn: () => this.businessInactiveCount(), icon: 'store', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
     { label: 'Jobs', route: '/jobs', countFn: () => this.jobCount(), activeCountFn: () => this.jobActiveCount(), inactiveCountFn: () => this.jobInactiveCount(), icon: 'work', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
-    { label: 'Banners', route: '/banners', countFn: () => this.bannerCount(), activeCountFn: () => this.bannerActiveCount(), inactiveCountFn: () => this.bannerInactiveCount(), icon: 'campaign', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
-    { label: 'Latest Offers', route: '/offers', countFn: () => this.offerCount(), activeCountFn: () => this.offerActiveCount(), inactiveCountFn: () => this.offerInactiveCount(), icon: 'local_offer', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' }
+    { label: 'Banners', route: '/banners', countFn: () => this.bannerActiveCount(), activeCountFn: () => this.bannerActiveCount(), inactiveCountFn: () => this.bannerInactiveCount(), icon: 'campaign', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
+    { label: 'Latest Offers', route: '/offers', countFn: () => this.offerActiveCount(), activeCountFn: () => this.offerActiveCount(), inactiveCountFn: () => this.offerInactiveCount(), icon: 'local_offer', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
+    { label: 'Events', route: '/events', countFn: () => this.eventActiveCount(), activeCountFn: () => this.eventActiveCount(), inactiveCountFn: () => this.eventInactiveCount(), icon: 'event', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' }
   ]);
 
   users = signal<any[]>([]);
@@ -37,6 +40,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   jobs = signal<any[]>([]);
   banners = signal<any[]>([]);
   offers = signal<any[]>([]);
+  events = signal<any[]>([]);
   maintenanceMode = signal(false);
 
   userCount = computed(() => this.users().length);
@@ -47,6 +51,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   jobCount = computed(() => this.jobs().length);
   bannerCount = computed(() => this.banners().length);
   offerCount = computed(() => this.offers().length);
+  eventCount = computed(() => this.events().length);
 
   userActiveCount = computed(() => this.users().filter((u: any) => this.isActiveStatus(u?.status)).length);
   userInactiveCount = computed(() => this.users().filter((u: any) => !this.isActiveStatus(u?.status)).length);
@@ -74,9 +79,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   offerActiveCount = computed(() => this.offers().filter((o: any) => o?.isActive === true).length);
   offerInactiveCount = computed(() => this.offers().filter((o: any) => o?.isActive !== true).length);
 
+  eventActiveCount = computed(() => this.events().filter((e: any) => e?.isPublished === true).length);
+  eventInactiveCount = computed(() => this.events().filter((e: any) => e?.isPublished !== true).length);
+
   @ViewChild('revenueChart') revenueChartRef!: ElementRef;
   @ViewChild('weeklyChart') weeklyChartRef!: ElementRef;
-  @ViewChild('contentDistributionChart') contentDistributionChartRef!: ElementRef;
+  @ViewChild('businessDistributionChart') businessDistributionChartRef!: ElementRef;
 
   private resizeObserver: ResizeObserver | undefined;
 
@@ -87,10 +95,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.businessCount();
       this.jobCount();
       this.bannerCount();
+      this.eventCount();
       setTimeout(() => {
         this.drawRevenueChart();
         this.drawWeeklyActivityChart();
-        this.drawContentDistributionChart();
+        this.drawBusinessDistributionChart();
       }, 100);
     });
   }
@@ -102,18 +111,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.firebaseService.listenToPath('jobs', (data) => this.jobs.set(data));
     this.firebaseService.listenToPath('banners', (data) => this.banners.set(data));
     this.firebaseService.listenToPath('offers', (data) => this.offers.set(data));
+    this.firebaseService.listenToPath('events', (data) => this.events.set(data));
 
     this.resizeObserver = new ResizeObserver(() => {
       this.drawRevenueChart();
       this.drawWeeklyActivityChart();
-      this.drawContentDistributionChart();
+      this.drawBusinessDistributionChart();
     });
   }
 
   ngAfterViewInit() {
     if (this.revenueChartRef) this.resizeObserver?.observe(this.revenueChartRef.nativeElement);
     if (this.weeklyChartRef) this.resizeObserver?.observe(this.weeklyChartRef.nativeElement);
-    if (this.contentDistributionChartRef) this.resizeObserver?.observe(this.contentDistributionChartRef.nativeElement);
+    if (this.businessDistributionChartRef) this.resizeObserver?.observe(this.businessDistributionChartRef.nativeElement);
   }
 
   ngOnDestroy() {
@@ -128,14 +138,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return value === true;
   }
 
+  businessDistributionLegend() {
+    return this.getBusinessDistributionData();
+  }
+
+  private getBusinessDistributionData() {
+    const counts = new Map<string, number>();
+
+    this.businesses().forEach((business: any) => {
+      const category = String(business?.category || 'Uncategorized').trim() || 'Uncategorized';
+      counts.set(category, (counts.get(category) || 0) + 1);
+    });
+
+    const data = Array.from(counts.entries())
+      .map(([category, value]) => ({ category, value }))
+      .sort((a, b) => b.value - a.value);
+
+    if (data.length === 0) {
+      return [{ category: 'No Data', value: 1, color: '#cbd5e1', percentage: 100 }];
+    }
+
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+
+    return data.map((item, index) => ({
+      ...item,
+      color: index === 0 ? '#08358D' : this.businessPalette[(index - 1) % this.businessPalette.length],
+      percentage: total ? (item.value / total) * 100 : 0
+    }));
+  }
+
   drawRevenueChart() {
     if (!this.revenueChartRef?.nativeElement) return;
     const el = this.revenueChartRef.nativeElement;
     d3.select(el).selectAll('*').remove();
 
     const width = el.offsetWidth || 800;
-    const height = 300;
-    const margin = { top: 20, right: 20, bottom: 55, left: 50 };
+    const height = 380;
+    const margin = { top: 16, right: 24, bottom: 50, left: 52 };
 
     const data = [
       { month: 'Jan', revenue: 5000 },
@@ -148,7 +187,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     const x = d3.scalePoint<string>()
       .domain(data.map(d => d.month))
-      .range([margin.left, width - margin.right])
+        .range([margin.left, width - margin.right])
       .padding(0.5);
 
     const y = d3.scaleLinear()
@@ -286,37 +325,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .attr('height', d => y(0) - y(d.value));
   }
 
-  drawContentDistributionChart() {
-    if (!this.contentDistributionChartRef?.nativeElement) return;
-    const el = this.contentDistributionChartRef.nativeElement;
+  drawBusinessDistributionChart() {
+    if (!this.businessDistributionChartRef?.nativeElement) return;
+    const el = this.businessDistributionChartRef.nativeElement;
     d3.select(el).selectAll('*').remove();
 
-    const width = el.offsetWidth || 400;
-    const height = 400;
-    const radius = Math.min(width, height) / 2 - 20;    
-    const data = [
-      { category: 'Restaurants', value: this.restaurantCount() },
-      { category: 'Businesses', value: this.businessCount() - this.restaurantCount() },
-      { category: 'Jobs', value: this.jobCount() },
-      { category: 'Banners', value: this.bannerCount() },
-      { category: 'Offers', value: this.offerCount() }
-    ];
-
+    const width = el.offsetWidth || 800;
+    const height = 260;
+    const radius = Math.min(width, height) / 2 - 28;
+    const distribution = this.getBusinessDistributionData();
     const color = d3.scaleOrdinal<string>()
-      .domain(data.map(d => d.category))
-      .range(['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']);
+      .domain(distribution.map(d => d.category))
+      .range(distribution.map(d => d.color));
+
+    const data = distribution;
 
     const pie = d3.pie<{ category: string; value: number }>()
       .value(d => d.value)
       .sort(null);
 
     const arc = d3.arc<d3.PieArcDatum<{ category: string; value: number }>>()
-      .innerRadius(radius * 0.5)
+      .innerRadius(radius * 0.55)
       .outerRadius(radius);
-
-    const labelArc = d3.arc<d3.PieArcDatum<{ category: string; value: number }>>()
-      .innerRadius(radius * 0.7)
-      .outerRadius(radius * 0.7);
 
     const svg = d3.select(el)
       .append('svg')
@@ -326,6 +356,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .attr('style', 'max-width:100%;height:auto;')
       .append('g')
       .attr('transform', `translate(${width / 2},${height / 2})`);
+
+ 
 
     const arcs = svg.selectAll('.arc')
       .data(pie(data))
@@ -338,12 +370,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .attr('stroke', '#fff')
       .attr('stroke-width', 2);
 
-    arcs.append('text')
-      .attr('transform', d => `translate(${labelArc.centroid(d)})`)
-      .attr('text-anchor', 'middle')
-      .attr('alignment-baseline', 'middle')
-      .style('font-size', '12px')
-      .style('fill', '#fff')
-      .text(d => `${d.data.category}: ${d.data.value}`);    
   }
 }

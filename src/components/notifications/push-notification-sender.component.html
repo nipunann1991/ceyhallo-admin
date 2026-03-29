@@ -75,7 +75,8 @@
 
     <!-- Content Section -->
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-      <h3 class="text-base font-bold text-slate-800 mb-2">Message Content</h3>
+      <h3 class="text-base font-bold text-slate-800 mb-1">Message Content</h3>
+      <p class="text-xs text-slate-500">Schedule this notification for a future date and time and optionally pass JSON data (e.g., routing) to the app.</p>
       
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">Title</label>
@@ -114,17 +115,42 @@
              </div>
           }
       </div>
+
+      <div class="pt-2 border-t border-slate-100">
+        <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            formControlName="sendLater"
+            (change)="onSendLaterToggle($event.target.checked)"
+            class="w-4 h-4 rounded border-slate-300 text-[#083594] focus:ring-[#083594]">
+          <span class="text-sm font-semibold text-slate-700">Send later</span>
+        </label>
+
+        @if (sendLaterEnabled) {
+          <div class="mt-4 animate-in fade-in slide-in-from-top-1">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Send Date and Time</label>
+            <input
+              formControlName="sendLaterAt"
+              type="datetime-local"
+              [min]="minDateTimeLocal()"
+              class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            @if (form.get('sendLaterAt')?.touched && !form.get('sendLaterAt')?.value) {
+              <p class="text-xs text-red-500 mt-1">Send date is required when scheduling.</p>
+            }
+          </div>
+        }
+      </div>
     </div>
 
     <!-- Data Section -->
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-       <h3 class="text-base font-bold text-slate-800 mb-2">Custom Data (Optional)</h3>
-       <p class="text-xs text-slate-500 mb-2">Key-value pair to send JSON data to the app (e.g., for routing).</p>
+       <h3 class="text-base font-bold text-slate-800 mb-1">Custom Data (Optional)</h3>
+       <p class="text-xs text-slate-500">Key-value pair to send JSON payloads to the app, e.g., for deep linking.</p>
        
        <div class="flex gap-4">
           <div class="flex-1">
              <label class="block text-xs font-medium text-slate-700 mb-1">Key</label>
-             <input formControlName="customDataKey" type="text" placeholder="e.g. routeId" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2 border text-sm">
+             <input formControlName="customDataKey" type="text" placeholder="routeId" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2 border text-sm">
           </div>
           <div class="flex-1">
              <label class="block text-xs font-medium text-slate-700 mb-1">Value</label>
@@ -135,15 +161,15 @@
     
     <!-- Submit -->
     <div class="flex items-center justify-end pt-4">
-       <button type="submit" [disabled]="form.invalid || isSending() || isUploading()" class="bg-[#083594] hover:bg-[#062a71] text-white px-8 py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2">
+       <button type="submit" [disabled]="form.invalid || isSending() || isUploading() || (sendLaterEnabled && !form.get('sendLaterAt')?.value)" class="bg-[#083594] hover:bg-[#062a71] text-white px-8 py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2">
          @if (isSending()) {
             <svg class="animate-spin w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            Queueing...
+            {{ sendLaterEnabled ? 'Scheduling...' : 'Queueing...' }}
          } @else {
-            <span>Send Notification</span>
+            <span>{{ sendLaterEnabled ? 'Send Later' : 'Send Notification' }}</span>
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
          }
        </button>

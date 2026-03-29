@@ -30,15 +30,36 @@ export class PushNotificationSenderComponent {
       imageUrl: [''],
       targetType: ['topic', Validators.required],
       targetValue: ['general', Validators.required],
-      customDataKey: [''],
+      sendLater: [false],
+      sendLaterAt: [''],
+      customDataKey: ['routeId'],
       customDataValue: ['']
     });
   }
 
   get targetType() { return this.form.get('targetType')?.value; }
+  get sendLaterEnabled() { return !!this.form.get('sendLater')?.value; }
 
   setTargetAll() {
     this.form.patchValue({ targetType: 'topic', targetValue: 'general' });
+  }
+
+  onSendLaterToggle(checked: boolean) {
+    this.form.patchValue({ sendLater: checked });
+    if (!checked) {
+      this.form.patchValue({ sendLaterAt: '' });
+    }
+  }
+
+  minDateTimeLocal() {
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
   async onImageSelected(event: Event) {
@@ -59,32 +80,59 @@ export class PushNotificationSenderComponent {
 
   async send() {
     if (this.form.invalid) return;
-    
-    this.isSending.set(true);
-    const val = this.form.getRawValue();
 
-    let customData = null;
-    if (val.customDataKey && val.customDataValue) {
-      customData = { [val.customDataKey]: val.customDataValue };
+    const val = this.form.getRawValue();
+    const sendLater = !!val.sendLater;
+    if (sendLater && !val.sendLaterAt) {
+      this.form.get('sendLaterAt')?.markAsTouched();
+      this.toastService.error('Please choose a send date.');
+      return;
     }
 
-    const notificationPayload = {
+    if (sendLater) {
+      const scheduledTime = new Date(val.sendLaterAt).getTime();
+      if (Number.isNaN(scheduledTime) || scheduledTime <= Date.now()) {
+        this.form.get('sendLaterAt')?.markAsTouched();
+        this.toastService.error('Send date must be in the future.');
+        return;
+      }
+    }
+
+    this.isSending.set(true);
+
+    let customData: Record<string, string> | null = null;
+    if (val.customDataKey && val.customDataValue) {
+      customData = { [val.customDataKey.trim()]: val.customDataValue.trim() };
+    }
+
+    const status = sendLater ? 'scheduled' : 'pending';
+
+    const notificationPayload: any = {
       title: val.title,
       body: val.body,
       imageUrl: val.imageUrl,
       targetType: val.targetType,
       targetValue: val.targetValue ? val.targetValue.trim() : '',
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      data: customData
+      status,
+      createdAt: new Date().toISOString()
     };
+
+    if (customData) {
+      notificationPayload.data = customData;
+    }
+
+    if (sendLater) {
+      if (val.sendLaterAt) {
+        notificationPayload['scheduledAt'] = new Date(val.sendLaterAt).toISOString();
+      }
+    }
 
     try {
       await this.firebaseService.create('push_queue', notificationPayload);
-      this.toastService.success('Notification queued successfully!');
+      this.toastService.success(sendLater ? 'Notification scheduled successfully!' : 'Notification queued successfully!');
       this.router.navigate(['/notifications']);
     } catch (e: any) {
-      this.toastService.error('Failed to queue notification: ' + e.message);
+      this.toastService.error(`Failed to ${sendLater ? 'schedule' : 'queue'} notification: ` + e.message);
     } finally {
       this.isSending.set(false);
     }

@@ -36,7 +36,23 @@ export class ExcludedCategoriesService {
     } else {
       updated = [...current, categoryId];
     }
-    this.updateExcludedCategoriesInDb(updated);
+    void this.updateExcludedCategoriesInDb(updated);
+  }
+
+  async setCategoryExclusion(categoryId: string, isExcluded: boolean) {
+    const current = this.excludedCategories();
+    const isCurrentlyExcluded = current.includes(categoryId);
+
+    if (isCurrentlyExcluded === isExcluded) {
+      return;
+    }
+
+    const updated = isExcluded
+      ? [...current, categoryId]
+      : current.filter(id => id !== categoryId);
+
+    this.excludedCategories.set(updated);
+    await this.updateExcludedCategoriesInDb(updated);
   }
 
   private async updateExcludedCategoriesInDb(categoryIds: string[]) {
