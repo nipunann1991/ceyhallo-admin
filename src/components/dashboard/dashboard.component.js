@@ -28,6 +28,7 @@ let DashboardComponent = class DashboardComponent {
         this.banners = signal([]);
         this.offers = signal([]);
         this.events = signal([]);
+        this.news = signal([]);
         this.maintenanceMode = signal(false);
         this.userCount = computed(() => this.users().length);
         this.restaurantCount = computed(() => this.businesses().filter((b) => (b?.category || '').toLowerCase() === 'restaurants').length);
@@ -36,6 +37,7 @@ let DashboardComponent = class DashboardComponent {
         this.bannerCount = computed(() => this.banners().length);
         this.offerCount = computed(() => this.offers().length);
         this.eventCount = computed(() => this.events().length);
+        this.weeklyNewsData = computed(() => this.buildWeeklyNewsData());
         this.userActiveCount = computed(() => this.users().filter((u) => this.isActiveStatus(u?.status)).length);
         this.userInactiveCount = computed(() => this.users().filter((u) => !this.isActiveStatus(u?.status)).length);
         this.restaurantActiveCount = computed(() => this.businesses().filter((b) => (b?.category || '').toLowerCase() === 'restaurants' && this.isPublished(b?.isPublished)).length);
@@ -57,6 +59,7 @@ let DashboardComponent = class DashboardComponent {
             this.jobCount();
             this.bannerCount();
             this.eventCount();
+            this.weeklyNewsData();
             setTimeout(() => {
                 this.drawRevenueChart();
                 this.drawWeeklyActivityChart();
@@ -72,6 +75,7 @@ let DashboardComponent = class DashboardComponent {
         this.firebaseService.listenToPath('banners', (data) => this.banners.set(data));
         this.firebaseService.listenToPath('offers', (data) => this.offers.set(data));
         this.firebaseService.listenToPath('events', (data) => this.events.set(data));
+        this.firebaseService.listenToPath('news', (data) => this.news.set(data));
         this.resizeObserver = new ResizeObserver(() => {
             this.drawRevenueChart();
             this.drawWeeklyActivityChart();
@@ -94,6 +98,30 @@ let DashboardComponent = class DashboardComponent {
     }
     isPublished(value) {
         return value === true;
+    }
+    buildWeeklyNewsData() {
+        const today = new Date();
+        const labels = Array.from({ length: 14 }, (_, index) => {
+            const date = new Date(today);
+            date.setDate(today.getDate() - (13 - index));
+            return {
+                key: date.toISOString().slice(0, 10),
+                label: date.toLocaleDateString('en-US', { day: '2-digit', month: 'short' })
+            };
+        });
+        const counts = new Map();
+        this.news().forEach((item) => {
+            const rawDate = item?.publishedDate || item?.createdDate || item?.date;
+            const parsed = rawDate ? new Date(rawDate) : null;
+            if (!parsed || Number.isNaN(parsed.getTime()))
+                return;
+            const key = parsed.toISOString().slice(0, 10);
+            counts.set(key, (counts.get(key) || 0) + 1);
+        });
+        return labels.map(label => ({
+            label: label.label,
+            value: counts.get(label.key) || 0
+        }));
     }
     businessDistributionLegend() {
         return this.getBusinessDistributionData();
@@ -200,22 +228,14 @@ let DashboardComponent = class DashboardComponent {
         d3.select(el).selectAll('*').remove();
         const width = el.offsetWidth || 800;
         const height = 360;
-        const margin = { top: 20, right: 20, bottom: 55, left: 45 };
-        const data = [
-            { day: 'Mon', value: 120 },
-            { day: 'Tue', value: 200 },
-            { day: 'Wed', value: 150 },
-            { day: 'Thu', value: 300 },
-            { day: 'Fri', value: 250 },
-            { day: 'Sat', value: 400 },
-            { day: 'Sun', value: 350 }
-        ];
+        const margin = { top: 20, right: 20, bottom: 65, left: 45 };
+        const data = this.weeklyNewsData();
         const x = d3.scaleBand()
-            .domain(data.map(d => d.day))
+            .domain(data.map(d => d.label))
             .range([margin.left, width - margin.right])
-            .padding(0.2);
+            .padding(0.16);
         const y = d3.scaleLinear()
-            .domain([0, 500])
+            .domain([0, Math.max(5, d3.max(data, d => d.value) || 0)])
             .range([height - margin.bottom, margin.top]);
         const svg = d3.select(el)
             .append('svg')
@@ -227,15 +247,15 @@ let DashboardComponent = class DashboardComponent {
             .attr('transform', `translate(0,${height - margin.bottom})`)
             .call(d3.axisBottom(x).tickSize(0))
             .call(g => g.select('.domain').remove())
-            .call(g => g.selectAll('text').attr('fill', '#6b7280').style('font-size', '12px'));
+            .call(g => g.selectAll('text').attr('fill', '#6b7280').style('font-size', '11px').attr('transform', 'translate(0,5)'));
         svg.append('g')
             .attr('transform', `translate(${margin.left},0)`)
-            .call(d3.axisLeft(y).tickValues([0, 100, 200, 300, 400, 500]).tickSize(0))
+            .call(d3.axisLeft(y).ticks(5).tickSize(0))
             .call(g => g.select('.domain').remove())
             .call(g => g.selectAll('text').attr('fill', '#6b7280').style('font-size', '12px'));
         svg.append('g')
             .selectAll('line')
-            .data([0, 100, 200, 300, 400, 500])
+            .data(y.ticks(5))
             .join('line')
             .attr('x1', margin.left)
             .attr('x2', width - margin.right)
@@ -248,10 +268,21 @@ let DashboardComponent = class DashboardComponent {
             .selectAll('rect')
             .data(data)
             .join('rect')
-            .attr('x', d => x(d.day))
+            .attr('x', d => x(d.label))
             .attr('y', d => y(d.value))
             .attr('width', x.bandwidth())
             .attr('height', d => y(0) - y(d.value));
+        svg.append('g')
+            .selectAll('text')
+            .data(data)
+            .join('text')
+            .attr('x', d => (x(d.label) + x.bandwidth() / 2))
+            .attr('y', d => y(d.value) - 8)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#475569')
+            .style('font-size', '11px')
+            .style('font-weight', '600')
+            .text(d => d.value);
     }
     drawBusinessDistributionChart() {
         if (!this.businessDistributionChartRef?.nativeElement)
@@ -259,8 +290,8 @@ let DashboardComponent = class DashboardComponent {
         const el = this.businessDistributionChartRef.nativeElement;
         d3.select(el).selectAll('*').remove();
         const width = el.offsetWidth || 800;
-        const height = 260;
-        const radius = Math.min(width, height) / 2 - 24;
+        const height = 290;
+        const radius = Math.min(width, height) / 2 - 18;
         const distribution = this.getBusinessDistributionData();
         const color = d3.scaleOrdinal()
             .domain(distribution.map(d => d.category))
@@ -270,11 +301,11 @@ let DashboardComponent = class DashboardComponent {
             .value(d => d.value)
             .sort(null);
         const arc = d3.arc()
-            .innerRadius(radius * 0.5)
+            .innerRadius(radius * 0.75)
             .outerRadius(radius);
         const labelArc = d3.arc()
-            .innerRadius(radius * 0.78)
-            .outerRadius(radius * 0.78);
+            .innerRadius(radius * 0.74)
+            .outerRadius(radius * 0.74);
         const svg = d3.select(el)
             .append('svg')
             .attr('width', width)
@@ -296,10 +327,10 @@ let DashboardComponent = class DashboardComponent {
         arcs.append('text')
             .attr('transform', d => `translate(${labelArc.centroid(d)})`)
             .attr('text-anchor', 'middle')
-            .attr('alignment-baseline', 'middle')
-            .style('font-size', '10px')
+            .attr('dominant-baseline', 'middle')
+            .style('font-size', '11px')
             .style('font-weight', '600')
-            .style('fill', '#6b7280')
+            .style('fill', '#64748b')
             .text(d => (d.data.value / total) >= 0.1 ? `${d.data.value}` : '');
     }
 };

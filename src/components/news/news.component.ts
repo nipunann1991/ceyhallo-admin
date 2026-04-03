@@ -35,11 +35,11 @@ export class NewsComponent implements OnInit {
   
   // Selection
   selectedNews = signal<News | null>(null);
-  showArchived = signal(false);
+  stateFilter = signal<'all' | 'published' | 'draft' | 'archived'>('all');
 
   filteredNews = computed(() => {
     const query = this.searchQuery().toLowerCase();
-    const archived = this.showArchived();
+    const stateFilter = this.stateFilter();
     let data = [...this.newsList()];
 
     if (this.isReordering()) {
@@ -54,8 +54,9 @@ export class NewsComponent implements OnInit {
                           n.excerpt?.toLowerCase().includes(query) ||
                           n.author?.toLowerCase().includes(query) ||
                           n.category?.toLowerCase().includes(query);
-      const matchesArchive = archived ? n.isArchived === true : !n.isArchived;
-      return matchesQuery && matchesArchive;
+      const status = n.isArchived ? 'archived' : (n.isPublished ? 'published' : 'draft');
+      const matchesState = stateFilter === 'all' || status === stateFilter;
+      return matchesQuery && matchesState;
     });
   });
 
@@ -106,6 +107,11 @@ export class NewsComponent implements OnInit {
     this.currentPage.set(1);
   }
 
+  updateStateFilter(value: 'all' | 'published' | 'draft' | 'archived') {
+    this.stateFilter.set(value);
+    this.currentPage.set(1);
+  }
+
   view(news: News) {
     this.selectedNews.set(news);
   }
@@ -141,6 +147,12 @@ export class NewsComponent implements OnInit {
     this.selectedNewsIds.set([]);
     this.deleteMode.set(null);
     this.itemToDelete.set(null);
+  }
+
+  clearFilters() {
+    this.searchQuery.set('');
+    this.stateFilter.set('all');
+    this.currentPage.set(1);
   }
 
   closePanel() {

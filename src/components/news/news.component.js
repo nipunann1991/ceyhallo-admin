@@ -29,10 +29,10 @@ let NewsComponent = class NewsComponent {
         this.draggedIndex = null;
         // Selection
         this.selectedNews = signal(null);
-        this.showArchived = signal(false);
+        this.stateFilter = signal('all');
         this.filteredNews = computed(() => {
             const query = this.searchQuery().toLowerCase();
-            const archived = this.showArchived();
+            const stateFilter = this.stateFilter();
             let data = [...this.newsList()];
             if (this.isReordering()) {
                 // In reorder mode: Show only Published & Featured, sorted by featuredOrder
@@ -45,8 +45,9 @@ let NewsComponent = class NewsComponent {
                     n.excerpt?.toLowerCase().includes(query) ||
                     n.author?.toLowerCase().includes(query) ||
                     n.category?.toLowerCase().includes(query);
-                const matchesArchive = archived ? n.isArchived === true : !n.isArchived;
-                return matchesQuery && matchesArchive;
+                const status = n.isArchived ? 'archived' : (n.isPublished ? 'published' : 'draft');
+                const matchesState = stateFilter === 'all' || status === stateFilter;
+                return matchesQuery && matchesState;
             });
         });
         this.paginatedNews = computed(() => {
@@ -69,6 +70,10 @@ let NewsComponent = class NewsComponent {
     }
     updateSearch(event) {
         this.searchQuery.set(event.target.value);
+        this.currentPage.set(1);
+    }
+    updateStateFilter(value) {
+        this.stateFilter.set(value);
         this.currentPage.set(1);
     }
     view(news) {
@@ -110,6 +115,11 @@ let NewsComponent = class NewsComponent {
         this.isReordering.update(v => !v);
         this.currentPage.set(1);
         this.searchQuery.set('');
+    }
+    clearFilters() {
+        this.searchQuery.set('');
+        this.stateFilter.set('all');
+        this.currentPage.set(1);
     }
     onDragStart(event, index) {
         if (!this.isReordering())

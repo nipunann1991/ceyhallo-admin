@@ -51,14 +51,14 @@
   </div>
 
   <!-- Charts -->
-  <div class="grid grid-cols-1 xl:grid-cols-[65fr_35fr] gap-6">
+  <div class="grid grid-cols-1 xl:grid-cols-[60fr_40fr] gap-6">
     <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
       <div>
-        <h3 class="text-xl font-bold text-slate-900">Revenue Overview</h3>
-        <p class="text-slate-500 text-sm">Monthly revenue growth for the current year</p>
+        <h3 class="text-xl font-bold text-slate-900">Weekly Activity</h3>
+        <p class="text-slate-500 text-sm">News published per day over the last 2 weeks</p>
       </div>
-      <div class="mt-6 min-h-[360px] w-full">
-        <div #revenueChart class="w-full h-full"></div>
+      <div class="mt-6 min-h-[340px] w-full">
+        <div #weeklyChart class="w-full h-full"></div>
       </div>
     </div>
 
@@ -67,18 +67,16 @@
         <h3 class="text-xl font-bold text-slate-900">Business Distribution</h3>
         <p class="text-slate-500 text-sm">Category breakdown for every registered business</p>
       </div>
-      <div class="mt-6 flex flex-col items-center gap-4">
-        <div class="w-full max-w-[260px]">
-          <div #businessDistributionChart class="w-full h-[260px]"></div>
+      <div class="mt-6 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div class="w-full max-w-[300px] shrink-0">
+          <div #businessDistributionChart class="w-full h-[290px]"></div>
         </div>
-        <div class="w-full grid grid-cols-1 gap-2 text-[11px] text-slate-500 sm:grid-cols-2">
+        <div class="flex-1 flex flex-col gap-2 text-[11px] text-slate-500 lg:items-start">
           @for (item of businessDistributionLegend(); track item.category) {
-            <div class="flex items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2">
-              <span class="w-3 h-3 rounded-full shrink-0" [style.backgroundColor]="item.color"></span>
-              <div class="flex-1 truncate">
-                <span class="block font-semibold text-slate-800 truncate">{{ item.category }}</span>
-                <span class="text-xs text-slate-500">{{ item.value }} · {{ item.percentage | number:'1.0-0' }}%</span>
-              </div>
+            <div class="flex w-full max-w-[250px] items-start justify-start gap-3 text-left">
+              <span class="mt-1 w-3 h-3 rounded-full shrink-0" [style.backgroundColor]="item.color"></span>
+              <span class="min-w-0 flex-1 font-semibold text-slate-800 leading-4 whitespace-normal break-words">{{ item.category }}</span>
+              <span class="shrink-0 text-xs text-slate-500 leading-4 tabular-nums">{{ item.value }} · {{ item.percentage | number:'1.0-0' }}%</span>
             </div>
           }
         </div>
@@ -87,10 +85,10 @@
   </div>
 
   <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-    <h3 class="text-xl font-bold text-slate-900">Weekly Activity</h3>
-    <p class="text-slate-500 text-sm">User engagement per day</p>
-    <div class="mt-6 min-h-[340px] w-full">
-      <div #weeklyChart class="w-full h-full"></div>
+    <h3 class="text-xl font-bold text-slate-900">Revenue Overview</h3>
+    <p class="text-slate-500 text-sm">Monthly revenue growth for the current year</p>
+    <div class="mt-6 min-h-[360px] w-full">
+      <div #revenueChart class="w-full h-full"></div>
     </div>
   </div>
 
