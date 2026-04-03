@@ -70,6 +70,26 @@ export class NewsComponent implements OnInit {
 
   showConfirmModal = signal(false);
   itemToDelete = signal<string | null>(null);
+  selectedNewsIds = signal<string[]>([]);
+  deleteMode = signal<'single' | 'bulk' | null>(null);
+
+  selectedNewsCount = computed(() => this.selectedNewsIds().length);
+
+  areAllVisibleSelected = computed(() => {
+    const visibleIds = this.paginatedNews().map(item => item.id);
+    return visibleIds.length > 0 && visibleIds.every(id => this.selectedNewsIds().includes(id));
+  });
+
+  bulkDeleteMessage = computed(() => {
+    const count = this.selectedNewsCount();
+    return `Are you sure you want to delete ${count} selected article${count === 1 ? '' : 's'}? This action cannot be undone.`;
+  });
+
+  confirmDeleteTitle = computed(() => this.deleteMode() === 'bulk' ? 'Delete Selected Articles' : 'Delete Article');
+  confirmDeleteMessage = computed(() => this.deleteMode() === 'bulk'
+    ? this.bulkDeleteMessage()
+    : 'Are you sure you want to delete this article? This action cannot be undone.');
+  confirmDeleteLabel = computed(() => this.deleteMode() === 'bulk' ? 'Delete Selected' : 'Delete');
 
   constructor() {}
 
@@ -88,6 +108,39 @@ export class NewsComponent implements OnInit {
 
   view(news: News) {
     this.selectedNews.set(news);
+  }
+
+  isNewsSelected(id: string) {
+    return this.selectedNewsIds().includes(id);
+  }
+
+  toggleNewsSelection(id: string, checked: boolean) {
+    this.selectedNewsIds.update(current => {
+      if (checked) {
+        if (current.includes(id)) return current;
+        return [...current, id];
+      }
+      return current.filter(item => item !== id);
+    });
+  }
+
+  toggleAllVisibleNews(checked: boolean) {
+    const visibleIds = this.paginatedNews().map(item => item.id);
+    this.selectedNewsIds.update(current => {
+      const currentSet = new Set(current);
+      if (checked) {
+        visibleIds.forEach(id => currentSet.add(id));
+      } else {
+        visibleIds.forEach(id => currentSet.delete(id));
+      }
+      return Array.from(currentSet);
+    });
+  }
+
+  clearSelectedNews() {
+    this.selectedNewsIds.set([]);
+    this.deleteMode.set(null);
+    this.itemToDelete.set(null);
   }
 
   closePanel() {
@@ -193,22 +246,39 @@ export class NewsComponent implements OnInit {
 
   delete(id: string) {
     if (!this.authService.isAdmin()) return;
+    this.deleteMode.set('single');
     this.itemToDelete.set(id);
+    this.showConfirmModal.set(true);
+  }
+
+  deleteSelected() {
+    if (!this.authService.isAdmin()) return;
+    if (!this.selectedNewsCount()) return;
+    this.deleteMode.set('bulk');
     this.showConfirmModal.set(true);
   }
 
   closeConfirmModal() {
     this.showConfirmModal.set(false);
     this.itemToDelete.set(null);
+    this.deleteMode.set(null);
   }
 
   async confirmDelete() {
-    const id = this.itemToDelete();
-    if (!id) return;
-
     try {
-      await this.firebaseService.delete('news', id);
-      this.toastService.success('News deleted successfully.');
+      if (this.deleteMode() === 'bulk') {
+        const ids = this.selectedNewsIds();
+        if (!ids.length) return;
+        await Promise.all(ids.map(id => this.firebaseService.delete('news', id)));
+        this.toastService.success(`Deleted ${ids.length} news article${ids.length === 1 ? '' : 's'}.`);
+        this.clearSelectedNews();
+      } else {
+        const id = this.itemToDelete();
+        if (!id) return;
+        await this.firebaseService.delete('news', id);
+        this.selectedNewsIds.update(current => current.filter(item => item !== id));
+        this.toastService.success('News deleted successfully.');
+      }
     } catch (e: any) {
       this.toastService.error('Failed to delete: ' + e.message);
     } finally {

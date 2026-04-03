@@ -1,5 +1,6 @@
 
 
+import '@angular/compiler';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withHashLocation, Routes } from '@angular/router';
@@ -44,6 +45,7 @@ const routes: Routes = [
 
   // News
   { path: 'news', loadComponent: () => import('./src/components/news/news.component').then(m => m.NewsComponent) },
+  { path: 'news/rss-import', loadComponent: () => import('./src/components/news/rss-import.route.js').then(m => m.NewsRssImportComponent) },
   { path: 'news/new', loadComponent: () => import('./src/components/news/news-editor.component').then(m => m.NewsEditorComponent) },
   { path: 'news/edit/:id', loadComponent: () => import('./src/components/news/news-editor.component').then(m => m.NewsEditorComponent) },
   { path: 'news/:id', loadComponent: () => import('./src/components/news/news-detail.component').then(m => m.NewsDetailComponent) },

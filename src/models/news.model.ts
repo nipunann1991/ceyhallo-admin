@@ -13,4 +13,6 @@ export interface News {
   isNewsPageBanner?: boolean;
   featuredOrder?: number;
   isArchived?: boolean;
+  sourceKey?: string;
+  sourceLink?: string;
 }
