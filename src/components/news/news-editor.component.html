@@ -78,7 +78,15 @@
          
          <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
-            <input formControlName="category" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            <select formControlName="category" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+              <option value="" disabled>Select a category</option>
+              @for (category of availableCategories(); track category.id) {
+                <option [value]="category.name">{{ category.name }}</option>
+              }
+            </select>
+            @if (newsCategories().length === 0) {
+              <p class="text-xs text-slate-500 mt-2">No news categories found. Add them in Settings > News Categories.</p>
+            }
          </div>
       </div>
 
@@ -109,4 +117,3 @@
     </div>
   </form>
 </div>
-

@@ -4,12 +4,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { RichTextEditorComponent } from '../ui/rich-text-editor.component';
 import { optimizeImage } from '../../utils/image-optimizer';
+import { NewsCategoriesService } from '../../services/news-categories.service';
 let NewsEditorComponent = class NewsEditorComponent {
     constructor(authService, firebaseService, toastService, route, router, fb) {
         this.authService = authService;
@@ -18,9 +19,12 @@ let NewsEditorComponent = class NewsEditorComponent {
         this.route = route;
         this.router = router;
         this.fb = fb;
+        this.newsCategoriesService = inject(NewsCategoriesService);
         this.isEditing = signal(false);
         this.isUploading = signal(false);
         this.currentId = null;
+        this.newsCategories = this.newsCategoriesService.categories;
+        this.availableCategories = null;
         this.form = this.fb.group({
             title: ['', Validators.required],
             excerpt: ['', Validators.required],
@@ -32,6 +36,19 @@ let NewsEditorComponent = class NewsEditorComponent {
             isFeatured: [false],
             isPublished: [true],
             isNewsPageBanner: [false]
+        });
+        this.availableCategories = computed(() => {
+            const categories = [...this.newsCategories()];
+            const current = String(this.form.get('category')?.value || '').trim();
+            if (current && !categories.some(category => category.name === current)) {
+                categories.push({
+                    id: `current_${current}`,
+                    name: current,
+                    slug: '',
+                    order: categories.length + 1
+                });
+            }
+            return categories.sort((a, b) => a.order - b.order);
         });
     }
     ngOnInit() {
@@ -88,6 +105,7 @@ let NewsEditorComponent = class NewsEditorComponent {
             return;
         }
         const dataToSave = this.form.getRawValue();
+        dataToSave.category = String(dataToSave.category || '').trim();
         if (!this.isEditing()) {
             dataToSave.createdDate = new Date().toISOString();
         }

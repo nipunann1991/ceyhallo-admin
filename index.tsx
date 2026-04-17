@@ -77,6 +77,7 @@ const routes: Routes = [
       { path: 'locations', loadComponent: () => import('./src/components/settings/locations/locations.component').then(m => m.LocationsComponent) },
       { path: 'categories', loadComponent: () => import('./src/components/settings/categories/categories.component').then(m => m.CategoriesComponent) },
       { path: 'business-categories', loadComponent: () => import('./src/components/settings/business-categories/business-categories.component').then(m => m.BusinessCategoriesComponent) },
+      { path: 'news-categories', loadComponent: () => import('./src/components/settings/news-categories/news-categories.component').then(m => m.NewsCategoriesComponent) },
       { path: 'emailing', loadComponent: () => import('./src/components/settings/email/email-config.component').then(m => m.EmailConfigComponent) },
       { path: 'terms', loadComponent: () => import('./src/components/settings/legal/legal.component').then(m => m.LegalComponent), data: { docId: 'terms', title: 'Terms & Conditions' } },
       { path: 'privacy', loadComponent: () => import('./src/components/settings/legal/legal.component').then(m => m.LegalComponent), data: { docId: 'privacy', title: 'Privacy Policy' } },

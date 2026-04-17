@@ -1,5 +1,5 @@
 
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject, computed, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -8,6 +8,7 @@ import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { RichTextEditorComponent } from '../ui/rich-text-editor.component';
 import { optimizeImage } from '../../utils/image-optimizer';
+import { NewsCategoriesService } from '../../services/news-categories.service';
 
 @Component({
   selector: 'app-news-editor',
@@ -16,10 +17,13 @@ import { optimizeImage } from '../../utils/image-optimizer';
   templateUrl: './news-editor.component.html'
 })
 export class NewsEditorComponent implements OnInit {
+  private readonly newsCategoriesService = inject(NewsCategoriesService);
   form: FormGroup;
   isEditing = signal(false);
   isUploading = signal(false);
   currentId: string | null = null;
+  newsCategories = this.newsCategoriesService.categories;
+  availableCategories!: Signal<{ id: string; name: string; slug: string; order: number; }[]>;
 
   constructor(
     private authService: AuthService,
@@ -40,6 +44,22 @@ export class NewsEditorComponent implements OnInit {
       isFeatured: [false],
       isPublished: [true],
       isNewsPageBanner: [false]
+    });
+
+    this.availableCategories = computed(() => {
+      const categories = [...this.newsCategories()];
+      const current = String(this.form.get('category')?.value || '').trim();
+
+      if (current && !categories.some(category => category.name === current)) {
+        categories.push({
+          id: `current_${current}`,
+          name: current,
+          slug: '',
+          order: categories.length + 1
+        });
+      }
+
+      return categories.sort((a, b) => a.order - b.order);
     });
   }
 
@@ -96,6 +116,7 @@ export class NewsEditorComponent implements OnInit {
     }
 
     const dataToSave = this.form.getRawValue();
+    dataToSave.category = String(dataToSave.category || '').trim();
 
     if (!this.isEditing()) {
        dataToSave.createdDate = new Date().toISOString();
