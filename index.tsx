@@ -17,7 +17,7 @@ const routes: Routes = [
   { path: 'businesses/:id', loadComponent: () => import('./src/components/businesses/business-detail.component').then(m => m.BusinessDetailComponent) },
 
   // Hub
-  { path: 'hub', loadComponent: () => import('./src/components/hub/hub.component').then(m => m.HubComponent) },
+  { path: 'hub', redirectTo: 'settings/hub-info', pathMatch: 'full' },
 
   // Jobs
   { path: 'jobs', loadComponent: () => import('./src/components/jobs/jobs.component').then(m => m.JobsComponent) },
@@ -59,10 +59,6 @@ const routes: Routes = [
   { path: 'emails/new', loadComponent: () => import('./src/components/emails/email-editor.component').then(m => m.EmailEditorComponent) },
   { path: 'emails/edit/:id', loadComponent: () => import('./src/components/emails/email-editor.component').then(m => m.EmailEditorComponent) },
 
-  // Sales
-  { path: 'sales', loadComponent: () => import('./src/components/sales/sales.component').then(m => m.SalesComponent) },
-  { path: 'sales/report', loadComponent: () => import('./src/components/sales/monetization-report.component').then(m => m.MonetizationReportComponent) },
-
   // Media
   { path: 'media', loadComponent: () => import('./src/components/media/media.component').then(m => m.MediaComponent) },
 
@@ -78,6 +74,7 @@ const routes: Routes = [
       { path: 'categories', loadComponent: () => import('./src/components/settings/categories/categories.component').then(m => m.CategoriesComponent) },
       { path: 'business-categories', loadComponent: () => import('./src/components/settings/business-categories/business-categories.component').then(m => m.BusinessCategoriesComponent) },
       { path: 'news-categories', loadComponent: () => import('./src/components/settings/news-categories/news-categories.component').then(m => m.NewsCategoriesComponent) },
+      { path: 'hub-info', loadComponent: () => import('./src/components/hub/hub.component').then(m => m.HubComponent) },
       { path: 'emailing', loadComponent: () => import('./src/components/settings/email/email-config.component').then(m => m.EmailConfigComponent) },
       { path: 'terms', loadComponent: () => import('./src/components/settings/legal/legal.component').then(m => m.LegalComponent), data: { docId: 'terms', title: 'Terms & Conditions' } },
       { path: 'privacy', loadComponent: () => import('./src/components/settings/legal/legal.component').then(m => m.LegalComponent), data: { docId: 'privacy', title: 'Privacy Policy' } },

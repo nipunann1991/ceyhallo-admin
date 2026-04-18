@@ -1,4 +1,16 @@
 
+export interface BusinessLocation {
+  isPrimary?: boolean;
+  location: string;
+  googlePlaceId?: string;
+  rating: number;
+  reviews: number;
+  countryCode: string;
+  cityCode: string;
+  phones?: string[];
+  openingHours?: { day: string; hours: string }[];
+}
+
 export interface Business {
   id: string;
   title: string;
@@ -8,6 +20,7 @@ export interface Business {
   type?: string;
   priceRange?: string;
   location: string;
+  locations?: BusinessLocation[];
   imageUrl: string;
   logoUrl?: string; // Added logo
   menuUrl?: string; // Added Catalog/Flyer

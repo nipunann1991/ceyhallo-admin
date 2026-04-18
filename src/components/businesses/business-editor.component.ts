@@ -17,6 +17,18 @@ interface GoogleReviewStats {
   name?: string;
 }
 
+interface BusinessLocationValue {
+  isPrimary?: boolean;
+  location: string;
+  googlePlaceId?: string;
+  rating: number;
+  reviews: number;
+  countryCode: string;
+  cityCode: string;
+  phones?: string[];
+  openingHours?: { day: string; hours: string }[];
+}
+
 @Component({
   selector: 'app-business-editor',
   standalone: true,
@@ -27,17 +39,19 @@ export class BusinessEditorComponent implements OnInit {
   form: FormGroup;
   isEditing = signal(false);
   isUploading = signal(false);
+  activeEditorTab = signal<'details' | 'locations' | 'contact'>('details');
   currentId: string | null = null;
   
   locations = signal<any[]>([]);
-  availableCities = signal<{code: string, name: string}[]>([]);
+  locationCityOptions = signal<Record<number, {code: string, name: string}[]>>({});
+  expandedLocations = signal<Record<number, boolean>>({});
   categories = signal<TaxonomyItem[]>([]);
   categorySearch = signal('');
   showCategoryDropdown = signal(false);
-  googleReviewStats = signal<GoogleReviewStats | null>(null);
-  googleReviewLoading = signal(false);
-  googleReviewError = signal('');
-  googleMapEmbedUrl = signal<SafeResourceUrl | null>(null);
+  googleReviewStats = signal<Record<number, GoogleReviewStats | null>>({});
+  googleReviewLoading = signal<Record<number, boolean>>({});
+  googleReviewError = signal<Record<number, string>>({});
+  googleMapEmbedUrl = signal<Record<number, SafeResourceUrl | null>>({});
 
   constructor(
     private authService: AuthService,
@@ -55,15 +69,9 @@ export class BusinessEditorComponent implements OnInit {
       type: [''],
       useCategoryAsType: [false],
       priceRange: [''],
-      location: ['', Validators.required],
       imageUrl: [''],
       logoUrl: [''], 
       menuUrl: [''], // Added catalog/menu URL
-      googlePlaceId: [''],
-      rating: [4.8, [Validators.required, Validators.min(0), Validators.max(5)]],
-      reviews: [0, [Validators.required, Validators.min(0)]],
-      countryCode: ['AE', Validators.required],
-      cityCode: ['DXB', Validators.required],
       isPublished: [true], 
       isPremium: [false],
       isVerified: [false],
@@ -72,8 +80,6 @@ export class BusinessEditorComponent implements OnInit {
       isArchived: [false],
       services: [''],
       
-      // Contact
-      contactPhones: this.fb.array([]),
       contactWebsite: [''],
       contactInstagram: [''],
       contactFacebook: [''],
@@ -83,8 +89,8 @@ export class BusinessEditorComponent implements OnInit {
       actionType: ['none'],
       actionTarget: [''],
 
-      openingHours: this.fb.array([]),
-      deliveryInfo: this.fb.array([])
+      deliveryInfo: this.fb.array([]),
+      businessLocations: this.fb.array([])
     });
 
     // Auto-unpublish when archived
@@ -95,9 +101,8 @@ export class BusinessEditorComponent implements OnInit {
     });
   }
 
-  get openingHoursArray() { return this.form.get('openingHours') as FormArray; }
   get deliveryInfoArray() { return this.form.get('deliveryInfo') as FormArray; }
-  get phonesArray() { return this.form.get('contactPhones') as FormArray; }
+  get businessLocationsArray() { return this.form.get('businessLocations') as FormArray; }
 
   filteredCategories() {
     const search = this.categorySearch().toLowerCase();
@@ -127,17 +132,6 @@ export class BusinessEditorComponent implements OnInit {
     }
   }
 
-  addOpeningHourRow(day: string = '', hours: string = '') {
-    this.openingHoursArray.push(this.fb.group({
-      day: [day, Validators.required],
-      hours: [hours, Validators.required]
-    }));
-  }
-
-  removeOpeningHourRow(index: number) {
-    this.openingHoursArray.removeAt(index);
-  }
-
   addDeliveryInfoRow(location: string = '', charge: string = '') {
     this.deliveryInfoArray.push(this.fb.group({
       location: [location, Validators.required],
@@ -149,11 +143,81 @@ export class BusinessEditorComponent implements OnInit {
     this.deliveryInfoArray.removeAt(index);
   }
 
-  addPhone(value: string = '') {
-    this.phonesArray.push(this.fb.control(value));
+  private createBusinessLocationGroup(data?: Partial<BusinessLocationValue>) {
+    return this.fb.group({
+      isPrimary: [!!data?.isPrimary],
+      countryCode: [data?.countryCode || 'AE', Validators.required],
+      cityCode: [data?.cityCode || 'DXB', Validators.required],
+      location: [data?.location || '', Validators.required],
+      googlePlaceId: [data?.googlePlaceId || ''],
+      rating: [Number(data?.rating ?? 4.8), [Validators.required, Validators.min(0), Validators.max(5)]],
+      reviews: [Number(data?.reviews ?? 0), [Validators.required, Validators.min(0)]],
+      phones: this.fb.array((data?.phones || []).map(phone => this.fb.control(phone))),
+      openingHours: this.fb.array((data?.openingHours || []).map(item => this.fb.group({
+        day: [item.day || '', Validators.required],
+        hours: [item.hours || '', Validators.required]
+      })))
+    });
   }
-  removePhone(index: number) {
-    this.phonesArray.removeAt(index);
+
+  addBusinessLocation(data?: Partial<BusinessLocationValue>) {
+    const index = this.businessLocationsArray.length;
+    const shouldBePrimary = data?.isPrimary ?? index === 0;
+    this.businessLocationsArray.push(this.createBusinessLocationGroup({ ...data, isPrimary: shouldBePrimary }));
+    this.updateCitiesForLocation(index, data?.countryCode || 'AE', false);
+    this.expandedLocations.set(
+      Array.from({ length: this.businessLocationsArray.length }).reduce<Record<number, boolean>>((acc, _, itemIndex) => {
+        acc[itemIndex] = itemIndex === index;
+        return acc;
+      }, {})
+    );
+    const cityOptions = this.getLocationCities(index);
+    if (cityOptions.length > 0 && !data?.cityCode) {
+      this.businessLocationsArray.at(index).patchValue({ cityCode: cityOptions[0].code });
+    }
+    if (shouldBePrimary) {
+      this.setPrimaryLocation(index);
+    }
+  }
+
+  removeBusinessLocation(index: number) {
+    if (this.businessLocationsArray.length <= 1) {
+      return;
+    }
+
+    const wasPrimary = !!this.getLocationGroup(index)?.get('isPrimary')?.value;
+    this.businessLocationsArray.removeAt(index);
+    this.reindexLocationState();
+    if (wasPrimary && this.businessLocationsArray.length > 0) {
+      this.setPrimaryLocation(0);
+    }
+  }
+
+  getLocationPhonesArray(index: number) {
+    return this.getLocationGroup(index).get('phones') as FormArray;
+  }
+
+  addLocationPhone(index: number, value: string = '') {
+    this.getLocationPhonesArray(index).push(this.fb.control(value));
+  }
+
+  removeLocationPhone(locationIndex: number, phoneIndex: number) {
+    this.getLocationPhonesArray(locationIndex).removeAt(phoneIndex);
+  }
+
+  getLocationOpeningHoursArray(index: number) {
+    return this.getLocationGroup(index).get('openingHours') as FormArray;
+  }
+
+  addLocationOpeningHourRow(index: number, day: string = '', hours: string = '') {
+    this.getLocationOpeningHoursArray(index).push(this.fb.group({
+      day: [day, Validators.required],
+      hours: [hours, Validators.required]
+    }));
+  }
+
+  removeLocationOpeningHourRow(locationIndex: number, hourIndex: number) {
+    this.getLocationOpeningHoursArray(locationIndex).removeAt(hourIndex);
   }
 
   ngOnInit() {
@@ -177,7 +241,7 @@ export class BusinessEditorComponent implements OnInit {
         return { code: country.id, name: country.name, cities: citiesArray };
       });
       this.locations.set(mappedLocations);
-      this.updateCitiesForCountry('AE');
+      this.rebuildAllLocationCityOptions();
     });
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -187,10 +251,14 @@ export class BusinessEditorComponent implements OnInit {
       this.loadData(id);
       window.scrollTo(0, 0);
     } else {
-      // Init Default Hours and Phone for new entry
-      this.addOpeningHourRow('Mon - Fri', '9:00 AM - 6:00 PM');
-      this.addOpeningHourRow('Sat - Sun', 'Closed');
-      this.addPhone();
+      this.addBusinessLocation({
+        isPrimary: true,
+        phones: [''],
+        openingHours: [
+          { day: 'Mon - Fri', hours: '9:00 AM - 6:00 PM' },
+          { day: 'Sat - Sun', hours: 'Closed' }
+        ]
+      });
     }
   }
 
@@ -198,8 +266,6 @@ export class BusinessEditorComponent implements OnInit {
     try {
       const doc = await this.firebaseService.getDocument('businesses', id);
       if (doc) {
-        if (doc.countryCode) this.updateCitiesForCountry(doc.countryCode);
-        
         const formData = {
            title: doc.title,
            description: doc.description,
@@ -207,15 +273,9 @@ export class BusinessEditorComponent implements OnInit {
            type: doc.type || '',
            useCategoryAsType: doc.type === doc.category && !!doc.category,
            priceRange: doc.priceRange || '',
-           location: doc.location,
            imageUrl: doc.imageUrl,
            logoUrl: doc.logoUrl || '',
            menuUrl: doc.menuUrl || '', // Load catalog URL
-           googlePlaceId: doc.googlePlaceId || '',
-           rating: doc.rating,
-           reviews: doc.reviews,
-           countryCode: doc.countryCode || 'AE',
-           cityCode: doc.cityCode || '',
            isPublished: doc.isPublished !== false,
            isPremium: doc.isPremium,
            isVerified: doc.isVerified,
@@ -232,26 +292,31 @@ export class BusinessEditorComponent implements OnInit {
         };
         this.form.patchValue(formData);
         this.categorySearch.set(doc.category || '');
-        if (doc.googlePlaceId) {
-          this.fetchGoogleReviewStats(doc.googlePlaceId, false);
-        }
 
-        // Phones logic
-        this.phonesArray.clear();
-        if (doc.contact?.phones && Array.isArray(doc.contact.phones)) {
-           doc.contact.phones.forEach((p: string) => this.addPhone(p));
-        } else if (doc.contact?.phone) {
-           this.addPhone(doc.contact.phone);
-        } else {
-           this.addPhone();
-        }
+        this.businessLocationsArray.clear();
+        const savedLocations = Array.isArray(doc.locations) && doc.locations.length > 0
+          ? doc.locations
+          : [{
+              location: doc.location || '',
+              isPrimary: true,
+              googlePlaceId: doc.googlePlaceId || '',
+              rating: Number(doc.rating ?? 4.8),
+              reviews: Number(doc.reviews ?? 0),
+              countryCode: doc.countryCode || 'AE',
+              cityCode: doc.cityCode || 'DXB',
+              phones: doc.contact?.phones || ((doc.contact as any)?.phone ? [(doc.contact as any).phone] : ['']),
+              openingHours: Array.isArray(doc.openingHours) ? doc.openingHours : [
+                { day: 'Mon - Fri', hours: '9:00 AM - 6:00 PM' }
+              ]
+            }];
 
-        this.openingHoursArray.clear();
-        if (doc.openingHours && Array.isArray(doc.openingHours)) {
-           doc.openingHours.forEach((oh: any) => this.addOpeningHourRow(oh.day, oh.hours));
-        } else {
-           this.addOpeningHourRow('Mon - Fri', '9:00 AM - 6:00 PM');
-        }
+        savedLocations.forEach((location: any) => this.addBusinessLocation(location));
+        this.rebuildAllLocationCityOptions();
+        savedLocations.forEach((location: any, index: number) => {
+          if (location?.googlePlaceId) {
+            this.fetchGoogleReviewStats(index, location.googlePlaceId, false);
+          }
+        });
 
         this.deliveryInfoArray.clear();
         if (doc.deliveryInfo && Array.isArray(doc.deliveryInfo)) {
@@ -264,17 +329,103 @@ export class BusinessEditorComponent implements OnInit {
     }
   }
 
-  onCountryChange() {
-    const code = this.form.get('countryCode')?.value;
-    this.updateCitiesForCountry(code);
-    const cities = this.availableCities();
-    if (cities.length > 0) this.form.patchValue({ cityCode: cities[0].code });
-    else this.form.patchValue({ cityCode: '' });
+  onLocationCountryChange(index: number) {
+    const code = this.getLocationGroup(index)?.get('countryCode')?.value || 'AE';
+    this.updateCitiesForLocation(index, code, true);
   }
 
-  updateCitiesForCountry(countryCode: string) {
+  updateCitiesForLocation(index: number, countryCode: string, patchFirstCity = false) {
     const country = this.locations().find(c => c.code === countryCode);
-    this.availableCities.set(country ? country.cities : []);
+    const cities = country ? country.cities : [];
+    this.locationCityOptions.update(current => ({ ...current, [index]: cities }));
+
+    if (patchFirstCity) {
+      this.getLocationGroup(index)?.patchValue({ cityCode: cities[0]?.code || '' });
+    }
+  }
+
+  getLocationCities(index: number) {
+    return this.locationCityOptions()[index] || [];
+  }
+
+  getLocationGroup(index: number) {
+    return this.businessLocationsArray.at(index) as FormGroup;
+  }
+
+  locationStats(index: number) {
+    return this.googleReviewStats()[index] || null;
+  }
+
+  locationLoading(index: number) {
+    return !!this.googleReviewLoading()[index];
+  }
+
+  locationError(index: number) {
+    return this.googleReviewError()[index] || '';
+  }
+
+  locationMap(index: number) {
+    return this.googleMapEmbedUrl()[index] || null;
+  }
+
+  isPrimaryLocation(index: number) {
+    return !!this.getLocationGroup(index)?.get('isPrimary')?.value;
+  }
+
+  setPrimaryLocation(index: number) {
+    for (let itemIndex = 0; itemIndex < this.businessLocationsArray.length; itemIndex += 1) {
+      this.getLocationGroup(itemIndex)?.patchValue({ isPrimary: itemIndex === index }, { emitEvent: false });
+    }
+  }
+
+  private rebuildAllLocationCityOptions() {
+    for (let index = 0; index < this.businessLocationsArray.length; index += 1) {
+      const countryCode = this.getLocationGroup(index)?.get('countryCode')?.value || 'AE';
+      this.updateCitiesForLocation(index, countryCode, false);
+    }
+  }
+
+  private reindexLocationState() {
+    const currentStats = this.googleReviewStats();
+    const currentLoading = this.googleReviewLoading();
+    const currentError = this.googleReviewError();
+    const currentMaps = this.googleMapEmbedUrl();
+
+    const nextStats: Record<number, GoogleReviewStats | null> = {};
+    const nextLoading: Record<number, boolean> = {};
+    const nextError: Record<number, string> = {};
+    const nextMaps: Record<number, SafeResourceUrl | null> = {};
+    const nextCities: Record<number, {code: string, name: string}[]> = {};
+
+    for (let index = 0; index < this.businessLocationsArray.length; index += 1) {
+      nextStats[index] = currentStats[index] || null;
+      nextLoading[index] = currentLoading[index] || false;
+      nextError[index] = currentError[index] || '';
+      nextMaps[index] = currentMaps[index] || null;
+      nextCities[index] = this.getLocationCities(index);
+    }
+
+    this.googleReviewStats.set(nextStats);
+    this.googleReviewLoading.set(nextLoading);
+    this.googleReviewError.set(nextError);
+    this.googleMapEmbedUrl.set(nextMaps);
+    this.locationCityOptions.set(nextCities);
+    const nextExpanded = Array.from({ length: this.businessLocationsArray.length }).reduce<Record<number, boolean>>((acc, _, index) => {
+      acc[index] = this.isPrimaryLocation(index) ? true : !!this.expandedLocations()[index];
+      return acc;
+    }, {});
+    this.expandedLocations.set(nextExpanded);
+  }
+
+  isLocationExpanded(index: number) {
+    return this.expandedLocations()[index] !== false;
+  }
+
+  toggleLocationExpanded(index: number) {
+    this.expandedLocations.update(current => ({
+      ...current,
+      [index]: !(current[index] !== false)
+    }));
   }
 
   async onMainImageSelected(event: Event) {
@@ -332,16 +483,16 @@ export class BusinessEditorComponent implements OnInit {
     }
   }
 
-  async fetchGoogleReviewStats(placeId?: string, showToast = true) {
-    const googlePlaceId = (placeId ?? this.form.get('googlePlaceId')?.value ?? '').trim();
+  async fetchGoogleReviewStats(index: number, placeId?: string, showToast = true) {
+    const googlePlaceId = String(placeId ?? this.getLocationGroup(index)?.get('googlePlaceId')?.value ?? '').trim();
     if (!googlePlaceId) {
-      this.googleReviewError.set('Add a Google Place ID to fetch live reviews.');
-      this.googleReviewStats.set(null);
+      this.googleReviewError.update(current => ({ ...current, [index]: 'Add a Google Place ID to fetch live reviews.' }));
+      this.googleReviewStats.update(current => ({ ...current, [index]: null }));
       return;
     }
 
-    this.googleReviewLoading.set(true);
-    this.googleReviewError.set('');
+    this.googleReviewLoading.update(current => ({ ...current, [index]: true }));
+    this.googleReviewError.update(current => ({ ...current, [index]: '' }));
     try {
       const result = await this.firebaseService.callFunction('fetchGooglePlaceDetails', { placeId: googlePlaceId });
       if (result?.success === false) {
@@ -350,22 +501,29 @@ export class BusinessEditorComponent implements OnInit {
       const rating = Number(result?.rating ?? 0);
       const reviews = Number(result?.reviews ?? 0);
 
-      this.googleReviewStats.set({
-        rating,
-        reviews,
-        name: result?.name
-      });
+      this.googleReviewStats.update(current => ({
+        ...current,
+        [index]: {
+          rating,
+          reviews,
+          name: result?.name
+        }
+      }));
 
       const lat = Number(result?.lat);
       const lng = Number(result?.lng);
       if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
         const embedUrl = `https://www.google.com/maps?q=${lat},${lng}&z=16&output=embed`;
-        this.googleMapEmbedUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl));
+        this.googleMapEmbedUrl.update(current => ({
+          ...current,
+          [index]: this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl)
+        }));
       } else {
-        this.googleMapEmbedUrl.set(null);
+        this.googleMapEmbedUrl.update(current => ({ ...current, [index]: null }));
       }
 
-      this.form.patchValue({
+      this.getLocationGroup(index)?.patchValue({
+        googlePlaceId,
         rating,
         reviews
       });
@@ -373,28 +531,28 @@ export class BusinessEditorComponent implements OnInit {
         this.toastService.success('Google review stats loaded.');
       }
     } catch (e: any) {
-      this.googleReviewStats.set(null);
-      this.googleReviewError.set(e?.message || 'Failed to fetch Google review stats.');
+      this.googleReviewStats.update(current => ({ ...current, [index]: null }));
+      this.googleReviewError.update(current => ({ ...current, [index]: e?.message || 'Failed to fetch Google review stats.' }));
       if (showToast) {
-        this.toastService.error(this.googleReviewError());
+        this.toastService.error(this.locationError(index));
       }
     } finally {
-      this.googleReviewLoading.set(false);
+      this.googleReviewLoading.update(current => ({ ...current, [index]: false }));
     }
   }
 
-  async resolveGooglePlaceFromAddress(address?: string, showToast = true) {
-    const trimmedAddress = String(address ?? this.form.get('location')?.value ?? '').trim();
+  async resolveGooglePlaceFromAddress(index: number, address?: string, showToast = true) {
+    const trimmedAddress = String(address ?? this.getLocationGroup(index)?.get('location')?.value ?? '').trim();
     if (!trimmedAddress) {
       return null;
     }
 
-    this.googleReviewLoading.set(true);
-    this.googleReviewError.set('');
+    this.googleReviewLoading.update(current => ({ ...current, [index]: true }));
+    this.googleReviewError.update(current => ({ ...current, [index]: '' }));
     try {
       const result = await this.firebaseService.callFunction('resolveGooglePlaceFromAddress', {
         address: trimmedAddress,
-        countryCode: this.form.get('countryCode')?.value || 'AE'
+        countryCode: this.getLocationGroup(index)?.get('countryCode')?.value || 'AE'
       });
 
       if (result?.success === false) {
@@ -406,29 +564,32 @@ export class BusinessEditorComponent implements OnInit {
         throw new Error('No Google Place ID was returned for this address.');
       }
 
-      this.form.patchValue({ googlePlaceId: placeId }, { emitEvent: false });
-      await this.fetchGoogleReviewStats(placeId, false);
+      this.getLocationGroup(index)?.patchValue({ googlePlaceId: placeId }, { emitEvent: false });
+      await this.fetchGoogleReviewStats(index, placeId, false);
       return result;
     } catch (e: any) {
-      this.googleReviewError.set(e?.message || 'Failed to resolve Google Place ID from the address.');
-      this.googleReviewStats.set(null);
+      this.googleReviewError.update(current => ({
+        ...current,
+        [index]: e?.message || 'Failed to resolve Google Place ID from the address.'
+      }));
+      this.googleReviewStats.update(current => ({ ...current, [index]: null }));
       if (showToast) {
-        this.toastService.error(this.googleReviewError());
+        this.toastService.error(this.locationError(index));
       }
       return null;
     } finally {
-      this.googleReviewLoading.set(false);
+      this.googleReviewLoading.update(current => ({ ...current, [index]: false }));
     }
   }
 
-  async fetchMapAndReviews() {
-    const address = String(this.form.get('location')?.value || '').trim();
+  async fetchMapAndReviews(index: number) {
+    const address = String(this.getLocationGroup(index)?.get('location')?.value || '').trim();
     if (!address) {
       this.toastService.error('Please enter an address first.');
       return;
     }
 
-    await this.resolveGooglePlaceFromAddress(address, true);
+    await this.resolveGooglePlaceFromAddress(index, address, true);
   }
 
   async save() {
@@ -443,9 +604,56 @@ export class BusinessEditorComponent implements OnInit {
     }
 
     const raw = this.form.getRawValue();
-    if ((!raw.googlePlaceId || !String(raw.googlePlaceId).trim()) && raw.location) {
-      await this.resolveGooglePlaceFromAddress(raw.location, false);
+    if (!Array.isArray(raw.businessLocations) || raw.businessLocations.length === 0) {
+      this.toastService.error('Please add at least one business location.');
+      return;
     }
+
+    const normalizedLocations = raw.businessLocations
+      .map((item: any) => ({
+        isPrimary: !!item.isPrimary,
+        location: String(item.location || '').trim(),
+        googlePlaceId: String(item.googlePlaceId || '').trim(),
+        rating: Number(item.rating ?? 0),
+        reviews: Number(item.reviews ?? 0),
+        countryCode: String(item.countryCode || 'AE').trim(),
+        cityCode: String(item.cityCode || '').trim(),
+        phones: Array.isArray(item.phones) ? item.phones.map((phone: string) => String(phone || '').trim()).filter(Boolean) : [],
+        openingHours: Array.isArray(item.openingHours)
+          ? item.openingHours
+              .map((hour: any) => ({
+                day: String(hour?.day || '').trim(),
+                hours: String(hour?.hours || '').trim()
+              }))
+              .filter((hour: { day: string; hours: string }) => hour.day || hour.hours)
+          : []
+      }))
+      .filter((item: BusinessLocationValue) => item.location);
+
+    if (normalizedLocations.length === 0) {
+      this.toastService.error('Please add at least one valid business location.');
+      return;
+    }
+
+    for (let index = 0; index < normalizedLocations.length; index += 1) {
+      const item = normalizedLocations[index];
+      if (!item.googlePlaceId && item.location) {
+        await this.resolveGooglePlaceFromAddress(index, item.location, false);
+        const refreshed = this.getLocationGroup(index)?.getRawValue();
+        normalizedLocations[index] = {
+          ...item,
+          googlePlaceId: String(refreshed?.googlePlaceId || '').trim(),
+          rating: Number(refreshed?.rating ?? item.rating),
+          reviews: Number(refreshed?.reviews ?? item.reviews)
+        };
+      }
+    }
+
+    const primaryIndex = Math.max(0, normalizedLocations.findIndex((item: BusinessLocationValue) => item.isPrimary));
+    normalizedLocations.forEach((item: BusinessLocationValue, index: number) => {
+      item.isPrimary = index === primaryIndex;
+    });
+    const primaryLocation = normalizedLocations[primaryIndex];
 
     const dataToSave = {
       title: raw.title,
@@ -453,15 +661,16 @@ export class BusinessEditorComponent implements OnInit {
       category: raw.category,
       type: raw.type,
       priceRange: raw.priceRange,
-      location: raw.location,
+      location: primaryLocation.location,
+      locations: normalizedLocations,
       imageUrl: raw.imageUrl,
       logoUrl: raw.logoUrl,
       menuUrl: raw.menuUrl, // Save catalog URL
-      googlePlaceId: String(this.form.get('googlePlaceId')?.value || raw.googlePlaceId || '').trim(),
-      rating: Number(raw.rating),
-      reviews: Number(raw.reviews),
-      countryCode: raw.countryCode,
-      cityCode: raw.cityCode,
+      googlePlaceId: primaryLocation.googlePlaceId,
+      rating: primaryLocation.rating,
+      reviews: primaryLocation.reviews,
+      countryCode: primaryLocation.countryCode,
+      cityCode: primaryLocation.cityCode,
       isPublished: raw.isPublished,
       isPremium: raw.isPremium,
       isVerified: raw.isVerified,
@@ -470,13 +679,13 @@ export class BusinessEditorComponent implements OnInit {
       isArchived: raw.isArchived,
       services: raw.services ? raw.services.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
       contact: {
-        phones: raw.contactPhones.filter((p: string) => p && p.trim() !== ''),
+        phones: primaryLocation.phones || [],
         website: raw.contactWebsite,
         instagram: raw.contactInstagram,
         facebook: raw.contactFacebook,
         tiktok: raw.contactTiktok
       },
-      openingHours: raw.openingHours,
+      openingHours: primaryLocation.openingHours || [],
       deliveryInfo: raw.deliveryInfo,
       actionType: raw.actionType,
       actionTarget: raw.actionTarget

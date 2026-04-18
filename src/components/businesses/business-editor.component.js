@@ -20,6 +20,7 @@ let BusinessEditorComponent = class BusinessEditorComponent {
         this.fb = fb;
         this.isEditing = signal(false);
         this.isUploading = signal(false);
+        this.activeEditorTab = signal('details');
         this.currentId = null;
         this.locations = signal([]);
         this.availableCities = signal([]);

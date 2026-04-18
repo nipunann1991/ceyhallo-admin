@@ -10,213 +10,373 @@
     
     <!-- Main Content -->
     <div class="lg:col-span-2 space-y-6">
-      
-      <!-- Basic Details -->
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 animate-in fade-in">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Business Name</label>
-          <input formControlName="title" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border text-lg font-medium">
-        </div>
-
-        <div class="relative">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
-            <div class="relative">
-                <input 
-                    type="text" 
-                    [value]="categorySearch()"
-                    (input)="onCategoryInput($event)"
-                    (focus)="showCategoryDropdown.set(true)"
-                    placeholder="Search category..."
-                    class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white"
-                >
-                @if (showCategoryDropdown() && filteredCategories().length > 0) {
-                    <div class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        @for (cat of filteredCategories(); track cat.id) {
-                            <button 
-                                type="button"
-                                (click)="selectCategory(cat.name)"
-                                class="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm transition-colors"
-                            >
-                                {{ cat.name }}
-                            </button>
-                        }
-                    </div>
-                }
-                @if (showCategoryDropdown()) {
-                    <div class="fixed inset-0 z-40" (click)="showCategoryDropdown.set(false)"></div>
-                }
-            </div>
-            @if (categories().length === 0) {
-              <p class="text-xs text-[#083594]-500 mt-1">No categories found. Add them in Settings > Biz Cats.</p>
-            }
-        </div>
-
-        <div>
-            <div class="flex items-center justify-between mb-1">
-                <label class="block text-sm font-medium text-slate-700">Business Type</label>
-                <label class="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
-                    <input type="checkbox" formControlName="useCategoryAsType" (change)="syncTypeWithCategory()" class="rounded border-slate-300 text-[#083594] focus:ring-[#083594]-500">
-                    Use Category Name
-                </label>
-            </div>
-            <input formControlName="type" type="text" placeholder="e.g. Restaurant, Spa, Agency" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border" [attr.readonly]="form.get('useCategoryAsType')?.value ? true : null" [class.bg-slate-50]="form.get('useCategoryAsType')?.value">
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Price Range (Optional)</label>
-            <select formControlName="priceRange" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
-                <option value="">Not Specified</option>
-                <option value="$">$ (Budget)</option>
-                <option value="$$">$$ (Moderate)</option>
-                <option value="$$$">$$$ (Expensive)</option>
-                <option value="$$$$">$$$$ (Luxury)</option>
-            </select>
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
-            <app-rich-text-editor formControlName="description" height="200px" placeholder="Describe the business..."></app-rich-text-editor>
-        </div>
-
-        <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Catalog / Flyer / Menu (PDF Link)</label>
-            <div class="flex gap-2">
-                <input formControlName="menuUrl" type="text" placeholder="https://..." class="flex-1 w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
-                <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-center transition-colors">
-                    <span class="sr-only">Upload PDF</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <input type="file" (change)="onMenuFileSelected($event)" accept="application/pdf" class="sr-only" [disabled]="isUploading()">
-                </label>
-            </div>
-            @if (form.get('menuUrl')?.value) {
-                <a [href]="form.get('menuUrl')?.value" target="_blank" class="inline-flex items-center gap-1 mt-2 text-sm text-[#083594] hover:underline">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 1-2 2v16a2 2 0 0 1 2 2h12a2 2 0 0 1 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    View Current Catalog
-                </a>
-            }
+      <div class="-mb-2">
+        <div class="flex flex-wrap items-center gap-6 border-b border-slate-200 px-1">
+          <button
+            type="button"
+            (click)="activeEditorTab.set('details')"
+            class="relative -mb-px border-b-2 px-1 pb-3 text-sm font-semibold transition-colors"
+            [class.border-[#083594]]="activeEditorTab() === 'details'"
+            [class.text-[#083594]]="activeEditorTab() === 'details'"
+            [class.border-transparent]="activeEditorTab() !== 'details'"
+            [class.text-slate-500]="activeEditorTab() !== 'details'"
+            [class.hover:text-slate-800]="activeEditorTab() !== 'details'">
+            Business Details
+          </button>
+          <button
+            type="button"
+            (click)="activeEditorTab.set('locations')"
+            class="relative -mb-px border-b-2 px-1 pb-3 text-sm font-semibold transition-colors"
+            [class.border-[#083594]]="activeEditorTab() === 'locations'"
+            [class.text-[#083594]]="activeEditorTab() === 'locations'"
+            [class.border-transparent]="activeEditorTab() !== 'locations'"
+            [class.text-slate-500]="activeEditorTab() !== 'locations'"
+            [class.hover:text-slate-800]="activeEditorTab() !== 'locations'">
+            Locations
+          </button>
+          <button
+            type="button"
+            (click)="activeEditorTab.set('contact')"
+            class="relative -mb-px border-b-2 px-1 pb-3 text-sm font-semibold transition-colors"
+            [class.border-[#083594]]="activeEditorTab() === 'contact'"
+            [class.text-[#083594]]="activeEditorTab() === 'contact'"
+            [class.border-transparent]="activeEditorTab() !== 'contact'"
+            [class.text-slate-500]="activeEditorTab() !== 'contact'"
+            [class.hover:text-slate-800]="activeEditorTab() !== 'contact'">
+            Contact Info
+          </button>
         </div>
       </div>
-
-      <!-- Services & Hours -->
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 animate-in fade-in">
+      
+      @if (activeEditorTab() === 'details') {
+        <!-- Basic Details -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 animate-in fade-in">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Services (Comma Separated)</label>
-            <input formControlName="services" type="text" placeholder="Deep Cleaning, Maid Service, Moving" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Business Name</label>
+            <input formControlName="title" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border text-lg font-medium">
           </div>
 
-          <div>
-              <div class="flex justify-between items-center mb-2">
-                <h4 class="text-sm font-bold text-slate-700">Opening Hours</h4>
-                <button type="button" (click)="addOpeningHourRow()" class="text-xs text-[#083594] font-medium hover:underline">+ Add Row</button>
-              </div>
-              <div formArrayName="openingHours" class="space-y-2">
-                  @for (row of openingHoursArray.controls; track $index) {
-                    <div [formGroupName]="$index" class="flex items-center gap-2">
-                        <input formControlName="day" type="text" placeholder="Day" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
-                        <input formControlName="hours" type="text" placeholder="Hours" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
-                        <button type="button" (click)="removeOpeningHourRow($index)" class="text-slate-400 hover:text-red-500 p-1">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
-                    </div>
+          <div class="relative">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+              <div class="relative">
+                  <input 
+                      type="text" 
+                      [value]="categorySearch()"
+                      (input)="onCategoryInput($event)"
+                      (focus)="showCategoryDropdown.set(true)"
+                      placeholder="Search category..."
+                      class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white"
+                  >
+                  @if (showCategoryDropdown() && filteredCategories().length > 0) {
+                      <div class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                          @for (cat of filteredCategories(); track cat.id) {
+                              <button 
+                                  type="button"
+                                  (click)="selectCategory(cat.name)"
+                                  class="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm transition-colors"
+                              >
+                                  {{ cat.name }}
+                              </button>
+                          }
+                      </div>
+                  }
+                  @if (showCategoryDropdown()) {
+                      <div class="fixed inset-0 z-40" (click)="showCategoryDropdown.set(false)"></div>
                   }
               </div>
+              @if (categories().length === 0) {
+                <p class="text-xs text-[#083594]-500 mt-1">No categories found. Add them in Settings > Biz Cats.</p>
+              }
           </div>
-      </div>
+
+          <div>
+              <div class="flex items-center justify-between mb-1">
+                  <label class="block text-sm font-medium text-slate-700">Business Type</label>
+                  <label class="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+                      <input type="checkbox" formControlName="useCategoryAsType" (change)="syncTypeWithCategory()" class="rounded border-slate-300 text-[#083594] focus:ring-[#083594]-500">
+                      Use Category Name
+                  </label>
+              </div>
+              <input formControlName="type" type="text" placeholder="e.g. Restaurant, Spa, Agency" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border" [attr.readonly]="form.get('useCategoryAsType')?.value ? true : null" [class.bg-slate-50]="form.get('useCategoryAsType')?.value">
+          </div>
+
+          <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Price Range (Optional)</label>
+              <select formControlName="priceRange" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                  <option value="">Not Specified</option>
+                  <option value="$">$ (Budget)</option>
+                  <option value="$$">$$ (Moderate)</option>
+                  <option value="$$$">$$$ (Expensive)</option>
+                  <option value="$$$$">$$$$ (Luxury)</option>
+              </select>
+          </div>
+
+          <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <app-rich-text-editor formControlName="description" height="200px" placeholder="Describe the business..."></app-rich-text-editor>
+          </div>
+
+          <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Catalog / Flyer / Menu (PDF Link)</label>
+              <div class="flex gap-2">
+                  <input formControlName="menuUrl" type="text" placeholder="https://..." class="flex-1 w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+                  <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-center transition-colors">
+                      <span class="sr-only">Upload PDF</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      <input type="file" (change)="onMenuFileSelected($event)" accept="application/pdf" class="sr-only" [disabled]="isUploading()">
+                  </label>
+              </div>
+              @if (form.get('menuUrl')?.value) {
+                  <a [href]="form.get('menuUrl')?.value" target="_blank" class="inline-flex items-center gap-1 mt-2 text-sm text-[#083594] hover:underline">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 1-2 2v16a2 2 0 0 1 2 2h12a2 2 0 0 1 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      View Current Catalog
+                  </a>
+              }
+          </div>
+        </div>
+
+        <!-- Services -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6 animate-in fade-in">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Services (Comma Separated)</label>
+              <input formControlName="services" type="text" placeholder="Deep Cleaning, Maid Service, Moving" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            </div>
+        </div>
+      }
 
       <!-- Location Section -->
+      @if (activeEditorTab() === 'locations') {
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
-          <h3 class="text-base font-bold text-slate-800 mb-4">Location Details</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Country</label>
-                <select formControlName="countryCode" (change)="onCountryChange()" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
-                  @for (country of locations(); track country.code) {
-                    <option [value]="country.code">{{ country.name }}</option>
-                  }
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">City</label>
-                <select formControlName="cityCode" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
-                  @for (city of availableCities(); track city.code) {
-                    <option [value]="city.code">{{ city.name }} ({{ city.code }})</option>
-                  }
-                </select>
-            </div>
+          <div class="mb-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Business Name</p>
+            <p class="mt-1 text-lg font-bold text-slate-800">{{ form.get('title')?.value || 'Untitled Business' }}</p>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Address / Area</label>
-            <input formControlName="location" type="text" placeholder="e.g. Business Bay" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
-          </div>
-          <div class="flex items-center justify-between gap-3">
-            <p class="text-xs text-slate-500">Enter the address, then fetch the map and Google reviews from it.</p>
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h3 class="text-base font-bold text-slate-800">Location Details</h3>
+              <p class="text-sm text-slate-500 mt-1">Add one or more business branches. The first location is treated as the primary one across the existing app.</p>
+            </div>
             <button
               type="button"
-              (click)="fetchMapAndReviews()"
-              [disabled]="googleReviewLoading() || !form.get('location')?.value?.trim()"
-              class="px-4 py-2 rounded-lg bg-[#083594] hover:bg-[#062a71] text-white text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-              @if (googleReviewLoading()) {
-                Fetching...
-              } @else {
-                Fetch Map & Reviews
-              }
+              (click)="addBusinessLocation()"
+              class="shrink-0 px-4 py-2 rounded-lg bg-[#083594] hover:bg-[#062a71] text-white text-sm font-medium shadow-sm transition-colors">
+              + Add Location
             </button>
           </div>
-          <div class="mt-4 border-t border-slate-100 pt-4 space-y-3">
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Google Place ID</label>
-              <input
-                [value]="form.get('googlePlaceId')?.value || 'Click Fetch Map & Reviews after entering the address'"
-                readonly
-                class="w-full border-slate-200 rounded-lg bg-slate-50 shadow-sm p-2.5 border text-sm text-slate-700 font-mono">
-              <p class="text-xs text-slate-500 mt-1">Resolved from the address when you click the fetch button.</p>
-            </div>
 
-            @if (googleMapEmbedUrl()) {
-              <div class="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                <iframe
-                  class="w-full h-72"
-                  [src]="googleMapEmbedUrl()"
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade"
-                  title="Google map preview">
-                </iframe>
-              </div>
-            } @else if (googleReviewLoading()) {
-              <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-slate-400 text-sm">
-                Resolving Google place details...
-              </div>
-            } @else {
-              <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-slate-400 text-sm">
-                The map preview will appear here after fetching the address details.
+          <div formArrayName="businessLocations" class="space-y-5">
+            @for (locationGroup of businessLocationsArray.controls; track $index; let locationIndex = $index) {
+              <div [formGroupName]="locationIndex" class="rounded-2xl border border-slate-200 overflow-hidden bg-white">
+                <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
+                  <button type="button" (click)="toggleLocationExpanded(locationIndex)" class="flex items-center gap-3 text-left min-w-0">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-900 text-white text-xs font-bold">{{ locationIndex + 1 }}</span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-slate-800">Location {{ locationIndex + 1 }}</p>
+                      <p class="text-xs text-slate-500">{{ getLocationGroup(locationIndex).get('location')?.value || 'No address yet' }}</p>
+                    </div>
+                  </button>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      (click)="setPrimaryLocation(locationIndex)"
+                      class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      [class.bg-blue-50]="isPrimaryLocation(locationIndex)"
+                      [class.text-[#083594]]="isPrimaryLocation(locationIndex)"
+                      [class.border]="true"
+                      [class.border-blue-100]="isPrimaryLocation(locationIndex)"
+                      [class.border-slate-200]="!isPrimaryLocation(locationIndex)"
+                      [class.text-slate-600]="!isPrimaryLocation(locationIndex)"
+                      [class.hover:bg-slate-100]="!isPrimaryLocation(locationIndex)">
+                      {{ isPrimaryLocation(locationIndex) ? 'Primary' : 'Set Primary' }}
+                    </button>
+                    <button
+                      type="button"
+                      (click)="removeBusinessLocation(locationIndex)"
+                      [disabled]="businessLocationsArray.length <= 1"
+                      class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Remove location">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="toggleLocationExpanded(locationIndex)"
+                      class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                      [title]="isLocationExpanded(locationIndex) ? 'Collapse location' : 'Expand location'">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" class="shrink-0 transition-transform" [style.transform]="isLocationExpanded(locationIndex) ? 'rotate(180deg)' : 'rotate(0deg)'"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                @if (isLocationExpanded(locationIndex)) {
+                <div class="p-5 space-y-4">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-1">Country</label>
+                      <select formControlName="countryCode" (change)="onLocationCountryChange(locationIndex)" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                        @for (country of locations(); track country.code) {
+                          <option [value]="country.code">{{ country.name }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-1">City</label>
+                      <select formControlName="cityCode" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                        @for (city of getLocationCities(locationIndex); track city.code) {
+                          <option [value]="city.code">{{ city.name }} ({{ city.code }})</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Displayed Address</label>
+                    <input formControlName="location" type="text" placeholder="e.g. Business Bay" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+                  </div>
+
+                  <div class="flex flex-wrap items-start justify-between gap-3 pt-3">
+                    <div>
+                      <p class="text-base font-bold text-slate-800">Map & Reviews</p>
+                    </div>
+                    <button
+                      type="button"
+                      (click)="fetchMapAndReviews(locationIndex)"
+                      [disabled]="locationLoading(locationIndex) || !getLocationGroup(locationIndex).get('location')?.value?.trim()"
+                      class="shrink-0 px-3 py-1.5 rounded-lg border border-[#083594] text-[#083594] hover:bg-blue-50 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      @if (locationLoading(locationIndex)) {
+                        Fetching...
+                      } @else {
+                        Fetch Map & Reviews
+                      }
+                    </button>
+                  </div>
+
+                  <div class="space-y-4 pt-2">
+                    <div class="space-y-4">
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Google Place ID</label>
+                        <input
+                          formControlName="googlePlaceId"
+                          readonly
+                          class="w-full border-slate-200 rounded-lg bg-slate-50 shadow-sm p-2.5 border text-sm text-slate-700 font-mono"
+                          placeholder="Click Fetch Map & Reviews after entering the address">
+                      </div>
+
+                      <div class="pt-4">
+                      @if (locationMap(locationIndex)) {
+                        <div class="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                          <iframe
+                            class="w-full h-72"
+                            [src]="locationMap(locationIndex)"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            title="Google map preview">
+                          </iframe>
+                        </div>
+                      } @else if (locationLoading(locationIndex)) {
+                        <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-slate-400 text-sm">
+                          Resolving Google place details...
+                        </div>
+                      } @else {
+                        <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-slate-400 text-sm">
+                          The map preview will appear here after fetching the address details.
+                        </div>
+                      }
+                      </div>
+
+                      @if (locationStats(locationIndex)) {
+                        <div class="grid grid-cols-2 gap-3">
+                          <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                            <span class="text-xs font-semibold text-emerald-700 uppercase">Google Rating</span>
+                            <div class="mt-2 flex items-end gap-1">
+                              <span class="text-2xl font-bold text-slate-900">{{ locationStats(locationIndex)?.rating | number:'1.1-1' }}</span>
+                              <span class="text-sm text-slate-500 pb-0.5">/ 5</span>
+                            </div>
+                          </div>
+                          <div class="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                            <span class="text-xs font-semibold text-[#083594] uppercase">Review Count</span>
+                            <div class="mt-2 text-2xl font-bold text-slate-900">{{ locationStats(locationIndex)?.reviews }}</div>
+                          </div>
+                        </div>
+                      } @else if (locationError(locationIndex)) {
+                        <p class="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{{ locationError(locationIndex) }}</p>
+                      }
+
+                      @if (locationStats(locationIndex)?.name) {
+                        <p class="text-xs text-slate-500">Matched place: <span class="font-medium text-slate-700">{{ locationStats(locationIndex)?.name }}</span></p>
+                      }
+
+                      <div class="grid grid-cols-2 gap-4">
+                        <div>
+                          <label class="block text-sm font-medium text-slate-700 mb-1">Rating</label>
+                          <input formControlName="rating" type="number" step="0.1" class="w-full border-slate-300 rounded-lg text-sm p-2 border">
+                        </div>
+                        <div>
+                          <label class="block text-sm font-medium text-slate-700 mb-1">Reviews</label>
+                          <input formControlName="reviews" type="number" class="w-full border-slate-300 rounded-lg text-sm p-2 border">
+                        </div>
+                      </div>
+
+                      @if (isPrimaryLocation(locationIndex)) {
+                        <div class="border-t border-slate-100 pt-6">
+                          <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
+                            <div>
+                              <p class="text-base font-bold text-slate-800">Contact Numbers</p>
+                            </div>
+                            <button type="button" (click)="addLocationPhone(locationIndex)" class="shrink-0 px-3 py-1.5 rounded-lg border border-[#083594] text-[#083594] hover:bg-blue-50 text-xs font-medium transition-colors">+ Add Phone</button>
+                          </div>
+                          <div formArrayName="phones" class="space-y-2">
+                            @for (ctrl of getLocationPhonesArray(locationIndex).controls; track $index; let phoneIndex = $index) {
+                              <div class="flex gap-2">
+                                <input [formControlName]="phoneIndex" type="text" placeholder="+971..." class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2 border text-sm">
+                                <button type="button" (click)="removeLocationPhone(locationIndex, phoneIndex)" class="text-slate-400 hover:text-red-500 p-1">
+                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                              </div>
+                            }
+                          </div>
+
+                          <div class="border-t border-slate-100 pt-6 mt-6">
+                            <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
+                              <div>
+                                <p class="text-base font-bold text-slate-800">Opening Hours</p>
+                              </div>
+                              <button type="button" (click)="addLocationOpeningHourRow(locationIndex)" class="shrink-0 px-3 py-1.5 rounded-lg border border-[#083594] text-[#083594] hover:bg-blue-50 text-xs font-medium transition-colors">+ Add Row</button>
+                            </div>
+                            <div formArrayName="openingHours" class="space-y-2">
+                              @for (row of getLocationOpeningHoursArray(locationIndex).controls; track $index; let hourIndex = $index) {
+                                <div [formGroupName]="hourIndex" class="flex items-center gap-2">
+                                  <input formControlName="day" type="text" placeholder="Day" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
+                                  <input formControlName="hours" type="text" placeholder="Hours" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
+                                  <button type="button" (click)="removeLocationOpeningHourRow(locationIndex, hourIndex)" class="text-slate-400 hover:text-red-500 p-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                  </button>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+                }
               </div>
             }
           </div>
+
       </div>
+      }
 
       <!-- Contact Information -->
+      @if (activeEditorTab() === 'contact') {
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
+         <div class="mb-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Business Name</p>
+            <p class="mt-1 text-lg font-bold text-slate-800">{{ form.get('title')?.value || 'Untitled Business' }}</p>
+         </div>
          <h3 class="text-base font-bold text-slate-800 mb-4">Contact Information</h3>
          
          <div class="space-y-6 mb-6">
-            <!-- Phones -->
-            <div>
-               <div class="flex justify-between items-center mb-2">
-                  <label class="block text-sm font-medium text-slate-700">Contact Numbers</label>
-                  <button type="button" (click)="addPhone()" class="text-xs text-[#083594] font-medium hover:underline">+ Add Phone</button>
-               </div>
-               <div formArrayName="contactPhones" class="space-y-2">
-                  @for (ctrl of phonesArray.controls; track $index) {
-                     <div class="flex gap-2">
-                        <input [formControlName]="$index" type="text" placeholder="+971..." class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2 border text-sm">
-                        <button type="button" (click)="removePhone($index)" class="text-slate-400 hover:text-red-500 p-1">
-                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
-                     </div>
-                  }
-               </div>
-            </div>
-
             <!-- Social -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <div>
@@ -265,8 +425,10 @@
              </div>
          </div>
       </div>
+      }
 
       <!-- Delivery Section -->
+      @if (activeEditorTab() === 'details') {
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
           <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-3">
@@ -297,6 +459,7 @@
               }
           </div>
       </div>
+      }
 
     </div>
 
@@ -408,43 +571,6 @@
          </div>
       </div>
 
-       <!-- Stats Card -->
-       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-         <h3 class="text-base font-bold text-slate-800 mb-4">Stats</h3>
-         <div class="space-y-4">
-            @if (googleReviewStats()) {
-               <div class="grid grid-cols-2 gap-3">
-                  <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-                     <span class="text-xs font-semibold text-emerald-700 uppercase">Google Rating</span>
-                     <div class="mt-2 flex items-end gap-1">
-                        <span class="text-2xl font-bold text-slate-900">{{ googleReviewStats()?.rating | number:'1.1-1' }}</span>
-                        <span class="text-sm text-slate-500 pb-0.5">/ 5</span>
-                     </div>
-                  </div>
-                  <div class="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                     <span class="text-xs font-semibold text-[#083594] uppercase">Review Count</span>
-                     <div class="mt-2 text-2xl font-bold text-slate-900">{{ googleReviewStats()?.reviews }}</div>
-                  </div>
-               </div>
-               @if (googleReviewStats()?.name) {
-                  <p class="text-xs text-slate-500">Matched place: <span class="font-medium text-slate-700">{{ googleReviewStats()?.name }}</span></p>
-               }
-            } @else if (googleReviewError()) {
-               <p class="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{{ googleReviewError() }}</p>
-            }
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                   <label class="block text-sm font-medium text-slate-700 mb-1">Rating</label>
-                   <input formControlName="rating" type="number" step="0.1" class="w-full border-slate-300 rounded-lg text-sm p-2 border">
-                </div>
-                <div>
-                   <label class="block text-sm font-medium text-slate-700 mb-1">Reviews</label>
-                   <input formControlName="reviews" type="number" class="w-full border-slate-300 rounded-lg text-sm p-2 border">
-                </div>
-            </div>
-         </div>
-      </div>
     </div>
   </form>
 </div>
