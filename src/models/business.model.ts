@@ -2,6 +2,8 @@
 export interface BusinessLocation {
   isPrimary?: boolean;
   location: string;
+  mapQuery?: string;
+  useBusinessNameForMap?: boolean;
   googlePlaceId?: string;
   rating: number;
   reviews: number;

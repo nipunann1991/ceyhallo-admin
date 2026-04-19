@@ -237,28 +237,41 @@
                     <div>
                       <p class="text-base font-bold text-slate-800">Map & Reviews</p>
                     </div>
-                    <button
-                      type="button"
-                      (click)="fetchMapAndReviews(locationIndex)"
-                      [disabled]="locationLoading(locationIndex) || !getLocationGroup(locationIndex).get('location')?.value?.trim()"
-                      class="shrink-0 px-3 py-1.5 rounded-lg border border-[#083594] text-[#083594] hover:bg-blue-50 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      @if (locationLoading(locationIndex)) {
-                        Fetching...
-                      } @else {
-                        Fetch Map & Reviews
-                      }
-                    </button>
                   </div>
 
                   <div class="space-y-4 pt-2">
                     <div class="space-y-4">
+                      <div class="space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                          <label class="block text-sm font-medium text-slate-700">Map Location</label>
+                          <label class="inline-flex items-center gap-2 text-sm text-slate-600 cursor-pointer leading-none">
+                            <input type="checkbox" formControlName="useBusinessNameForMap" (change)="onUseBusinessNameForMapChange(locationIndex)" class="rounded border-slate-300 text-[#083594] focus:ring-[#083594]-500 align-middle">
+                            <span>Use business name</span>
+                          </label>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <input formControlName="mapQuery" type="text" placeholder="Location text for Google Maps" class="flex-1 w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+                          <button
+                            type="button"
+                            (click)="fetchMapAndReviews(locationIndex)"
+                            [disabled]="locationLoading(locationIndex) || (!getLocationGroup(locationIndex).get('mapQuery')?.value?.trim() && !getLocationGroup(locationIndex).get('location')?.value?.trim()) || (getLocationGroup(locationIndex).get('useBusinessNameForMap')?.value && !form.get('title')?.value?.trim())"
+                            class="shrink-0 px-3 py-2.5 rounded-lg border border-[#083594] text-[#083594] hover:bg-blue-50 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                            @if (locationLoading(locationIndex)) {
+                              Fetching...
+                            } @else {
+                              Fetch Map & Reviews
+                            }
+                          </button>
+                        </div>
+                      </div>
+
                       <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Google Place ID</label>
                         <input
                           formControlName="googlePlaceId"
                           readonly
                           class="w-full border-slate-200 rounded-lg bg-slate-50 shadow-sm p-2.5 border text-sm text-slate-700 font-mono"
-                          placeholder="Click Fetch Map & Reviews after entering the address">
+                          placeholder="Click Fetch Map & Reviews after adding the query">
                       </div>
 
                       <div class="pt-4">
@@ -278,7 +291,7 @@
                         </div>
                       } @else {
                         <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-slate-400 text-sm">
-                          The map preview will appear here after fetching the address details.
+                          The map preview will appear here after fetching the query.
                         </div>
                       }
                       </div>
@@ -316,46 +329,44 @@
                         </div>
                       </div>
 
-                      @if (isPrimaryLocation(locationIndex)) {
-                        <div class="border-t border-slate-100 pt-6">
+                      <div class="border-t border-slate-100 pt-6">
+                        <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
+                          <div>
+                            <p class="text-base font-bold text-slate-800">Contact Numbers</p>
+                          </div>
+                          <button type="button" (click)="addLocationPhone(locationIndex)" class="shrink-0 px-3 py-1.5 rounded-lg border border-[#083594] text-[#083594] hover:bg-blue-50 text-xs font-medium transition-colors">+ Add Phone</button>
+                        </div>
+                        <div formArrayName="phones" class="space-y-2">
+                          @for (ctrl of getLocationPhonesArray(locationIndex).controls; track $index; let phoneIndex = $index) {
+                            <div class="flex gap-2">
+                              <input [formControlName]="phoneIndex" type="text" placeholder="+971..." class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2 border text-sm">
+                              <button type="button" (click)="removeLocationPhone(locationIndex, phoneIndex)" class="text-slate-400 hover:text-red-500 p-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                              </button>
+                            </div>
+                          }
+                        </div>
+
+                        <div class="border-t border-slate-100 pt-6 mt-6">
                           <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
                             <div>
-                              <p class="text-base font-bold text-slate-800">Contact Numbers</p>
+                              <p class="text-base font-bold text-slate-800">Opening Hours</p>
                             </div>
-                            <button type="button" (click)="addLocationPhone(locationIndex)" class="shrink-0 px-3 py-1.5 rounded-lg border border-[#083594] text-[#083594] hover:bg-blue-50 text-xs font-medium transition-colors">+ Add Phone</button>
+                            <button type="button" (click)="addLocationOpeningHourRow(locationIndex)" class="shrink-0 px-3 py-1.5 rounded-lg border border-[#083594] text-[#083594] hover:bg-blue-50 text-xs font-medium transition-colors">+ Add Row</button>
                           </div>
-                          <div formArrayName="phones" class="space-y-2">
-                            @for (ctrl of getLocationPhonesArray(locationIndex).controls; track $index; let phoneIndex = $index) {
-                              <div class="flex gap-2">
-                                <input [formControlName]="phoneIndex" type="text" placeholder="+971..." class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2 border text-sm">
-                                <button type="button" (click)="removeLocationPhone(locationIndex, phoneIndex)" class="text-slate-400 hover:text-red-500 p-1">
+                          <div formArrayName="openingHours" class="space-y-2">
+                            @for (row of getLocationOpeningHoursArray(locationIndex).controls; track $index; let hourIndex = $index) {
+                              <div [formGroupName]="hourIndex" class="flex items-center gap-2">
+                                <input formControlName="day" type="text" placeholder="Day" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
+                                <input formControlName="hours" type="text" placeholder="Hours" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
+                                <button type="button" (click)="removeLocationOpeningHourRow(locationIndex, hourIndex)" class="text-slate-400 hover:text-red-500 p-1">
                                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                 </button>
                               </div>
                             }
                           </div>
-
-                          <div class="border-t border-slate-100 pt-6 mt-6">
-                            <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
-                              <div>
-                                <p class="text-base font-bold text-slate-800">Opening Hours</p>
-                              </div>
-                              <button type="button" (click)="addLocationOpeningHourRow(locationIndex)" class="shrink-0 px-3 py-1.5 rounded-lg border border-[#083594] text-[#083594] hover:bg-blue-50 text-xs font-medium transition-colors">+ Add Row</button>
-                            </div>
-                            <div formArrayName="openingHours" class="space-y-2">
-                              @for (row of getLocationOpeningHoursArray(locationIndex).controls; track $index; let hourIndex = $index) {
-                                <div [formGroupName]="hourIndex" class="flex items-center gap-2">
-                                  <input formControlName="day" type="text" placeholder="Day" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
-                                  <input formControlName="hours" type="text" placeholder="Hours" class="flex-1 border-slate-300 rounded-lg text-sm p-2 border">
-                                  <button type="button" (click)="removeLocationOpeningHourRow(locationIndex, hourIndex)" class="text-slate-400 hover:text-red-500 p-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                  </button>
-                                </div>
-                              }
-                            </div>
-                          </div>
                         </div>
-                      }
+                      </div>
                     </div>
                   </div>
                 </div>

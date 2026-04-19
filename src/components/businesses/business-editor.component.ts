@@ -20,6 +20,8 @@ interface GoogleReviewStats {
 interface BusinessLocationValue {
   isPrimary?: boolean;
   location: string;
+  mapQuery?: string;
+  useBusinessNameForMap?: boolean;
   googlePlaceId?: string;
   rating: number;
   reviews: number;
@@ -149,6 +151,8 @@ export class BusinessEditorComponent implements OnInit {
       countryCode: [data?.countryCode || 'AE', Validators.required],
       cityCode: [data?.cityCode || 'DXB', Validators.required],
       location: [data?.location || '', Validators.required],
+      mapQuery: [data?.mapQuery || ''],
+      useBusinessNameForMap: [data?.useBusinessNameForMap !== false],
       googlePlaceId: [data?.googlePlaceId || ''],
       rating: [Number(data?.rating ?? 4.8), [Validators.required, Validators.min(0), Validators.max(5)]],
       reviews: [Number(data?.reviews ?? 0), [Validators.required, Validators.min(0)]],
@@ -298,6 +302,8 @@ export class BusinessEditorComponent implements OnInit {
           ? doc.locations
           : [{
               location: doc.location || '',
+              mapQuery: doc.location || '',
+              useBusinessNameForMap: true,
               isPrimary: true,
               googlePlaceId: doc.googlePlaceId || '',
               rating: Number(doc.rating ?? 4.8),
@@ -313,6 +319,7 @@ export class BusinessEditorComponent implements OnInit {
         savedLocations.forEach((location: any) => this.addBusinessLocation(location));
         this.rebuildAllLocationCityOptions();
         savedLocations.forEach((location: any, index: number) => {
+          this.setMapPreviewFromQuery(index);
           if (location?.googlePlaceId) {
             this.fetchGoogleReviewStats(index, location.googlePlaceId, false);
           }
@@ -366,6 +373,51 @@ export class BusinessEditorComponent implements OnInit {
 
   locationMap(index: number) {
     return this.googleMapEmbedUrl()[index] || null;
+  }
+
+  onUseBusinessNameForMapChange(index: number) {
+    const locationGroup = this.getLocationGroup(index);
+    if (!locationGroup?.get('useBusinessNameForMap')?.value) {
+      return;
+    }
+
+    locationGroup.patchValue({
+      mapQuery: String(this.form.get('title')?.value || '').trim()
+    });
+  }
+
+  private buildLocationMapQuery(index: number) {
+    const locationGroup = this.getLocationGroup(index);
+    const businessName = String(this.form.get('title')?.value || '').trim();
+    const displayedAddress = String(locationGroup?.get('location')?.value || '').trim();
+    const manualQuery = String(locationGroup?.get('mapQuery')?.value || '').trim();
+    const useBusinessName = locationGroup?.get('useBusinessNameForMap')?.value !== false;
+    const cityCode = String(locationGroup?.get('cityCode')?.value || '').trim();
+    const countryCode = String(locationGroup?.get('countryCode')?.value || '').trim();
+    const cityName = this.getLocationCities(index).find(city => city.code === cityCode)?.name || cityCode;
+    const countryName = this.locations().find(country => country.code === countryCode)?.name || countryCode;
+    const primaryQuery = manualQuery || displayedAddress;
+    const includeBusinessName = useBusinessName && businessName && primaryQuery.toLowerCase() !== businessName.toLowerCase();
+
+    return [includeBusinessName ? businessName : '', primaryQuery, cityName, countryName]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  private setMapPreviewFromQuery(index: number) {
+    const query = this.buildLocationMapQuery(index);
+    if (!query) {
+      this.googleMapEmbedUrl.update(current => ({ ...current, [index]: null }));
+      return '';
+    }
+
+    const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    this.googleMapEmbedUrl.update(current => ({
+      ...current,
+      [index]: this.sanitizer.bypassSecurityTrustResourceUrl(mapSrc)
+    }));
+    return query;
   }
 
   isPrimaryLocation(index: number) {
@@ -542,7 +594,7 @@ export class BusinessEditorComponent implements OnInit {
   }
 
   async resolveGooglePlaceFromAddress(index: number, address?: string, showToast = true) {
-    const trimmedAddress = String(address ?? this.getLocationGroup(index)?.get('location')?.value ?? '').trim();
+    const trimmedAddress = String(address ?? '').trim();
     if (!trimmedAddress) {
       return null;
     }
@@ -583,13 +635,13 @@ export class BusinessEditorComponent implements OnInit {
   }
 
   async fetchMapAndReviews(index: number) {
-    const address = String(this.getLocationGroup(index)?.get('location')?.value || '').trim();
-    if (!address) {
-      this.toastService.error('Please enter an address first.');
+    const query = this.setMapPreviewFromQuery(index);
+    if (!query) {
+      this.toastService.error('Please add the business name and displayed address first.');
       return;
     }
 
-    await this.resolveGooglePlaceFromAddress(index, address, true);
+    await this.resolveGooglePlaceFromAddress(index, query, true);
   }
 
   async save() {
@@ -613,6 +665,8 @@ export class BusinessEditorComponent implements OnInit {
       .map((item: any) => ({
         isPrimary: !!item.isPrimary,
         location: String(item.location || '').trim(),
+        mapQuery: String(item.mapQuery || '').trim(),
+        useBusinessNameForMap: item.useBusinessNameForMap !== false,
         googlePlaceId: String(item.googlePlaceId || '').trim(),
         rating: Number(item.rating ?? 0),
         reviews: Number(item.reviews ?? 0),
@@ -637,8 +691,8 @@ export class BusinessEditorComponent implements OnInit {
 
     for (let index = 0; index < normalizedLocations.length; index += 1) {
       const item = normalizedLocations[index];
-      if (!item.googlePlaceId && item.location) {
-        await this.resolveGooglePlaceFromAddress(index, item.location, false);
+      if (!item.googlePlaceId) {
+        await this.fetchMapAndReviews(index);
         const refreshed = this.getLocationGroup(index)?.getRawValue();
         normalizedLocations[index] = {
           ...item,

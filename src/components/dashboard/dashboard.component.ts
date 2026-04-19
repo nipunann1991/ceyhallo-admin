@@ -54,6 +54,69 @@ export class DashboardComponent implements OnInit, OnDestroy {
   offerCount = computed(() => this.offers().length);
   eventCount = computed(() => this.events().length);
   weeklyNewsData = computed(() => this.buildWeeklyNewsData());
+  totalManagedRecords = computed(() =>
+    this.userCount() +
+    this.businessCount() +
+    this.jobCount() +
+    this.bannerCount() +
+    this.offerCount() +
+    this.eventCount() +
+    this.news().length
+  );
+  publishedContentCount = computed(() =>
+    this.businessActiveCount() +
+    this.jobActiveCount() +
+    this.bannerActiveCount() +
+    this.offerActiveCount() +
+    this.eventActiveCount() +
+    this.newsPublishedCount()
+  );
+  unpublishedContentCount = computed(() =>
+    this.businessInactiveCount() +
+    this.jobInactiveCount() +
+    this.bannerInactiveCount() +
+    this.offerInactiveCount() +
+    this.eventInactiveCount() +
+    this.newsDraftCount()
+  );
+  verifiedBusinessCount = computed(() => this.businesses().filter((b: any) => b?.isVerified === true).length);
+  featuredBusinessCount = computed(() => this.businesses().filter((b: any) => b?.isFeatured === true).length);
+  premiumBusinessCount = computed(() => this.businesses().filter((b: any) => b?.isPremium === true).length);
+  newsPublishedCount = computed(() => this.news().filter((item: any) => item?.isPublished === true).length);
+  newsDraftCount = computed(() => this.news().filter((item: any) => item?.isPublished !== true && item?.isArchived !== true).length);
+  archivedNewsCount = computed(() => this.news().filter((item: any) => item?.isArchived === true).length);
+  newsFeed14DayCount = computed(() => this.countRecentItems(this.news(), ['publishedDate', 'createdDate', 'date'], 14));
+  recentNewsCount = computed(() => this.countRecentItems(this.news(), ['publishedDate', 'createdDate', 'date'], 7));
+  recentBusinessCount = computed(() => this.countRecentItems(this.businesses(), ['publishedDate', 'createdDate', 'date'], 7));
+  recentEventCount = computed(() => this.countRecentItems(this.events(), ['publishedDate', 'createdDate', 'date'], 7));
+  activeCampaignCount = computed(() => this.bannerActiveCount() + this.offerActiveCount());
+  topBusinessCategory = computed(() => this.getBusinessDistributionData()[0] || null);
+  quickStats = computed(() => [
+    {
+      label: 'Users',
+      value: this.userCount(),
+      meta: `${this.userActiveCount()} active`,
+      tone: 'text-emerald-700',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-100'
+    },
+    {
+      label: 'Banners',
+      value: this.bannerCount(),
+      meta: `${this.bannerActiveCount()} live`,
+      tone: 'text-[#083594]',
+      bg: 'bg-[#083594]/5',
+      border: 'border-[#083594]/10'
+    },
+    {
+      label: 'Campaigns live',
+      value: this.activeCampaignCount(),
+      meta: `${this.eventActiveCount()} published events`,
+      tone: 'text-amber-700',
+      bg: 'bg-amber-50',
+      border: 'border-amber-100'
+    }
+  ]);
 
   userActiveCount = computed(() => this.users().filter((u: any) => this.isActiveStatus(u?.status)).length);
   userInactiveCount = computed(() => this.users().filter((u: any) => !this.isActiveStatus(u?.status)).length);
@@ -140,6 +203,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private isPublished(value: any): boolean {
     return value === true;
+  }
+
+  private countRecentItems(items: any[], dateFields: string[], days: number) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - Math.max(0, days - 1));
+    cutoff.setHours(0, 0, 0, 0);
+
+    return items.filter((item: any) => {
+      const rawDate = dateFields.map(field => item?.[field]).find(Boolean);
+      if (!rawDate) return false;
+      const parsed = new Date(rawDate);
+      return !Number.isNaN(parsed.getTime()) && parsed >= cutoff;
+    }).length;
   }
 
   private buildWeeklyNewsData() {

@@ -129,7 +129,7 @@ exports.resolveGooglePlaceFromAddress = functions.https.onCall(async (data, cont
   }
 
   const googleConfig = functions.config().google || {};
-  const apiKey = 'AIzaSyDTbMpP3qdCGKjoErRFnmWnH8liMndN0ew';
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || googleConfig.maps_api_key || googleConfig.api_key || googleConfig.places_key;
   if (!apiKey) {
     return { success: false, message: "Google Maps API key is not configured." };
   }
@@ -170,6 +170,7 @@ exports.resolveGooglePlaceFromAddress = functions.https.onCall(async (data, cont
     lng: location.lng ?? null
   };
 });
+
 
 async function deliverNotification(docRef, data) {
   const message = buildNotificationMessage(data);
