@@ -6,7 +6,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FirebaseService } from '../../services/firebase.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
@@ -21,6 +21,7 @@ let BusinessesComponent = class BusinessesComponent {
         this.firebaseService = inject(FirebaseService);
         this.toastService = inject(ToastService);
         this.businessStateService = inject(BusinessStateService);
+        this.route = inject(ActivatedRoute);
         this.businesses = signal([]);
         this.searchQuery = this.businessStateService.searchQuery;
         this.categories = signal([]);
@@ -105,12 +106,37 @@ let BusinessesComponent = class BusinessesComponent {
         }
     }
     ngOnInit() {
+        this.route.queryParamMap.subscribe((params) => {
+            const query = params.get('q');
+            const categoryName = params.get('category');
+            const featured = params.get('featured');
+            const verified = params.get('verified');
+            const premium = params.get('premium');
+            this.searchQuery.set(query ?? '');
+            this.typeFilter.set('all');
+            this.priceFilter.set('all');
+            this.sortBy.set('newest');
+            this.businessStateService.isFeaturedFilter.set(featured === 'true');
+            this.businessStateService.isVerifiedFilter.set(verified === 'true');
+            this.businessStateService.isPremiumFilter.set(premium === 'true');
+            this.currentPage.set(1);
+            if (categoryName) {
+                this.updateCategoryFilterByValue(categoryName);
+            }
+            else {
+                this.businessStateService.selectedCategory.set('all');
+            }
+        });
         this.firebaseService.listenToPath('businesses', (data) => {
             this.businesses.set(data);
         });
         this.firebaseService.listenToPath('taxonomy_business', (data) => {
             const filteredData = data.filter((cat) => cat.name !== 'Popular' && cat.name !== 'Featured');
             this.categories.set(filteredData);
+            const categoryName = this.route.snapshot.queryParamMap.get('category');
+            if (categoryName) {
+                this.updateCategoryFilterByValue(categoryName);
+            }
             // Update businesses with categoryId
             this.businesses.update(currentBusinesses => currentBusinesses.map(biz => {
                 const category = filteredData.find((cat) => cat.name === biz.category);

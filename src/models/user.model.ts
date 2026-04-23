@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   role: 'admin' | 'user' | 'manager';
+  allowedPages?: string[];
   status: 'active' | 'inactive' | 'blocked'; // Updated status types
   // Fields from Firebase
   createdAt?: string;

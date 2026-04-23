@@ -22,7 +22,7 @@ interface KPIConfig {
   templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  private readonly businessPalette = ['#7dc1ff', '#f97316', '#facc15', '#22c55e', '#ec4899', '#6366f1', '#0ea5e9'];
+  private readonly businessPalette = ['#7dc1ff', '#b0e0ca', '#f9e286', '#ffa86c', '#f274b2', '#9ea0ed', '#7dc8ea'];
 
   kpis = signal([
     { label: 'Users', route: '/users', countFn: () => this.userCount(), activeCountFn: () => this.userActiveCount(), inactiveCountFn: () => this.userInactiveCount(), icon: 'group', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
@@ -96,6 +96,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       label: 'Users',
       value: this.userCount(),
       meta: `${this.userActiveCount()} active`,
+      route: '/users',
       tone: 'text-emerald-700',
       bg: 'bg-emerald-50',
       border: 'border-emerald-100'
@@ -104,6 +105,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       label: 'Banners',
       value: this.bannerCount(),
       meta: `${this.bannerActiveCount()} live`,
+      route: '/banners',
       tone: 'text-[#083594]',
       bg: 'bg-[#083594]/5',
       border: 'border-[#083594]/10'
@@ -112,6 +114,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       label: 'Campaigns live',
       value: this.activeCampaignCount(),
       meta: `${this.eventActiveCount()} published events`,
+      route: '/notifications',
       tone: 'text-amber-700',
       bg: 'bg-amber-50',
       border: 'border-amber-100'

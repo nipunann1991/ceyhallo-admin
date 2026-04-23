@@ -6,6 +6,7 @@ import { AppComponent } from './src/app.component';
 const routes = [
     { path: '', redirectTo: 'login', pathMatch: 'full' },
     { path: 'login', loadComponent: () => import('./src/components/login/login.component').then(m => m.LoginComponent) },
+    { path: 'no-access', loadComponent: () => import('./src/components/no-access/no-access.component').then(m => m.NoAccessComponent) },
     { path: 'dashboard', loadComponent: () => import('./src/components/dashboard/dashboard.component').then(m => m.DashboardComponent) },
     // Businesses
     { path: 'businesses', loadComponent: () => import('./src/components/businesses/businesses.component').then(m => m.BusinessesComponent) },

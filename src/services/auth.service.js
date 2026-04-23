@@ -9,6 +9,7 @@ import { Router } from '@angular/router';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
+import { ALL_ADMIN_PAGE_PATHS } from '../constants/admin-pages';
 let AuthService = class AuthService {
     constructor() {
         this.firebaseService = inject(FirebaseService);
@@ -20,6 +21,35 @@ let AuthService = class AuthService {
         });
         this.initAuthListener();
     }
+    normalizeAllowedPages(user) {
+        if (user.role === 'admin')
+            return ALL_ADMIN_PAGE_PATHS;
+        const allowedPages = Array.isArray(user.allowedPages)
+            ? user.allowedPages.filter((page) => typeof page === 'string' && page.length > 0)
+            : [];
+        return allowedPages;
+    }
+    getAllowedPages() {
+        const user = this.currentUser();
+        if (!user)
+            return [];
+        return this.normalizeAllowedPages(user);
+    }
+    canAccessPath(path) {
+        const user = this.currentUser();
+        if (!user)
+            return false;
+        if (user.role === 'admin')
+            return true;
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        if (normalizedPath === '/no-access')
+            return true;
+        return this.getAllowedPages().some((allowedPath) => normalizedPath === allowedPath || normalizedPath.startsWith(`${allowedPath}/`));
+    }
+    getFirstAccessiblePath() {
+        const allowedPages = this.getAllowedPages();
+        return allowedPages[0] || '/no-access';
+    }
     initAuthListener() {
         onAuthStateChanged(this.firebaseService.auth, async (firebaseUser) => {
             if (firebaseUser) {
@@ -29,7 +59,11 @@ let AuthService = class AuthService {
                     const userDoc = await getDoc(userDocRef);
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
-                        this.currentUser.set({ id: firebaseUser.uid, ...userData });
+                        this.currentUser.set({
+                            id: firebaseUser.uid,
+                            ...userData,
+                            allowedPages: this.normalizeAllowedPages({ id: firebaseUser.uid, ...userData })
+                        });
                     }
                     else {
                         // Fallback: User in Auth but not in Firestore (e.g. deleted manually or create failed)
@@ -38,6 +72,7 @@ let AuthService = class AuthService {
                             email: firebaseUser.email || '',
                             name: firebaseUser.displayName || 'User',
                             role: 'user',
+                            allowedPages: [],
                             status: 'active',
                             createdAt: new Date().toISOString()
                         };
@@ -47,7 +82,7 @@ let AuthService = class AuthService {
                     }
                     // Redirect if on login page
                     if (this.router.url === '/login' || this.router.url === '/') {
-                        await this.router.navigate(['/dashboard']);
+                        await this.router.navigate([this.getFirstAccessiblePath()]);
                     }
                 }
                 catch (error) {
@@ -85,12 +120,13 @@ let AuthService = class AuthService {
                 email: email,
                 name: email.split('@')[0],
                 role: 'user',
+                allowedPages: [],
                 status: 'active',
                 createdAt: new Date().toISOString()
             };
             await setDoc(doc(this.firebaseService.firestore, 'users', credential.user.uid), newUser);
             this.currentUser.set(newUser);
-            await this.router.navigate(['/dashboard']);
+            await this.router.navigate([this.getFirstAccessiblePath()]);
         }
         catch (error) {
             throw error;

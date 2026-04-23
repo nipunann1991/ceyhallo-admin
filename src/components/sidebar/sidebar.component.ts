@@ -1,7 +1,8 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, inject, input, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { ADMIN_PAGE_OPTIONS } from '../../constants/admin-pages';
 
 @Component({
   selector: 'app-sidebar',
@@ -23,7 +24,7 @@ export class SidebarComponent {
   // Outputs  
   logout = output<void>();
   
-  currentUser = signal(this.authService.currentUser());
+  currentUser = computed(() => this.authService.currentUser());
   
 
   navLinks = [
@@ -39,7 +40,11 @@ export class SidebarComponent {
     { path: '/emails', label: 'Emails', matIcon: 'email' },
     { path: '/media', label: 'Media Library', matIcon: 'photo_library' },
     { path: '/settings', label: 'Settings', matIcon: 'settings' }
-  ];
+  ].filter((link) => ADMIN_PAGE_OPTIONS.some((page) => page.path === link.path));
+
+  visibleNavLinks() {
+    return this.navLinks.filter((link) => this.authService.canAccessPath(link.path));
+  }
 
   
   onLogout() {

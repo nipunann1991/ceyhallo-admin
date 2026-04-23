@@ -1,7 +1,7 @@
 
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FirebaseService } from '../../services/firebase.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
@@ -23,6 +23,7 @@ export class BusinessesComponent implements OnInit {
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
   businessStateService = inject(BusinessStateService);
+  route = inject(ActivatedRoute);
   
   businesses = signal<Business[]>([]);
   searchQuery = this.businessStateService.searchQuery;
@@ -126,6 +127,29 @@ export class BusinessesComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.route.queryParamMap.subscribe((params) => {
+      const query = params.get('q');
+      const categoryName = params.get('category');
+      const featured = params.get('featured');
+      const verified = params.get('verified');
+      const premium = params.get('premium');
+
+      this.searchQuery.set(query ?? '');
+      this.typeFilter.set('all');
+      this.priceFilter.set('all');
+      this.sortBy.set('newest');
+      this.businessStateService.isFeaturedFilter.set(featured === 'true');
+      this.businessStateService.isVerifiedFilter.set(verified === 'true');
+      this.businessStateService.isPremiumFilter.set(premium === 'true');
+      this.currentPage.set(1);
+
+      if (categoryName) {
+        this.updateCategoryFilterByValue(categoryName);
+      } else {
+        this.businessStateService.selectedCategory.set('all');
+      }
+    });
+
     this.firebaseService.listenToPath<Business>('businesses', (data) => {
       this.businesses.set(data);
     });
@@ -133,6 +157,10 @@ export class BusinessesComponent implements OnInit {
     this.firebaseService.listenToPath<any>('taxonomy_business', (data) => {
       const filteredData = data.filter((cat: any) => cat.name !== 'Popular' && cat.name !== 'Featured');
       this.categories.set(filteredData);
+      const categoryName = this.route.snapshot.queryParamMap.get('category');
+      if (categoryName) {
+        this.updateCategoryFilterByValue(categoryName);
+      }
       // Update businesses with categoryId
       this.businesses.update(currentBusinesses => currentBusinesses.map(biz => {
         const category = filteredData.find((cat: any) => cat.name === biz.category);

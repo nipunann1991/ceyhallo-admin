@@ -4,7 +4,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { AuthService } from './services/auth.service';
@@ -18,6 +18,13 @@ let AppComponent = class AppComponent {
         // State
         this.isSidebarOpen = signal(true);
         this.isMobile = signal(false);
+        effect(() => {
+            const user = this.authService.currentUser();
+            const isLoading = this.authService.isLoading();
+            if (!user || isLoading)
+                return;
+            this.enforceRouteAccess();
+        });
     }
     ngOnInit() {
         this.checkScreenSize();
@@ -27,6 +34,7 @@ let AppComponent = class AppComponent {
             if (this.isMobile()) {
                 this.isSidebarOpen.set(false);
             }
+            this.enforceRouteAccess();
         });
     }
     ngOnDestroy() {
@@ -49,6 +57,13 @@ let AppComponent = class AppComponent {
     }
     toggleSidebar() {
         this.isSidebarOpen.update(v => !v);
+    }
+    enforceRouteAccess() {
+        const currentUrl = this.router.url.startsWith('/#') ? this.router.url.slice(2) : this.router.url;
+        const currentPath = currentUrl.split('?')[0] || '/dashboard';
+        if (currentPath !== '/login' && !this.authService.canAccessPath(currentPath)) {
+            void this.router.navigate([this.authService.getFirstAccessiblePath()]);
+        }
     }
 };
 AppComponent = __decorate([

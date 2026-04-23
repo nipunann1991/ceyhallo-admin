@@ -10,6 +10,7 @@ import { ReactiveFormsModule, Validators } from '@angular/forms';
 import { ModalComponent } from '../ui/modal.component';
 import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
+import { ADMIN_PAGE_OPTIONS, ALL_ADMIN_PAGE_PATHS } from '../../constants/admin-pages';
 let UsersComponent = class UsersComponent {
     constructor(authService, toastService, firebaseService, fb) {
         this.authService = authService;
@@ -17,6 +18,10 @@ let UsersComponent = class UsersComponent {
         this.firebaseService = firebaseService;
         this.fb = fb;
         this.showTitle = input(true);
+        this.pageOptions = ADMIN_PAGE_OPTIONS;
+        this.selectedAllowedPages = signal([]);
+        this.activeTab = signal('users');
+        this.newUserAllowedPages = signal([]);
         this.users = signal([]);
         this.searchQuery = signal('');
         // Pagination
@@ -33,12 +38,20 @@ let UsersComponent = class UsersComponent {
             const start = (this.currentPage() - 1) * this.itemsPerPage;
             return data.slice(start, start + this.itemsPerPage);
         });
+        this.paginatedAccessUsers = computed(() => {
+            const data = this.filteredUsers().filter((user) => user.role === 'admin' || (user.allowedPages?.length || 0) > 0);
+            const start = (this.currentPage() - 1) * this.itemsPerPage;
+            return data.slice(start, start + this.itemsPerPage);
+        });
+        this.accessUsersCount = computed(() => this.filteredUsers().filter((user) => user.role === 'admin' || (user.allowedPages?.length || 0) > 0).length);
         this.showModal = signal(false);
         this.isEditing = signal(false);
         this.currentId = null;
         this.errorMessage = signal(null);
         this.showConfirmModal = signal(false);
         this.itemToDelete = signal(null);
+        this.showAccessModal = signal(false);
+        this.accessUser = signal(null);
         // Detail View
         this.selectedUser = signal(null);
         this.form = this.fb.group({
@@ -47,6 +60,12 @@ let UsersComponent = class UsersComponent {
             role: ['user', Validators.required],
             status: ['active', Validators.required],
             region: ['']
+        });
+        this.accessForm = this.fb.group({
+            name: [''],
+            email: ['', [Validators.required, Validators.email]],
+            temporaryPassword: ['', [Validators.required, Validators.minLength(6)]],
+            role: ['user', Validators.required]
         });
     }
     ngOnInit() {
@@ -75,7 +94,8 @@ let UsersComponent = class UsersComponent {
                 return {
                     ...user,
                     status: displayStatus,
-                    role: rawRole
+                    role: rawRole,
+                    allowedPages: Array.isArray(user.allowedPages) ? user.allowedPages : []
                 };
             });
             this.users.set(mappedUsers);
@@ -91,6 +111,25 @@ let UsersComponent = class UsersComponent {
         this.searchQuery.set(event.target.value);
         this.currentPage.set(1);
     }
+    setActiveTab(tab) {
+        this.activeTab.set(tab);
+        this.currentPage.set(1);
+    }
+    toggleNewUserPageAccess(path, checked) {
+        this.newUserAllowedPages.update((current) => {
+            const pages = new Set(current);
+            if (checked) {
+                pages.add(path);
+            }
+            else {
+                pages.delete(path);
+            }
+            return Array.from(pages);
+        });
+    }
+    isNewUserPageSelected(path) {
+        return this.newUserAllowedPages().includes(path);
+    }
     openModal() {
         if (!this.authService.isAdmin()) {
             alert("Unauthorized: Only admins can add users.");
@@ -100,6 +139,7 @@ let UsersComponent = class UsersComponent {
         this.currentId = null;
         this.errorMessage.set(null);
         this.form.reset({ role: 'user', status: 'active', region: '' });
+        this.selectedAllowedPages.set([]);
         this.showModal.set(true);
     }
     closeModal() {
@@ -112,6 +152,7 @@ let UsersComponent = class UsersComponent {
         this.currentId = item.id;
         this.errorMessage.set(null);
         this.form.patchValue(item);
+        this.selectedAllowedPages.set(item.role === 'admin' ? [...ALL_ADMIN_PAGE_PATHS] : [...(item.allowedPages || [])]);
         this.showModal.set(true);
     }
     viewUser(user) {
@@ -119,6 +160,105 @@ let UsersComponent = class UsersComponent {
     }
     closeViewModal() {
         this.selectedUser.set(null);
+    }
+    openAccessModal(user) {
+        if (!this.authService.isAdmin())
+            return;
+        this.accessUser.set(user);
+        this.selectedAllowedPages.set(user.role === 'admin' ? [...ALL_ADMIN_PAGE_PATHS] : [...(user.allowedPages || [])]);
+        this.showAccessModal.set(true);
+    }
+    closeAccessModal() {
+        this.showAccessModal.set(false);
+        this.accessUser.set(null);
+    }
+    togglePageAccess(path, checked) {
+        this.selectedAllowedPages.update((current) => {
+            const pages = new Set(current);
+            if (checked) {
+                pages.add(path);
+            }
+            else {
+                pages.delete(path);
+            }
+            return Array.from(pages);
+        });
+    }
+    isPageSelected(path) {
+        return this.selectedAllowedPages().includes(path);
+    }
+    getRoleLabel(role) {
+        return role === 'admin' ? 'Administrator' : role === 'manager' ? 'Manager' : 'User';
+    }
+    updateRole(role) {
+        this.form.patchValue({ role });
+        if (role === 'admin') {
+            this.selectedAllowedPages.set([...ALL_ADMIN_PAGE_PATHS]);
+        }
+        else if (this.isEditing()) {
+            this.selectedAllowedPages.set([...(this.users().find(user => user.id === this.currentId)?.allowedPages || [])]);
+        }
+        else {
+            this.selectedAllowedPages.set([]);
+        }
+    }
+    getAllowedPageLabels(user) {
+        if (!user)
+            return [];
+        const allowedPaths = user.role === 'admin' ? ALL_ADMIN_PAGE_PATHS : (user.allowedPages || []);
+        return this.pageOptions
+            .filter((page) => allowedPaths.includes(page.path))
+            .map((page) => page.label);
+    }
+    async savePageAccess() {
+        const user = this.accessUser();
+        if (!this.authService.isAdmin() || !user?.id)
+            return;
+        const allowedPages = user.role === 'admin'
+            ? [...ALL_ADMIN_PAGE_PATHS]
+            : [...this.selectedAllowedPages()];
+        try {
+            await this.firebaseService.update('users', user.id, { allowedPages });
+            this.toastService.success('Page access updated successfully.');
+            this.closeAccessModal();
+        }
+        catch (e) {
+            console.error(e);
+            this.toastService.error('Failed to update page access: ' + (e.message || 'Unknown error'));
+        }
+    }
+    async createAccessUser() {
+        if (!this.authService.isAdmin()) {
+            this.toastService.error('Unauthorized: Only admins can create dashboard users.');
+            return;
+        }
+        if (this.accessForm.invalid) {
+            this.accessForm.markAllAsTouched();
+            return;
+        }
+        const formValue = this.accessForm.getRawValue();
+        const allowedPages = formValue.role === 'admin' ? [...ALL_ADMIN_PAGE_PATHS] : [...this.newUserAllowedPages()];
+        try {
+            await this.firebaseService.callFunction('createDashboardAccessUser', {
+                name: formValue.name,
+                email: formValue.email,
+                temporaryPassword: formValue.temporaryPassword,
+                role: formValue.role,
+                allowedPages
+            });
+            this.toastService.success('Dashboard user created successfully.');
+            this.accessForm.reset({
+                name: '',
+                email: '',
+                temporaryPassword: '',
+                role: 'user'
+            });
+            this.newUserAllowedPages.set([]);
+        }
+        catch (e) {
+            console.error(e);
+            this.toastService.error('Failed to create dashboard user: ' + (e.message || 'Unknown error'));
+        }
     }
     async save() {
         if (!this.authService.isAdmin()) {
@@ -129,11 +269,17 @@ let UsersComponent = class UsersComponent {
             return;
         this.errorMessage.set(null);
         const formValue = this.form.getRawValue();
+        const normalizedAllowedPages = formValue.role === 'admin'
+            ? [...ALL_ADMIN_PAGE_PATHS]
+            : this.isEditing()
+                ? [...(this.users().find(user => user.id === this.currentId)?.allowedPages || [])]
+                : [];
         // Transform form data back to the Firebase data structure
         const dataToSave = {
             name: formValue.name,
             email: formValue.email,
             role: formValue.role,
+            allowedPages: normalizedAllowedPages,
             region: formValue.region,
             status: formValue.status, // Save status explicitly
             isVerified: formValue.status === 'active',

@@ -11,7 +11,7 @@ import * as d3 from 'd3';
 let DashboardComponent = class DashboardComponent {
     constructor(firebaseService) {
         this.firebaseService = firebaseService;
-        this.businessPalette = ['#1976d2', '#f57c00', '#ffd54f', '#455a64', '#90a4ae', '#64b5f6', '#0f766e', '#db2777'];
+        this.businessPalette = ['#7dc1ff', '#b0e0ca', '#f9e286', '#ffa86c', '#f274b2', '#9ea0ed', '#7dc8ea'];
         this.kpis = signal([
             { label: 'Users', route: '/users', countFn: () => this.userCount(), activeCountFn: () => this.userActiveCount(), inactiveCountFn: () => this.userInactiveCount(), icon: 'group', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },
             { label: 'Restaurants', route: '/businesses', countFn: () => this.restaurantCount(), activeCountFn: () => this.restaurantActiveCount(), inactiveCountFn: () => this.restaurantInactiveCount(), icon: 'restaurant', bgClass: 'bg-[#083594]/5', textClass: 'text-[#083594]' },

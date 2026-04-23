@@ -13,6 +13,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
 import { User } from '../models/user.model';
+import { ALL_ADMIN_PAGE_PATHS } from '../constants/admin-pages';
 
 @Injectable({
   providedIn: 'root'
@@ -28,6 +29,39 @@ export class AuthService {
     return this.currentUser()?.role === 'admin';
   });
 
+  private normalizeAllowedPages(user: User): string[] {
+    if (user.role === 'admin') return ALL_ADMIN_PAGE_PATHS;
+
+    const allowedPages = Array.isArray(user.allowedPages)
+      ? user.allowedPages.filter((page): page is string => typeof page === 'string' && page.length > 0)
+      : [];
+
+    return allowedPages;
+  }
+
+  getAllowedPages(): string[] {
+    const user = this.currentUser();
+    if (!user) return [];
+    return this.normalizeAllowedPages(user);
+  }
+
+  canAccessPath(path: string): boolean {
+    const user = this.currentUser();
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    if (normalizedPath === '/no-access') return true;
+    return this.getAllowedPages().some((allowedPath) =>
+      normalizedPath === allowedPath || normalizedPath.startsWith(`${allowedPath}/`)
+    );
+  }
+
+  getFirstAccessiblePath(): string {
+    const allowedPages = this.getAllowedPages();
+    return allowedPages[0] || '/no-access';
+  }
+
   constructor() {
     this.initAuthListener();
   }
@@ -42,7 +76,11 @@ export class AuthService {
           
           if (userDoc.exists()) {
             const userData = userDoc.data() as User;
-            this.currentUser.set({ id: firebaseUser.uid, ...userData });
+            this.currentUser.set({
+              id: firebaseUser.uid,
+              ...userData,
+              allowedPages: this.normalizeAllowedPages({ id: firebaseUser.uid, ...userData })
+            });
           } else {
             // Fallback: User in Auth but not in Firestore (e.g. deleted manually or create failed)
             const newUser: User = {
@@ -50,6 +88,7 @@ export class AuthService {
               email: firebaseUser.email || '',
               name: firebaseUser.displayName || 'User',
               role: 'user',
+              allowedPages: [],
               status: 'active',
               createdAt: new Date().toISOString()
             };
@@ -62,7 +101,7 @@ export class AuthService {
           
           // Redirect if on login page
           if (this.router.url === '/login' || this.router.url === '/') {
-             await this.router.navigate(['/dashboard']);
+             await this.router.navigate([this.getFirstAccessiblePath()]);
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
@@ -99,6 +138,7 @@ export class AuthService {
         email: email,
         name: email.split('@')[0],
         role: 'user', 
+        allowedPages: [],
         status: 'active',
         createdAt: new Date().toISOString()
       };
@@ -106,7 +146,7 @@ export class AuthService {
       await setDoc(doc(this.firebaseService.firestore, 'users', credential.user.uid), newUser);
       
       this.currentUser.set(newUser);
-      await this.router.navigate(['/dashboard']);
+      await this.router.navigate([this.getFirstAccessiblePath()]);
     } catch (error) {
       throw error;
     } finally {

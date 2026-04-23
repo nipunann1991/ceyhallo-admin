@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { AuthService } from './services/auth.service';
@@ -24,6 +24,15 @@ export class AppComponent implements OnInit, OnDestroy {
   
   private routerSub!: Subscription;
 
+  constructor() {
+    effect(() => {
+      const user = this.authService.currentUser();
+      const isLoading = this.authService.isLoading();
+      if (!user || isLoading) return;
+      this.enforceRouteAccess();
+    });
+  }
+
   ngOnInit() {
     this.checkScreenSize();
     window.addEventListener('resize', this.onResize.bind(this));
@@ -35,6 +44,7 @@ export class AppComponent implements OnInit, OnDestroy {
       if (this.isMobile()) {
         this.isSidebarOpen.set(false);
       }
+      this.enforceRouteAccess();
     });
   }
 
@@ -62,5 +72,13 @@ export class AppComponent implements OnInit, OnDestroy {
   toggleSidebar() {
     this.isSidebarOpen.update(v => !v);
   }
-}
 
+  private enforceRouteAccess() {
+    const currentUrl = this.router.url.startsWith('/#') ? this.router.url.slice(2) : this.router.url;
+    const currentPath = currentUrl.split('?')[0] || '/dashboard';
+
+    if (currentPath !== '/login' && !this.authService.canAccessPath(currentPath)) {
+      void this.router.navigate([this.authService.getFirstAccessiblePath()]);
+    }
+  }
+}

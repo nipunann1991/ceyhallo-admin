@@ -6,7 +6,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FirebaseService } from '../../services/firebase.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
@@ -19,6 +19,7 @@ let NewsComponent = class NewsComponent {
         this.authService = inject(AuthService);
         this.firebaseService = inject(FirebaseService);
         this.toastService = inject(ToastService);
+        this.route = inject(ActivatedRoute);
         this.newsList = signal([]);
         this.searchQuery = signal('');
         // Pagination
@@ -62,6 +63,18 @@ let NewsComponent = class NewsComponent {
         this.itemToDelete = signal(null);
     }
     ngOnInit() {
+        this.route.queryParamMap.subscribe((params) => {
+            const state = params.get('state');
+            const query = params.get('q');
+            if (state === 'all' || state === 'published' || state === 'draft' || state === 'archived') {
+                this.stateFilter.set(state);
+            }
+            else {
+                this.stateFilter.set('all');
+            }
+            this.searchQuery.set(query ?? '');
+            this.currentPage.set(1);
+        });
         this.firebaseService.listenToPath('news', (data) => {
             // Sort by publishedDate descending by default
             const sorted = data.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime());

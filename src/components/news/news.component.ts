@@ -1,7 +1,7 @@
 
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FirebaseService } from '../../services/firebase.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
@@ -21,6 +21,7 @@ export class NewsComponent implements OnInit {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
+  route = inject(ActivatedRoute);
   
   newsList = signal<News[]>([]);
   searchQuery = signal('');
@@ -95,6 +96,20 @@ export class NewsComponent implements OnInit {
   constructor() {}
 
   ngOnInit() {
+    this.route.queryParamMap.subscribe((params) => {
+      const state = params.get('state');
+      const query = params.get('q');
+
+      if (state === 'all' || state === 'published' || state === 'draft' || state === 'archived') {
+        this.stateFilter.set(state);
+      } else {
+        this.stateFilter.set('all');
+      }
+
+      this.searchQuery.set(query ?? '');
+      this.currentPage.set(1);
+    });
+
     this.firebaseService.listenToPath<News>('news', (data) => {
       // Sort by publishedDate descending by default
       const sorted = data.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime());

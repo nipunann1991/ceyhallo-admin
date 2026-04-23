@@ -171,6 +171,79 @@ exports.resolveGooglePlaceFromAddress = functions.https.onCall(async (data, cont
   };
 });
 
+exports.createDashboardAccessUser = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+  }
+
+  const requesterDoc = await admin.firestore().collection("users").doc(context.auth.uid).get();
+  const requesterRole = String(requesterDoc.data()?.role || "user").toLowerCase();
+  if (requesterRole !== "admin") {
+    throw new functions.https.HttpsError("permission-denied", "Only admins can create dashboard users.");
+  }
+
+  const email = String(data?.email || "").trim().toLowerCase();
+  const password = String(data?.temporaryPassword || "");
+  const role = ["admin", "manager", "user"].includes(String(data?.role || "").toLowerCase())
+    ? String(data.role).toLowerCase()
+    : "user";
+  const allowedPages = Array.isArray(data?.allowedPages)
+    ? data.allowedPages.filter((page) => typeof page === "string" && page.length > 0)
+    : [];
+  const name = String(data?.name || email.split("@")[0] || "User").trim();
+
+  if (!email) {
+    throw new functions.https.HttpsError("invalid-argument", "Email is required.");
+  }
+
+  if (password.length < 6) {
+    throw new functions.https.HttpsError("invalid-argument", "Temporary password must be at least 6 characters.");
+  }
+
+  try {
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: name,
+      emailVerified: false,
+      disabled: false,
+    });
+
+    await admin.firestore().collection("users").doc(userRecord.uid).set({
+      name,
+      email,
+      role,
+      allowedPages: role === "admin" ? [
+        "/dashboard",
+        "/users",
+        "/businesses",
+        "/jobs",
+        "/banners",
+        "/offers",
+        "/events",
+        "/news",
+        "/notifications",
+        "/emails",
+        "/media",
+        "/settings"
+      ] : allowedPages,
+      status: "active",
+      isVerified: true,
+      emailVerified: false,
+      createdAt: new Date().toISOString(),
+    });
+
+    return {
+      success: true,
+      uid: userRecord.uid,
+      email: userRecord.email,
+    };
+  } catch (error) {
+    console.error("createDashboardAccessUser failed:", error);
+    throw new functions.https.HttpsError("internal", error.message || "Failed to create dashboard user.");
+  }
+});
+
 
 async function deliverNotification(docRef, data) {
   const message = buildNotificationMessage(data);
