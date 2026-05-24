@@ -55,6 +55,7 @@ import { Offer } from '../../models/offer.model';
                     </div>
                     <div class="text-xs text-slate-400 mt-1 font-mono break-all">{{ offer.targetId || '' }}</div>
                     <div class="text-xs text-slate-500 mt-1" *ngIf="offer.targetName">"{{ offer.targetName }}"</div>
+                    <div class="text-xs text-slate-500 mt-1" *ngIf="offer.offerBy">Offer by: {{ offer.offerBy }}</div>
                     </div>
 
                     <div class="py-2 border-b border-slate-100">
@@ -69,6 +70,11 @@ import { Offer } from '../../models/offer.model';
                     <span class="text-slate-500 text-sm block mb-1">Published</span>
                     <div class="text-slate-900 font-medium text-sm">{{ offer.publishedDate || 'N/A' }}</div>
                     <div class="text-xs text-slate-400 mt-1">By {{ offer.publishedBy || 'Unknown' }}</div>
+                    </div>
+
+                    <div class="py-2 border-t border-slate-100">
+                    <span class="text-slate-500 text-sm block mb-1">End Date</span>
+                    <div class="text-slate-900 font-medium text-sm">{{ offer.endDate || 'No end date' }}</div>
                     </div>
                 </div>
 

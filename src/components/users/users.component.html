@@ -92,7 +92,7 @@
               <td class="px-6 py-6">
                 <div class="flex items-center gap-3 cursor-pointer group" (click)="viewUser(user)">
                   <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 text-[0.82rem] leading-[1.2rem] font-bold uppercase shrink-0">
-                    {{ user.name.slice(0,2) }}
+                    {{ getUserInitials(user.name) }}
                   </div>
                   <div class="flex items-center gap-1">
                     <span class="font-medium text-slate-900 text-base group-hover:text-orange-600 transition-colors">{{ user.name }}</span>
@@ -348,11 +348,11 @@
     <div body class="space-y-6">
        <!-- Header Section -->
        <div class="flex items-center gap-5 border-b border-slate-100 pb-6">
-          <div class="w-20 h-20 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-2xl uppercase relative overflow-hidden">
+             <div class="w-20 h-20 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-2xl uppercase relative overflow-hidden">
              @if(selectedUser()?.photoUrl) {
                 <img [src]="selectedUser()?.photoUrl" class="w-full h-full object-cover">
              } @else {
-                {{ selectedUser()?.name?.slice(0,2) }}
+                {{ getUserInitials(selectedUser()?.name) }}
              }
           </div>
           <div class="flex-1">

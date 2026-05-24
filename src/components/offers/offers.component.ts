@@ -23,6 +23,8 @@ export class OffersComponent implements OnInit {
   
   offers = signal<Offer[]>([]);
   searchQuery = signal('');
+  selectedCategory = signal('all');
+  sortMode = signal<'order-asc' | 'order-desc' | 'title-asc' | 'title-desc'>('order-asc');
 
   // Pagination
   itemsPerPage = 10;
@@ -43,16 +45,36 @@ export class OffersComponent implements OnInit {
   selectedOffer = signal<Offer | null>(null);
   showArchived = signal(false);
 
+  availableCategories = computed(() => {
+    const categories = new Set<string>();
+    this.offers().forEach(offer => {
+      if (offer.generalCategory) categories.add(offer.generalCategory);
+    });
+    return ['all', ...Array.from(categories).sort((a, b) => a.localeCompare(b))];
+  });
+
   filteredOffers = computed(() => {
     const query = this.searchQuery().toLowerCase();
     const archived = this.showArchived();
+    const selectedCategory = this.selectedCategory();
     
     // Sort logic: Order field first (asc), then fallback
-    const sorted = [...this.offers()].sort((a, b) => (a.order || 9999) - (b.order || 9999));
+    const sorted = [...this.offers()].sort((a, b) => {
+      if (this.sortMode() === 'title-asc') {
+        return (a.title || '').localeCompare(b.title || '');
+      }
+      if (this.sortMode() === 'title-desc') {
+        return (b.title || '').localeCompare(a.title || '');
+      }
+
+      const aOrder = a.order ?? 9999;
+      const bOrder = b.order ?? 9999;
+      return this.sortMode() === 'order-desc' ? bOrder - aOrder : aOrder - bOrder;
+    });
 
     if (this.isReordering()) {
       // In reorder mode, only show active
-      return sorted.filter(o => o.isActive && !o.isArchived);
+      return sorted.filter(o => o.isActive && !o.isArchived && this.matchesCategory(o, selectedCategory));
     }
 
     return sorted.filter(item => {
@@ -60,7 +82,8 @@ export class OffersComponent implements OnInit {
                           item.description?.toLowerCase().includes(query) ||
                           item.targetName?.toLowerCase().includes(query);
       const matchesArchive = archived ? item.isArchived === true : !item.isArchived;
-      return matchesQuery && matchesArchive;
+      const matchesCategory = this.matchesCategory(item, selectedCategory);
+      return matchesQuery && matchesArchive && matchesCategory;
     });
   });
 
@@ -84,6 +107,21 @@ export class OffersComponent implements OnInit {
   updateSearch(event: Event) {
     this.searchQuery.set((event.target as HTMLInputElement).value);
     this.currentPage.set(1);
+  }
+
+  updateCategoryFilter(value: string) {
+    this.selectedCategory.set(value);
+    this.currentPage.set(1);
+  }
+
+  updateSortMode(value: string) {
+    this.sortMode.set(value as 'order-asc' | 'order-desc' | 'title-asc' | 'title-desc');
+    this.currentPage.set(1);
+  }
+
+  private matchesCategory(offer: Offer, selectedCategory: string) {
+    if (selectedCategory === 'all') return true;
+    return (offer.generalCategory || '').toLowerCase() === selectedCategory.toLowerCase();
   }
 
   view(offer: Offer) {
@@ -142,10 +180,12 @@ export class OffersComponent implements OnInit {
     // Prepare updates
     const updates: Promise<void>[] = [];
     const fullList = [...this.offers()];
+    const activeCategory = this.selectedCategory();
     
     displayList.forEach((item, index) => {
+      const currentIndex = fullList.findIndex(o => o.id === item.id);
       const newOrder = index + 1;
-      if (item.order !== newOrder) {
+      if (currentIndex !== -1 && item.order !== newOrder) {
         // Optimistic update
         item.order = newOrder;
         
@@ -163,7 +203,11 @@ export class OffersComponent implements OnInit {
 
     try {
       await Promise.all(updates);
-      this.toastService.success('Offers order saved');
+      this.toastService.success(
+        activeCategory === 'all'
+          ? 'Offers order saved'
+          : `Offers order saved for ${activeCategory}`
+      );
     } catch (e) {
       console.error(e);
       this.toastService.error('Failed to save order');

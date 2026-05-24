@@ -190,6 +190,12 @@ let UsersComponent = class UsersComponent {
     getRoleLabel(role) {
         return role === 'admin' ? 'Administrator' : role === 'manager' ? 'Manager' : 'User';
     }
+    getUserInitials(name) {
+        const value = (name || '').trim();
+        if (!value)
+            return 'U';
+        return value.slice(0, 2).toUpperCase();
+    }
     updateRole(role) {
         this.form.patchValue({ role });
         if (role === 'admin') {

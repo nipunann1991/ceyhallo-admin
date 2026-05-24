@@ -49,6 +49,33 @@
         />
 
       </div>
+      <div class="sm:w-56">
+        <label class="sr-only" for="categoryFilter">Filter by general category</label>
+        <select
+          id="categoryFilter"
+          [value]="selectedCategory()"
+          (change)="updateCategoryFilter($any($event.target).value)"
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#083594]-500 focus:border-transparent text-sm bg-white">
+          @for (category of availableCategories(); track category) {
+            <option [value]="category">
+              {{ category === 'all' ? 'All General Categories' : category }}
+            </option>
+          }
+        </select>
+      </div>
+      <div class="sm:w-56">
+        <label class="sr-only" for="sortMode">Sort offers</label>
+        <select
+          id="sortMode"
+          [value]="sortMode()"
+          (change)="updateSortMode($any($event.target).value)"
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#083594]-500 focus:border-transparent text-sm bg-white">
+          <option value="order-asc">Order: Low to High</option>
+          <option value="order-desc">Order: High to Low</option>
+          <option value="title-asc">Title: A to Z</option>
+          <option value="title-desc">Title: Z to A</option>
+        </select>
+      </div>
       <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
         <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Show Archived</span>
         <button (click)="showArchived.set(!showArchived())" 
@@ -62,9 +89,25 @@
       </div>
     </div>
   } @else {
-    <div class="bg-indigo-50 border border-indigo-100 text-indigo-800 px-4 py-3 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-1">
-       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-       <p class="text-sm font-medium">Reordering Mode: Drag and drop rows to set the display order for the mobile app.</p>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 animate-in fade-in slide-in-from-top-1">
+      <div class="sm:w-72">
+        <label class="sr-only" for="categoryFilterReorder">Filter by general category</label>
+        <select
+          id="categoryFilterReorder"
+          [value]="selectedCategory()"
+          (change)="updateCategoryFilter($any($event.target).value)"
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#083594]-500 focus:border-transparent text-sm bg-white">
+          @for (category of availableCategories(); track category) {
+            <option [value]="category">
+              {{ category === 'all' ? 'All General Categories' : category }}
+            </option>
+          }
+        </select>
+      </div>
+      <div class="flex-1 bg-indigo-50 border border-indigo-100 text-indigo-800 px-4 py-3 rounded-xl flex items-center gap-3">
+         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+         <p class="text-sm font-medium">Reordering Mode: Filter by general category, then drag and drop rows to set the order within that filtered list.</p>
+      </div>
     </div>
   }
 
@@ -76,7 +119,7 @@
           <tr>
             <th class="px-6 py-4 w-16 text-center">{{ isReordering() ? 'Order' : '#' }}</th>
             <th class="px-6 py-4">Offer</th>
-            <th class="px-6 py-4">Category</th>
+            <th class="px-6 py-4">General Category</th>
             <th class="px-6 py-4">Target Link</th>
             <th class="px-6 py-4">Visibility</th>
             <th class="px-6 py-4">Status</th>
@@ -132,11 +175,6 @@
                        {{ item.generalCategory }}
                     </span>
                   }
-                  @for (cat of item.categories; track cat) {
-                    <span class="inline-flex items-center w-fit px-2.5 py-0.5 rounded font-medium bg-blue-50 text-blue-700 border border-blue-100 text-[0.82rem] leading-[1.2rem]">
-                       {{ cat }}
-                    </span>
-                  }
                 </div>
               </td>
               <td class="px-6 py-6">
@@ -151,6 +189,9 @@
                         </span>
                     } @else if (item.linkType === 'none') {
                         <span class="text-slate-400">No Link</span>
+                        @if (item.offerBy) {
+                          <span class="ml-2 text-slate-600">- {{ item.offerBy }}</span>
+                        }
                     } @else {
                         <span class="text-slate-600 font-medium">
                            {{ item.linkType | titlecase }} Tab

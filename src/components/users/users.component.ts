@@ -228,6 +228,12 @@ export class UsersComponent implements OnInit {
     return role === 'admin' ? 'Administrator' : role === 'manager' ? 'Manager' : 'User';
   }
 
+  getUserInitials(name?: string | null) {
+    const value = (name || '').trim();
+    if (!value) return 'U';
+    return value.slice(0, 2).toUpperCase();
+  }
+
   updateRole(role: User['role']) {
     this.form.patchValue({ role });
     if (role === 'admin') {

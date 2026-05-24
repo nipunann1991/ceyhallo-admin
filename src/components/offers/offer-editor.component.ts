@@ -53,12 +53,14 @@ export class OfferEditorComponent implements OnInit {
       // Link Config
       linkType: ['none', Validators.required],
       targetId: [''],
+      offerBy: [''],
       
       // External link field (used if linkType is external)
       externalUrl: [''],
       
       tag: [''],
       publishedDate: [new Date().toISOString().slice(0, 10)],
+      endDate: [''],
       publishedBy: ['']
     });
 
@@ -71,6 +73,7 @@ export class OfferEditorComponent implements OnInit {
   updateFormStateForType(type: string) {
      const targetControl = this.form.get('targetId');
      const urlControl = this.form.get('externalUrl');
+     const offerByControl = this.form.get('offerBy');
 
      // Check for business tab key
      const isBusiness = type === 'businesses';
@@ -82,20 +85,26 @@ export class OfferEditorComponent implements OnInit {
         targetControl?.enable();
         urlControl?.clearValidators();
         urlControl?.disable();
+        offerByControl?.clearValidators();
+        offerByControl?.disable();
      } else if (isExternal) {
         urlControl?.setValidators(Validators.required);
         urlControl?.enable();
         targetControl?.clearValidators();
         targetControl?.disable();
+        offerByControl?.clearValidators();
+        offerByControl?.disable();
      } else {
         // For 'none' or other category tabs that don't need a specific ID (just link to tab)
         targetControl?.clearValidators();
         targetControl?.disable();
         urlControl?.clearValidators();
         urlControl?.disable();
+        offerByControl?.enable();
      }
      targetControl?.updateValueAndValidity();
      urlControl?.updateValueAndValidity();
+     offerByControl?.updateValueAndValidity();
   }
 
   ngOnInit() {
@@ -131,6 +140,8 @@ export class OfferEditorComponent implements OnInit {
         if (doc.linkType === 'external') {
            formData.externalUrl = doc.targetId;
            formData.targetId = ''; 
+        } else if (doc.linkType === 'none') {
+           formData.offerBy = doc.offerBy || '';
         }
         
         // Ensure categories has a value if missing in old data
@@ -143,10 +154,14 @@ export class OfferEditorComponent implements OnInit {
             }
         }
 
-        // Fallback for generalCategory
-        if (!formData.generalCategory) {
-            formData.generalCategory = doc.category || 'Food';
-        }
+      // Fallback for generalCategory
+      if (!formData.generalCategory) {
+        formData.generalCategory = doc.category || 'Food';
+      }
+
+      if (formData.endDate === undefined || formData.endDate === null) {
+        formData.endDate = '';
+      }
         
         this.form.patchValue(formData);
         this.updateFormStateForType(doc.linkType);
@@ -224,6 +239,7 @@ export class OfferEditorComponent implements OnInit {
     // Normalize targetId
     let finalTargetId = raw.targetId;
     let finalTargetName = '';
+    let finalOfferBy = raw.offerBy || '';
 
     const isBusiness = linkType === 'businesses';
 
@@ -255,8 +271,10 @@ export class OfferEditorComponent implements OnInit {
       linkType: linkType,
       targetId: finalTargetId,
       targetName: finalTargetName,
+      offerBy: linkType === 'none' ? finalOfferBy : '',
       tag: raw.tag,
       publishedDate: raw.publishedDate,
+      endDate: raw.endDate || '',
       publishedBy: raw.publishedBy
     };
 

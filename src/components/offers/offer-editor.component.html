@@ -15,8 +15,8 @@
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
          <h3 class="text-base font-bold text-slate-800 mb-4">Link Target</h3>
          
-         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="md:col-span-1">
+         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
                <label class="block text-sm font-medium text-slate-700 mb-1">Link Type</label>
                <select formControlName="linkType" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
                   <option value="none">No Link (Display Only)</option>
@@ -24,23 +24,26 @@
                   <option value="businesses">Businesses</option>
                </select>
             </div>
-            
-            <div class="md:col-span-2">
-               @if (form.get('linkType')?.value === 'businesses') {
-                  <label class="block text-sm font-medium text-slate-700 mb-1">Select Business</label>
-                  <select formControlName="targetId" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
-                     <option value="" disabled>Choose a business...</option>
-                     @for (b of sortedBusinesses(); track b.id) {
-                        <option [value]="b.id">{{ b.title }}</option>
-                     }
-                  </select>
-               } @else if (form.get('linkType')?.value === 'external') {
-                  <label class="block text-sm font-medium text-slate-700 mb-1">External URL</label>
-                  <input formControlName="externalUrl" type="text" placeholder="https://..." class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
-               } @else {
-                  <p class="text-sm text-slate-400 italic">This offer will not be clickable.</p>
-               }
+
+            <div>
+               <label class="block text-sm font-medium text-slate-700 mb-1">Offer by</label>
+               <input formControlName="offerBy" type="text" placeholder="Add a short note..." class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
             </div>
+         </div>
+
+         <div>
+            @if (form.get('linkType')?.value === 'businesses') {
+               <label class="block text-sm font-medium text-slate-700 mb-1">Select Business</label>
+               <select formControlName="targetId" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                  <option value="" disabled>Choose a business...</option>
+                  @for (b of sortedBusinesses(); track b.id) {
+                     <option [value]="b.id">{{ b.title }}</option>
+                  }
+               </select>
+            } @else if (form.get('linkType')?.value === 'external') {
+               <label class="block text-sm font-medium text-slate-700 mb-1">External URL</label>
+               <input formControlName="externalUrl" type="text" placeholder="https://..." class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            }
          </div>
       </div>
 
@@ -109,6 +112,12 @@
          <div class="mb-6 pt-2 border-t border-slate-100">
             <label class="block text-sm font-medium text-slate-700 mb-2">Published Date</label>
             <input formControlName="publishedDate" type="date" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+         </div>
+
+         <div class="mb-6 pt-2 border-t border-slate-100">
+            <label class="block text-sm font-medium text-slate-700 mb-2">End Date</label>
+            <input formControlName="endDate" type="date" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            <p class="text-xs text-slate-500 mt-2">Leave blank if the offer does not expire.</p>
          </div>
 
 
@@ -181,4 +190,3 @@
     </div>
   </form>
 </div>
-
