@@ -1,10 +1,12 @@
+import { BillingType, MonetizationTargetModule, TransactionStatus } from '../enums/commerce.enums';
+
 export interface MonetizationProduct {
   id: string;
   name: string;
   description: string;
   price: number;
-  billingType: 'one-time' | 'monthly' | 'weekly';
-  targetModule: 'restaurants' | 'businesses' | 'events' | 'jobs' | 'general';
+  billingType: BillingType;
+  targetModule: MonetizationTargetModule;
   features: string[];
 }
 
@@ -14,6 +16,6 @@ export interface Transaction {
   productName: string;
   amount: number;
   date: string;
-  status: 'completed' | 'pending' | 'failed';
+  status: TransactionStatus;
   paymentMethod: string;
 }

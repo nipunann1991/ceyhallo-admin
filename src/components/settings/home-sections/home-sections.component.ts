@@ -7,31 +7,8 @@ import { ToastService } from '../../../services/toast.service';
 import { ModalComponent } from '../../ui/modal.component';
 import { ConfirmModalComponent } from '../../ui/confirm-modal.component';
 import { TaxonomyItem } from '../../../models/taxonomy.model';
-
-export interface FilterData {
-  filterType: string;
-  filterValue: string | boolean;
-}
-
-export interface HomeSection {
-  id: string;
-  title: string;
-  subTitle?: string;
-  enabled: boolean;
-  order: number;
-  
-  // Config
-  type: 'banner_carousel' | 'category_grid' | 'content_carousel' | 'content_list' | 'content_grid';
-  dataSource: 'banners' | 'categories' | 'businesses' | 'jobs' | 'events' | 'offers' | 'news';
-  template?: string; // Template Key for App
-  filterData: FilterData[];
-  linkTitle?: string;
-  linkUrl?: string;
-  linkType?: 'custom' | 'appCategory';
-  appCategory?: 'businesses' | 'events' | 'jobs' | 'news';
-  excludedCategories?: string[];
-  limit?: number; // Max number of results to show
-}
+import { FilterData, HomeSection } from '../../../models/home-section.model';
+import { HomeSectionAppCategory, HomeSectionDataSource, HomeSectionFilterType, HomeSectionLinkType, HomeSectionType } from '../../../enums/home-section.enums';
 
 @Component({
   selector: 'app-home-sections',
@@ -67,8 +44,8 @@ export class HomeSectionsComponent implements OnInit {
     this.configForm = this.fb.group({
       title: [''], // Not mandatory
       subTitle: [''],
-      type: ['content_carousel', Validators.required],
-      dataSource: ['businesses', Validators.required],
+      type: [HomeSectionType.ContentCarousel, Validators.required],
+      dataSource: [HomeSectionDataSource.Businesses, Validators.required],
       filterType: [[]],
       // We will use separate controls for different filter values to avoid collision
       filterValue_category: [[]], 
@@ -76,8 +53,8 @@ export class HomeSectionsComponent implements OnInit {
       filterValue_text: [''],
       linkTitle: ['Link URL'],
       linkUrl: [''],
-      linkType: ['custom'],
-      appCategory: ['businesses'],
+      linkType: [HomeSectionLinkType.Custom],
+      appCategory: [HomeSectionAppCategory.Businesses],
       excludedCategories: [[]],
       limit: [10, [Validators.required, Validators.min(1), Validators.max(50)]]
     });
@@ -93,7 +70,7 @@ export class HomeSectionsComponent implements OnInit {
 
     this.configForm.get('linkType')?.valueChanges.subscribe(linkType => {
       const linkUrlControl = this.configForm.get('linkUrl');
-      if (linkType === 'appCategory') {
+      if (linkType === HomeSectionLinkType.AppCategory) {
         linkUrlControl?.disable();
         this.updateLinkUrlFromAppCategory();
       } else {
@@ -102,7 +79,7 @@ export class HomeSectionsComponent implements OnInit {
     });
 
     this.configForm.get('appCategory')?.valueChanges.subscribe(() => {
-      if (this.configForm.get('linkType')?.value === 'appCategory') {
+      if (this.configForm.get('linkType')?.value === HomeSectionLinkType.AppCategory) {
         this.updateLinkUrlFromAppCategory();
       }
     });
@@ -164,11 +141,11 @@ export class HomeSectionsComponent implements OnInit {
   }
 
   getTemplateForDataSource(ds: string): string {
-    if (ds === 'banners') return 'banners';
-    if (ds === 'businesses') return 'featured_businesses';
-    if (ds === 'offers') return 'latest_offers';
-    if (ds === 'news') return 'news_feed';
-    if (ds === 'categories') return 'categories';
+    if (ds === HomeSectionDataSource.Banners) return 'banners';
+    if (ds === HomeSectionDataSource.Businesses) return 'featured_businesses';
+    if (ds === HomeSectionDataSource.Offers) return 'latest_offers';
+    if (ds === HomeSectionDataSource.News) return 'news_feed';
+    if (ds === HomeSectionDataSource.Categories) return 'categories';
     return 'featured_businesses';
   }
 
@@ -178,20 +155,20 @@ export class HomeSectionsComponent implements OnInit {
        if (s.filterData) {
          s.linkTitle = s.linkTitle || '';
          s.linkUrl = s.linkUrl || '';
-         s.linkType = s.linkType || 'custom';
-         s.appCategory = s.appCategory || 'businesses';
+         s.linkType = s.linkType || HomeSectionLinkType.Custom;
+         s.appCategory = s.appCategory || HomeSectionAppCategory.Businesses;
          return s as HomeSection;
        }
 
        // Handle legacy 'featured' value migration to 'isFeatured'
-       let currentFilterType = s.filterType || 'all';
-       if (currentFilterType === 'featured') currentFilterType = 'isFeatured';
+       let currentFilterType = s.filterType || HomeSectionFilterType.All;
+       if (currentFilterType === 'featured') currentFilterType = HomeSectionFilterType.Featured;
 
        // Convert single filterType to array
        let filterTypes: string[] = [];
        if (Array.isArray(currentFilterType)) {
           filterTypes = currentFilterType;
-       } else if (currentFilterType && currentFilterType !== 'all') {
+       } else if (currentFilterType && currentFilterType !== HomeSectionFilterType.All) {
           filterTypes = [currentFilterType];
        }
 
@@ -207,9 +184,9 @@ export class HomeSectionsComponent implements OnInit {
        }
 
        filterTypes.forEach(type => {
-          if (type === 'isFeatured') {
-             filterData.push({ filterType: 'isFeatured', filterValue: true });
-          } else if (type === 'category' || type === 'businessCategory') {
+          if (type === HomeSectionFilterType.Featured) {
+             filterData.push({ filterType: HomeSectionFilterType.Featured, filterValue: true });
+          } else if (type === HomeSectionFilterType.Category || type === HomeSectionFilterType.BusinessCategory) {
              legacyValues.forEach(val => {
                 filterData.push({ filterType: type, filterValue: val });
              });
@@ -225,8 +202,8 @@ export class HomeSectionsComponent implements OnInit {
           filterData: filterData,
           linkTitle: s.linkTitle || '',
           linkUrl: s.linkUrl || '',
-          linkType: s.linkType || 'custom',
-          appCategory: s.appCategory || 'businesses',
+          linkType: s.linkType || HomeSectionLinkType.Custom,
+          appCategory: s.appCategory || HomeSectionAppCategory.Businesses,
           limit: s.limit || 10,
           dataSource: s.dataSource,
           type: s.type,
@@ -236,30 +213,30 @@ export class HomeSectionsComponent implements OnInit {
        // Backward compatibility for very old structure without dataSource/type
        if (!newSec.dataSource) {
            if (s.id.includes('banner')) {
-              newSec.dataSource = 'banners';
-              newSec.type = 'banner_carousel';
+              newSec.dataSource = HomeSectionDataSource.Banners;
+              newSec.type = HomeSectionType.BannerCarousel;
               newSec.template = 'banners';
            } else if (s.id.includes('categories')) {
-              newSec.dataSource = 'categories';
-              newSec.type = 'category_grid';
+              newSec.dataSource = HomeSectionDataSource.Categories;
+              newSec.type = HomeSectionType.CategoryGrid;
               newSec.template = 'categories';
            } else if (s.id.includes('offer')) {
-              newSec.dataSource = 'offers';
-              newSec.type = 'content_carousel';
+              newSec.dataSource = HomeSectionDataSource.Offers;
+              newSec.type = HomeSectionType.ContentCarousel;
               newSec.template = 'latest_offers';
            } else if (s.id.includes('news')) {
-              newSec.dataSource = 'news';
-              newSec.type = 'content_list';
+              newSec.dataSource = HomeSectionDataSource.News;
+              newSec.type = HomeSectionType.ContentList;
               newSec.template = 'news_feed';
            } else if (s.id.includes('business')) {
-              newSec.dataSource = 'businesses';
-              newSec.type = 'content_carousel';
-              newSec.filterData = [{ filterType: 'isFeatured', filterValue: true }];
+              newSec.dataSource = HomeSectionDataSource.Businesses;
+              newSec.type = HomeSectionType.ContentCarousel;
+              newSec.filterData = [{ filterType: HomeSectionFilterType.Featured, filterValue: true }];
               newSec.template = 'featured_businesses';
            } else {
               // Fallback
-              newSec.dataSource = 'businesses';
-              newSec.type = 'content_carousel';
+              newSec.dataSource = HomeSectionDataSource.Businesses;
+              newSec.type = HomeSectionType.ContentCarousel;
               newSec.template = 'featured_businesses';
            }
        }
@@ -280,16 +257,16 @@ export class HomeSectionsComponent implements OnInit {
     this.configForm.reset({
       title: 'New Section',
       subTitle: '',
-      dataSource: 'businesses',
-      type: 'content_carousel',
+      dataSource: HomeSectionDataSource.Businesses,
+      type: HomeSectionType.ContentCarousel,
       filterType: [],
       filterValue_category: [],
       filterValue_businessCategory: [],
       filterValue_text: '',
       linkTitle: 'Link URL',
       linkUrl: '',
-      linkType: 'custom',
-      appCategory: 'businesses',
+      linkType: HomeSectionLinkType.Custom,
+      appCategory: HomeSectionAppCategory.Businesses,
       excludedCategories: [],
       limit: 10
     });
@@ -311,13 +288,13 @@ export class HomeSectionsComponent implements OnInit {
           if (!filterTypes.includes(fd.filterType)) {
              filterTypes.push(fd.filterType);
           }
-          if (fd.filterType === 'category') {
-             if (['businesses', 'jobs'].includes(section.dataSource)) {
+          if (fd.filterType === HomeSectionFilterType.Category) {
+             if ([HomeSectionDataSource.Businesses, HomeSectionDataSource.Jobs].includes(section.dataSource)) {
                 if (fd.filterValue) categoryValues.push(String(fd.filterValue));
              } else {
                 if (fd.filterValue) textValues.push(String(fd.filterValue));
              }
-          } else if (fd.filterType === 'businessCategory') {
+          } else if (fd.filterType === HomeSectionFilterType.BusinessCategory) {
              if (fd.filterValue) businessCategoryValues.push(String(fd.filterValue));
           }
        });
@@ -334,8 +311,8 @@ export class HomeSectionsComponent implements OnInit {
       filterValue_text: textValues.join(', '),
       linkTitle: section.linkTitle || 'Link URL',
       linkUrl: section.linkUrl || '',
-      linkType: section.linkType || 'custom',
-      appCategory: section.appCategory || 'businesses',
+      linkType: section.linkType || HomeSectionLinkType.Custom,
+      appCategory: section.appCategory || HomeSectionAppCategory.Businesses,
       excludedCategories: section.excludedCategories || [],
       limit: section.limit || 10
     });
@@ -351,28 +328,28 @@ export class HomeSectionsComponent implements OnInit {
     // Construct FilterData
     const filterData: FilterData[] = [];
 
-    if (filterTypes.includes('isFeatured')) {
-       filterData.push({ filterType: 'isFeatured', filterValue: true });
+    if (filterTypes.includes(HomeSectionFilterType.Featured)) {
+       filterData.push({ filterType: HomeSectionFilterType.Featured, filterValue: true });
     }
 
-    if (filterTypes.includes('category')) {
-       if (['businesses', 'jobs'].includes(val.dataSource)) {
+    if (filterTypes.includes(HomeSectionFilterType.Category)) {
+       if ([HomeSectionDataSource.Businesses, HomeSectionDataSource.Jobs].includes(val.dataSource)) {
           const cats = (val.filterValue_category || []) as string[];
           cats.forEach(cat => {
-             filterData.push({ filterType: 'category', filterValue: cat });
+             filterData.push({ filterType: HomeSectionFilterType.Category, filterValue: cat });
           });
        } else {
           const textValue = (val.filterValue_text || '') as string;
           textValue.split(',').map(s => s.trim()).filter(s => s).forEach(val => {
-             filterData.push({ filterType: 'category', filterValue: val });
+             filterData.push({ filterType: HomeSectionFilterType.Category, filterValue: val });
           });
        }
     }
 
-    if (filterTypes.includes('businessCategory')) {
+    if (filterTypes.includes(HomeSectionFilterType.BusinessCategory)) {
        const busCats = (val.filterValue_businessCategory || []) as string[];
        busCats.forEach(cat => {
-          filterData.push({ filterType: 'businessCategory', filterValue: cat });
+          filterData.push({ filterType: HomeSectionFilterType.BusinessCategory, filterValue: cat });
        });
     }
 
@@ -442,7 +419,7 @@ export class HomeSectionsComponent implements OnInit {
     if (!Array.isArray(currentTypes)) currentTypes = currentTypes ? [currentTypes] : [];
 
     if (checkbox.checked) {
-      if (type === 'all') {
+      if (type === HomeSectionFilterType.All) {
         currentTypes = [];
       } else {
         if (!currentTypes.includes(type)) {
@@ -457,7 +434,7 @@ export class HomeSectionsComponent implements OnInit {
 
   isFilterTypeSelected(type: string): boolean {
     const currentTypes = this.configForm.get('filterType')?.value;
-    if (type === 'all') {
+    if (type === HomeSectionFilterType.All) {
       return !currentTypes || currentTypes.length === 0;
     }
     if (Array.isArray(currentTypes)) {
@@ -470,9 +447,9 @@ export class HomeSectionsComponent implements OnInit {
     if (!filterData || filterData.length === 0) return 'All';
     
     return filterData.map(fd => {
-      if (fd.filterType === 'isFeatured') return 'Featured';
-      if (fd.filterType === 'category') return 'Category';
-      if (fd.filterType === 'businessCategory') return 'Business Category';
+      if (fd.filterType === HomeSectionFilterType.Featured) return 'Featured';
+      if (fd.filterType === HomeSectionFilterType.Category) return 'Category';
+      if (fd.filterType === HomeSectionFilterType.BusinessCategory) return 'Business Category';
       return fd.filterType;
     }).join(' + ');
   }
@@ -491,9 +468,9 @@ export class HomeSectionsComponent implements OnInit {
     return values.join(', ');
   }
 
-  onCategoryChange(event: Event, categoryName: string, type: 'category' | 'businessCategory') {
+  onCategoryChange(event: Event, categoryName: string, type: HomeSectionFilterType.Category | HomeSectionFilterType.BusinessCategory) {
     const checkbox = event.target as HTMLInputElement;
-    const controlName = type === 'category' ? 'filterValue_category' : 'filterValue_businessCategory';
+    const controlName = type === HomeSectionFilterType.Category ? 'filterValue_category' : 'filterValue_businessCategory';
     const currentValues = (this.configForm.get(controlName)?.value || []) as string[];
     
     let newValues: string[] = [];
@@ -510,7 +487,7 @@ export class HomeSectionsComponent implements OnInit {
 
     this.configForm.get(controlName)?.setValue(newValues);
 
-    if (type === 'category') {
+    if (type === HomeSectionFilterType.Category) {
         this.updateLinkUrlWithFilters(newValues);
     }
   }
@@ -537,8 +514,8 @@ export class HomeSectionsComponent implements OnInit {
     this.configForm.get('linkUrl')?.setValue(newUrl);
   }
 
-  isCategorySelected(categoryName: string, type: 'category' | 'businessCategory'): boolean {
-    const controlName = type === 'category' ? 'filterValue_category' : 'filterValue_businessCategory';
+  isCategorySelected(categoryName: string, type: HomeSectionFilterType.Category | HomeSectionFilterType.BusinessCategory): boolean {
+    const controlName = type === HomeSectionFilterType.Category ? 'filterValue_category' : 'filterValue_businessCategory';
     const currentValues = this.configForm.get(controlName)?.value;
     if (Array.isArray(currentValues)) {
       return currentValues.includes(categoryName);
@@ -653,8 +630,8 @@ export class HomeSectionsComponent implements OnInit {
         filterData: s.filterData || [],
         linkTitle: s.linkTitle || '',
         linkUrl: s.linkUrl || '',
-        linkType: s.linkType || 'custom',
-        appCategory: s.appCategory || 'businesses',
+        linkType: s.linkType || HomeSectionLinkType.Custom,
+        appCategory: s.appCategory || HomeSectionAppCategory.Businesses,
         excludedCategories: s.excludedCategories || [],
         limit: s.limit || 10
       }));

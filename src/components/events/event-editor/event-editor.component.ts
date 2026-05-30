@@ -98,13 +98,20 @@ export class EventEditorComponent implements OnInit {
 
   ngOnInit() {
     this.loadDropdownData();
+    this.initializeEditor();
+  }
 
+  private initializeEditor() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.isEditing.set(true);
-      this.currentId = id;
-      this.loadData(id);
+      this.enableEditMode(id);
     }
+  }
+
+  private enableEditMode(id: string) {
+    this.isEditing.set(true);
+    this.currentId = id;
+    this.loadData(id);
   }
 
   loadDropdownData() {

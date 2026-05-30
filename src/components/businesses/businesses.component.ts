@@ -127,6 +127,13 @@ export class BusinessesComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.initializeQueryFilters();
+    this.loadBusinesses();
+    this.loadTaxonomies();
+    this.loadCountries();
+  }
+
+  private initializeQueryFilters() {
     this.route.queryParamMap.subscribe((params) => {
       const query = params.get('q');
       const categoryName = params.get('category');
@@ -149,11 +156,15 @@ export class BusinessesComponent implements OnInit {
         this.businessStateService.selectedCategory.set('all');
       }
     });
+  }
 
+  private loadBusinesses() {
     this.firebaseService.listenToPath<Business>('businesses', (data) => {
       this.businesses.set(data);
     });
+  }
 
+  private loadTaxonomies() {
     this.firebaseService.listenToPath<any>('taxonomy_business', (data) => {
       const filteredData = data.filter((cat: any) => cat.name !== 'Popular' && cat.name !== 'Featured');
       this.categories.set(filteredData);
@@ -161,13 +172,14 @@ export class BusinessesComponent implements OnInit {
       if (categoryName) {
         this.updateCategoryFilterByValue(categoryName);
       }
-      // Update businesses with categoryId
       this.businesses.update(currentBusinesses => currentBusinesses.map(biz => {
         const category = filteredData.find((cat: any) => cat.name === biz.category);
         return category ? { ...biz, categoryId: category.id } : biz;
       }));
     });
+  }
 
+  private loadCountries() {
     this.firebaseService.listenToPath<any>('countries', (data) => {
       const mappedLocations = data.map(country => {
         let citiesArray: {code: string, name: string}[] = [];

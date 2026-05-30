@@ -1,11 +1,13 @@
+import { PushNotificationStatus, PushNotificationTargetType } from '../enums/notification.enums';
+
 export interface PushNotification {
   id: string;
   title: string;
   body: string;
   imageUrl?: string;
-  targetType: 'topic' | 'token';
+  targetType: PushNotificationTargetType;
   targetValue: string; // e.g., 'general' for all users, or specific FCM token
-  status: 'pending' | 'scheduled' | 'sending' | 'sent' | 'failed';
+  status: PushNotificationStatus;
   createdAt: string;
   sentAt?: string;
   scheduledAt?: string;

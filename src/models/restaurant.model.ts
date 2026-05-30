@@ -1,4 +1,7 @@
 
+import { ActionType } from '../enums/content.enums';
+import { BusinessContact, OpeningHour } from './common.model';
+
 export interface Restaurant {
   id: string;
   title: string;
@@ -19,18 +22,12 @@ export interface Restaurant {
   tags: string[];
   gallery: string[];
   menuUrl?: string;
-  openingHours?: { day: string; hours: string }[];
-  
-  contact?: {
-    phones?: string[];
-    website?: string;
-    instagram?: string;
-    facebook?: string;
-    tiktok?: string;
-  };
+  openingHours?: OpeningHour[];
+
+  contact?: Partial<BusinessContact>;
 
   // Booking & Action
-  actionType?: 'whatsapp' | 'call' | 'none';
+  actionType?: ActionType;
   actionTarget?: string;
   isArchived?: boolean;
 }

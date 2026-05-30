@@ -1,4 +1,7 @@
 
+import { ActionType } from '../enums/content.enums';
+import { BusinessContact, DeliveryInfo, OpeningHour } from './common.model';
+
 export interface BusinessLocation {
   isPrimary?: boolean;
   location: string;
@@ -10,7 +13,7 @@ export interface BusinessLocation {
   countryCode: string;
   cityCode: string;
   phones?: string[];
-  openingHours?: { day: string; hours: string }[];
+  openingHours?: OpeningHour[];
 }
 
 export interface Business {
@@ -38,22 +41,16 @@ export interface Business {
   isDeliveryAvailable?: boolean;
   services: string[];
   gallery: string[];
-  openingHours: { day: string; hours: string }[];
-  deliveryInfo?: { location: string; charge: string }[];
-  
-  contact: {
-    phones: string[];
-    website: string;
-    instagram?: string;
-    facebook?: string;
-    tiktok?: string;
-  };
+  openingHours: OpeningHour[];
+  deliveryInfo?: DeliveryInfo[];
+
+  contact: BusinessContact;
   
   createdDate?: string;
   publishedDate?: string;
 
   // Booking & Action
-  actionType?: 'whatsapp' | 'call' | 'none';
+  actionType?: ActionType;
   actionTarget?: string;
   isArchived?: boolean;
   order?: number;

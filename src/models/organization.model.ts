@@ -1,4 +1,7 @@
 
+import { ActionType } from '../enums/content.enums';
+import { OrganizationContact } from './common.model';
+
 export interface Organization {
   id: string;
   title: string;
@@ -16,19 +19,12 @@ export interface Organization {
   tags: string[];
   gallery: string[];
   
-  contact: {
-    phones: string[];
-    website: string;
-    email?: string;
-    instagram?: string;
-    facebook?: string;
-    tiktok?: string;
-  };
+  contact: OrganizationContact;
   
   createdDate?: string;
   publishedDate?: string;
 
   // Booking & Action
-  actionType?: 'whatsapp' | 'call' | 'email' | 'none';
+  actionType?: ActionType;
   actionTarget?: string;
 }

@@ -51,15 +51,27 @@ export class BannerEditorComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.initializeEditor();
+  }
+
+  private initializeEditor() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.isEditing.set(true);
-      this.currentId = id;
-      this.loadData(id);
-    } else {
-      // Init state for new banners
-      this.updateTargetIdState('none');
+      this.enableEditMode(id);
+      return;
     }
+
+    this.initializeNewBanner();
+  }
+
+  private enableEditMode(id: string) {
+    this.isEditing.set(true);
+    this.currentId = id;
+    this.loadData(id);
+  }
+
+  private initializeNewBanner() {
+    this.updateTargetIdState('none');
   }
 
   updateTargetIdState(type: string) {

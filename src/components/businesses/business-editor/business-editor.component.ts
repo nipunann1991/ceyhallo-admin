@@ -8,6 +8,8 @@ import { FirebaseService } from '../../../services/firebase.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { RichTextEditorComponent } from '../../ui/rich-text-editor.component';
+import { BusinessLocation } from '../../../models/business.model';
+import { BusinessContact, DeliveryInfo, OpeningHour } from '../../../models/common.model';
 import { TaxonomyItem } from '../../../models/taxonomy.model';
 import { optimizeImage } from '../../../utils/image-optimizer';
 
@@ -15,20 +17,6 @@ interface GoogleReviewStats {
   rating: number;
   reviews: number;
   name?: string;
-}
-
-interface BusinessLocationValue {
-  isPrimary?: boolean;
-  location: string;
-  mapQuery?: string;
-  useBusinessNameForMap?: boolean;
-  googlePlaceId?: string;
-  rating: number;
-  reviews: number;
-  countryCode: string;
-  cityCode: string;
-  phones?: string[];
-  openingHours?: { day: string; hours: string }[];
 }
 
 @Component({
@@ -145,7 +133,7 @@ export class BusinessEditorComponent implements OnInit {
     this.deliveryInfoArray.removeAt(index);
   }
 
-  private createBusinessLocationGroup(data?: Partial<BusinessLocationValue>) {
+  private createBusinessLocationGroup(data?: Partial<BusinessLocation>) {
     return this.fb.group({
       isPrimary: [!!data?.isPrimary],
       countryCode: [data?.countryCode || 'AE', Validators.required],
@@ -157,14 +145,14 @@ export class BusinessEditorComponent implements OnInit {
       rating: [Number(data?.rating ?? 4.8), [Validators.required, Validators.min(0), Validators.max(5)]],
       reviews: [Number(data?.reviews ?? 0), [Validators.required, Validators.min(0)]],
       phones: this.fb.array((data?.phones || []).map(phone => this.fb.control(phone))),
-      openingHours: this.fb.array((data?.openingHours || []).map(item => this.fb.group({
+      openingHours: this.fb.array((data?.openingHours || []).map((item: OpeningHour) => this.fb.group({
         day: [item.day || '', Validators.required],
         hours: [item.hours || '', Validators.required]
       })))
     });
   }
 
-  addBusinessLocation(data?: Partial<BusinessLocationValue>) {
+  addBusinessLocation(data?: Partial<BusinessLocation>) {
     const index = this.businessLocationsArray.length;
     const shouldBePrimary = data?.isPrimary ?? index === 0;
     this.businessLocationsArray.push(this.createBusinessLocationGroup({ ...data, isPrimary: shouldBePrimary }));
@@ -225,45 +213,60 @@ export class BusinessEditorComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.firebaseService.listenToPath<TaxonomyItem>('taxonomy_business', (data) => {
-        this.categories.set(data.sort((a,b) => a.name.localeCompare(b.name)));
-    });
+    this.loadTaxonomies();
+    this.loadCountries();
+    this.initializeEditorMode();
+  }
 
+  private loadTaxonomies() {
+    this.firebaseService.listenToPath<TaxonomyItem>('taxonomy_business', (data) => {
+      this.categories.set(data.sort((a, b) => a.name.localeCompare(b.name)));
+    });
+  }
+
+  private loadCountries() {
     this.firebaseService.listenToPath<any>('countries', (data) => {
-      const mappedLocations = data.map(country => {
-        let citiesArray: {code: string, name: string}[] = [];
-        if (country.cities) {
-          if (Array.isArray(country.cities)) {
-             citiesArray = country.cities;
-          } else {
-             citiesArray = Object.keys(country.cities).map(key => ({
-               code: key,
-               name: country.cities[key].name || country.cities[key] 
-             }));
-          }
-        }
-        return { code: country.id, name: country.name, cities: citiesArray };
-      });
-      this.locations.set(mappedLocations);
+      this.locations.set(this.mapCountriesToLocations(data));
       this.rebuildAllLocationCityOptions();
     });
+  }
 
+  private mapCountriesToLocations(data: any[]) {
+    return data.map(country => {
+      let citiesArray: { code: string; name: string }[] = [];
+      if (country.cities) {
+        if (Array.isArray(country.cities)) {
+          citiesArray = country.cities;
+        } else {
+          citiesArray = Object.keys(country.cities).map(key => ({
+            code: key,
+            name: country.cities[key].name || country.cities[key]
+          }));
+        }
+      }
+
+      return { code: country.id, name: country.name, cities: citiesArray };
+    });
+  }
+
+  private initializeEditorMode() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEditing.set(true);
       this.currentId = id;
       this.loadData(id);
       window.scrollTo(0, 0);
-    } else {
-      this.addBusinessLocation({
-        isPrimary: true,
-        phones: [''],
-        openingHours: [
-          { day: 'Mon - Fri', hours: '9:00 AM - 6:00 PM' },
-          { day: 'Sat - Sun', hours: 'Closed' }
-        ]
-      });
+      return;
     }
+
+    this.addBusinessLocation({
+      isPrimary: true,
+      phones: [''],
+      openingHours: [
+        { day: 'Mon - Fri', hours: '9:00 AM - 6:00 PM' },
+        { day: 'Sat - Sun', hours: 'Closed' }
+      ]
+    });
   }
 
   async loadData(id: string) {
@@ -661,7 +664,7 @@ export class BusinessEditorComponent implements OnInit {
       return;
     }
 
-    const normalizedLocations = raw.businessLocations
+    const normalizedLocations: BusinessLocation[] = raw.businessLocations
       .map((item: any) => ({
         isPrimary: !!item.isPrimary,
         location: String(item.location || '').trim(),
@@ -679,10 +682,10 @@ export class BusinessEditorComponent implements OnInit {
                 day: String(hour?.day || '').trim(),
                 hours: String(hour?.hours || '').trim()
               }))
-              .filter((hour: { day: string; hours: string }) => hour.day || hour.hours)
+              .filter((hour: OpeningHour) => hour.day || hour.hours)
           : []
       }))
-      .filter((item: BusinessLocationValue) => item.location);
+      .filter((item: BusinessLocation) => item.location);
 
     if (normalizedLocations.length === 0) {
       this.toastService.error('Please add at least one valid business location.');
@@ -703,11 +706,19 @@ export class BusinessEditorComponent implements OnInit {
       }
     }
 
-    const primaryIndex = Math.max(0, normalizedLocations.findIndex((item: BusinessLocationValue) => item.isPrimary));
-    normalizedLocations.forEach((item: BusinessLocationValue, index: number) => {
+    const primaryIndex = Math.max(0, normalizedLocations.findIndex((item: BusinessLocation) => item.isPrimary));
+    normalizedLocations.forEach((item: BusinessLocation, index: number) => {
       item.isPrimary = index === primaryIndex;
     });
     const primaryLocation = normalizedLocations[primaryIndex];
+
+    const contact: BusinessContact = {
+      phones: primaryLocation.phones || [],
+      website: raw.contactWebsite,
+      instagram: raw.contactInstagram,
+      facebook: raw.contactFacebook,
+      tiktok: raw.contactTiktok
+    };
 
     const dataToSave = {
       title: raw.title,
@@ -732,15 +743,9 @@ export class BusinessEditorComponent implements OnInit {
       isDeliveryAvailable: raw.isDeliveryAvailable,
       isArchived: raw.isArchived,
       services: raw.services ? raw.services.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
-      contact: {
-        phones: primaryLocation.phones || [],
-        website: raw.contactWebsite,
-        instagram: raw.contactInstagram,
-        facebook: raw.contactFacebook,
-        tiktok: raw.contactTiktok
-      },
+      contact,
       openingHours: primaryLocation.openingHours || [],
-      deliveryInfo: raw.deliveryInfo,
+      deliveryInfo: raw.deliveryInfo as DeliveryInfo[],
       actionType: raw.actionType,
       actionTarget: raw.actionTarget
     };

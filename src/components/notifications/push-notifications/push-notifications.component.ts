@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FirebaseService } from '../../../services/firebase.service';
 import { PushNotification } from '../../../models/push-notification.model';
+import { PushNotificationStatus } from '../../../enums/notification.enums';
 import { PaginationControlsComponent } from '../../ui/pagination-controls.component';
 import { ConfirmModalComponent } from '../../ui/confirm-modal.component';
 import { ToastService } from '../../../services/toast.service';
@@ -24,14 +25,14 @@ export class PushNotificationsComponent implements OnInit, OnDestroy {
   showDeleteConfirm = signal(false);
   notificationToDuplicate = signal<PushNotification | null>(null);
   notificationToDelete = signal<PushNotification | null>(null);
-  statusFilter = signal<'all' | PushNotification['status']>('all');
-  statusOptions: Array<{ label: string; value: 'all' | PushNotification['status'] }> = [
+  statusFilter = signal<'all' | PushNotificationStatus>('all');
+  statusOptions: Array<{ label: string; value: 'all' | PushNotificationStatus }> = [
     { label: 'All Statuses', value: 'all' },
-    { label: 'Pending', value: 'pending' },
-    { label: 'Scheduled', value: 'scheduled' },
-    { label: 'Sending', value: 'sending' },
-    { label: 'Sent', value: 'sent' },
-    { label: 'Failed', value: 'failed' }
+    { label: 'Pending', value: PushNotificationStatus.Pending },
+    { label: 'Scheduled', value: PushNotificationStatus.Scheduled },
+    { label: 'Sending', value: PushNotificationStatus.Sending },
+    { label: 'Sent', value: PushNotificationStatus.Sent },
+    { label: 'Failed', value: PushNotificationStatus.Failed }
   ];
   
   notifications = signal<PushNotification[]>([]);
@@ -55,7 +56,7 @@ export class PushNotificationsComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.routeSub = this.route.queryParamMap.subscribe(params => {
-      const status = params.get('status') as 'all' | PushNotification['status'] | null;
+      const status = params.get('status') as 'all' | PushNotificationStatus | null;
       const normalizedStatus = status && this.statusOptions.some(option => option.value === status) ? status : 'all';
       this.statusFilter.set(normalizedStatus);
       this.currentPage.set(1);
@@ -73,7 +74,7 @@ export class PushNotificationsComponent implements OnInit, OnDestroy {
   }
 
   onStatusFilterChange(value: string) {
-    const normalizedValue = (this.statusOptions.some(option => option.value === value) ? value : 'all') as 'all' | PushNotification['status'];
+    const normalizedValue = (this.statusOptions.some(option => option.value === value) ? value : 'all') as 'all' | PushNotificationStatus;
     this.statusFilter.set(normalizedValue);
     this.currentPage.set(1);
     void this.router.navigate([], {
@@ -115,7 +116,7 @@ export class PushNotificationsComponent implements OnInit, OnDestroy {
       imageUrl: note.imageUrl,
       targetType: note.targetType,
       targetValue: note.targetValue,
-      status: 'pending',
+      status: PushNotificationStatus.Pending,
       createdAt: new Date().toISOString(),
       data: note.data
     };

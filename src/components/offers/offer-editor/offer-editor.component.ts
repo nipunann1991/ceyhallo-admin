@@ -108,27 +108,42 @@ export class OfferEditorComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Load dropdown data
+    this.loadDropdownData();
+    this.initializeEditor();
+  }
+
+  private loadDropdownData() {
     this.firebaseService.listenToPath<any>('taxonomy_business', (data) => {
-      const filteredData = data.filter((cat: any) => 
-        cat.name !== 'Popular' && 
-        cat.name !== 'Featured' && 
+      const filteredData = data.filter((cat: any) =>
+        cat.name !== 'Popular' &&
+        cat.name !== 'Featured' &&
         cat.name !== 'Food'
       );
       this.categories.set(filteredData.sort((a: any, b: any) => a.name.localeCompare(b.name)));
     });
 
     this.firebaseService.listenToPath<any>('businesses', (data) => this.businesses.set(data));
+  }
 
+  private initializeEditor() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.isEditing.set(true);
-      this.currentId = id;
-      this.loadData(id);
-    } else {
-      this.form.patchValue({ publishedBy: this.authService.currentUser()?.name || 'Admin' });
-      this.updateFormStateForType('none');
+      this.enableEditMode(id);
+      return;
     }
+
+    this.initializeNewOffer();
+  }
+
+  private enableEditMode(id: string) {
+    this.isEditing.set(true);
+    this.currentId = id;
+    this.loadData(id);
+  }
+
+  private initializeNewOffer() {
+    this.form.patchValue({ publishedBy: this.authService.currentUser()?.name || 'Admin' });
+    this.updateFormStateForType('none');
   }
 
   async loadData(id: string) {

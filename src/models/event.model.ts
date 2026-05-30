@@ -1,4 +1,6 @@
 
+import { EventActionType, EventOrganizerType } from '../enums/content.enums';
+
 export interface AppEvent {
   id: string;
   title: string;
@@ -13,7 +15,7 @@ export interface AppEvent {
   // Organizer Info
   organizer: string; // Display Name (Snapshot)
   organizerId?: string; // Linked Entity ID
-  organizerType?: 'restaurant' | 'grocery' | 'business' | 'organization' | 'custom';
+  organizerType?: EventOrganizerType;
 
   category: string;
   isFeatured: boolean;
@@ -26,7 +28,7 @@ export interface AppEvent {
   gallery?: string[];
   
   // Action / Registration
-  actionType?: 'external' | 'whatsapp' | 'call' | 'none';
+  actionType?: EventActionType;
   actionTarget?: string;
   isArchived?: boolean;
 }

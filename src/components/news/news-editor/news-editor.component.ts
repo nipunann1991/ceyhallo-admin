@@ -64,16 +64,29 @@ export class NewsEditorComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.initializeEditor();
+  }
+
+  private initializeEditor() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.isEditing.set(true);
-      this.currentId = id;
-      this.loadData(id);
-    } else {
-        this.form.patchValue({
-            author: this.authService.currentUser()?.name || 'Admin'
-        });
+      this.enableEditMode(id);
+      return;
     }
+
+    this.initializeNewNews();
+  }
+
+  private enableEditMode(id: string) {
+    this.isEditing.set(true);
+    this.currentId = id;
+    this.loadData(id);
+  }
+
+  private initializeNewNews() {
+    this.form.patchValue({
+      author: this.authService.currentUser()?.name || 'Admin'
+    });
   }
 
   async loadData(id: string) {
