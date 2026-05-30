@@ -1,0 +1,207 @@
+<div class="max-w-3xl pb-10">
+  <div class="flex items-center gap-4 mb-6">
+    <a routerLink="/notifications" class="p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <h1 class="text-2xl font-bold text-slate-800">Compose Notification</h1>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="send()" class="space-y-6">
+    
+    <!-- Target Section -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+       <h3 class="text-base font-bold text-slate-800 mb-4">Audience</h3>
+       
+       <div class="flex gap-4 mb-4">
+          <button type="button" (click)="setTargetAll()" class="flex-1 py-3 px-4 rounded-lg border text-left transition-all relative"
+            [class.border-blue-500]="targetType === 'topic' && form.get('targetValue')?.value === 'general'"
+            [class.bg-blue-50]="targetType === 'topic' && form.get('targetValue')?.value === 'general'"
+            [class.border-slate-200]="targetType !== 'topic' || form.get('targetValue')?.value !== 'general'">
+             <div class="flex items-center gap-2 font-semibold text-slate-800">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                All Users
+             </div>
+             <p class="text-xs text-slate-500 mt-1">Sends to 'general' topic.</p>
+             <div class="absolute top-3 right-3" *ngIf="targetType === 'topic' && form.get('targetValue')?.value === 'general'">
+                <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+             </div>
+          </button>
+
+          <button type="button" (click)="form.patchValue({ targetType: 'topic', targetValue: '' })" class="flex-1 py-3 px-4 rounded-lg border text-left transition-all relative"
+             [class.border-blue-500]="targetType === 'topic' && form.get('targetValue')?.value !== 'general'"
+             [class.bg-blue-50]="targetType === 'topic' && form.get('targetValue')?.value !== 'general'">
+             <div class="flex items-center gap-2 font-semibold text-slate-800">
+                <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                Custom Topic
+             </div>
+             <p class="text-xs text-slate-500 mt-1">Specific interest group.</p>
+          </button>
+
+           <button type="button" (click)="form.patchValue({ targetType: 'token', targetValue: '' })" class="flex-1 py-3 px-4 rounded-lg border text-left transition-all relative"
+             [class.border-blue-500]="targetType === 'token'"
+             [class.bg-blue-50]="targetType === 'token'">
+             <div class="flex items-center gap-2 font-semibold text-slate-800">
+                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                Single Device
+             </div>
+             <p class="text-xs text-slate-500 mt-1">Test on specific interest device.</p>
+          </button>
+       </div>
+
+       @if (targetType === 'topic' && form.get('targetValue')?.value !== 'general') {
+          <div class="animate-in fade-in slide-in-from-top-1">
+             <label class="block text-sm font-medium text-slate-700 mb-1">Topic Name</label>
+             <input formControlName="targetValue" type="text" placeholder="e.g. promo_alerts" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+          </div>
+       }
+
+       @if (targetType === 'token') {
+          <div class="animate-in fade-in slide-in-from-top-1">
+             <label class="block text-sm font-medium text-slate-700 mb-1">FCM Device Token</label>
+             <input formControlName="targetValue" type="text" placeholder="Paste token here..." class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border font-mono text-xs">
+          </div>
+       }
+       
+       <!-- Warning for Topics -->
+       @if (targetType === 'topic') {
+         <div class="mt-3 p-3 bg-indigo-50 border border-indigo-100 rounded text-xs text-indigo-700 flex gap-2">
+            <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div>
+               <strong>Requirement:</strong> For devices to receive "All Users" (Topic: 'general') messages, they must explicitly subscribe to the topic <code>general</code> using the <code>@capacitor-community/fcm</code> plugin in the app code.
+            </div>
+         </div>
+       }
+    </div>
+
+    <!-- Content Section -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <h3 class="text-base font-bold text-slate-800 mb-1">Message Content</h3>
+      <p class="text-xs text-slate-500">Schedule this notification for a future date and time and optionally pass JSON data (e.g., routing) to the app.</p>
+      
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Title</label>
+        <input formControlName="title" type="text" placeholder="Notification title..." class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border text-lg font-medium">
+        @if (form.get('title')?.hasError('required') && form.get('title')?.touched) {
+            <p class="text-xs text-red-500 mt-1">Title is required.</p>
+        }
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Body</label>
+        <textarea formControlName="body" rows="3" placeholder="Enter your message here..." class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border"></textarea>
+         @if (form.get('body')?.hasError('required') && form.get('body')?.touched) {
+            <p class="text-xs text-red-500 mt-1">Body is required.</p>
+        }
+      </div>
+
+      <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Image (Optional)</label>
+          <div class="flex gap-2">
+             <input formControlName="imageUrl" type="text" placeholder="https://..." class="flex-1 w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+             <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 flex items-center">
+                <input type="file" (change)="onImageSelected($event)" accept="image/*" class="sr-only" [disabled]="isUploading()">
+                @if (isUploading()) {
+                   <span class="animate-spin w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full mr-1"></span>
+                }
+                <span class="text-xs font-bold">Upload</span>
+             </label>
+          </div>
+          @if (form.get('imageUrl')?.value) {
+             <div class="mt-2 h-32 w-full rounded bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden relative">
+                 <img [src]="form.get('imageUrl')?.value" class="h-full w-auto object-cover">
+                 <button type="button" (click)="form.patchValue({imageUrl: ''})" class="absolute top-2 right-2 bg-black/50 hover:bg-red-600 text-white p-1 rounded-full">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                 </button>
+             </div>
+          }
+      </div>
+
+      <div class="pt-2 border-t border-slate-100">
+        <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            formControlName="sendLater"
+            (change)="onSendLaterToggle($event.target.checked)"
+            class="w-4 h-4 rounded border-slate-300 text-[#083594] focus:ring-[#083594]">
+          <span class="text-sm font-semibold text-slate-700">Send later</span>
+        </label>
+
+        @if (sendLaterEnabled) {
+          <div class="mt-4 animate-in fade-in slide-in-from-top-1">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Send Date and Time</label>
+            <input
+              formControlName="sendLaterAt"
+              type="datetime-local"
+              [min]="minDateTimeLocal()"
+              class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border">
+            @if (form.get('sendLaterAt')?.touched && !form.get('sendLaterAt')?.value) {
+              <p class="text-xs text-red-500 mt-1">Send date is required when scheduling.</p>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Data Section -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+       <h3 class="text-base font-bold text-slate-800 mb-1">Custom Data (Optional)</h3>
+       <p class="text-xs text-slate-500">Key-value pair to send JSON payloads to the app, e.g., for deep linking.</p>
+       
+       <div class="flex gap-4">
+          <div class="flex-1">
+             <label class="block text-xs font-medium text-slate-700 mb-1">Key</label>
+             <input formControlName="customDataKey" type="text" placeholder="routeId" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2 border text-sm">
+          </div>
+          <div class="flex-1">
+             <label class="block text-xs font-medium text-slate-700 mb-1">Value</label>
+             <input formControlName="customDataValue" type="text" placeholder="e.g. /promos/123" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2 border text-sm">
+          </div>
+       </div>
+    </div>
+    
+    <!-- Submit -->
+    <div class="flex items-center justify-end pt-4">
+       <button type="submit" [disabled]="form.invalid || isSending() || isUploading() || (sendLaterEnabled && !form.get('sendLaterAt')?.value)" class="bg-[#083594] hover:bg-[#062a71] text-white px-8 py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2">
+         @if (isSending()) {
+            <svg class="animate-spin w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ sendLaterEnabled ? 'Scheduling...' : 'Queueing...' }}
+         } @else {
+            <span>{{ sendLaterEnabled ? 'Send Later' : 'Send Notification' }}</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+         }
+       </button>
+    </div>
+  </form>
+  
+  <div class="mt-8 p-4 bg-amber-50 border border-amber-100 rounded-lg text-sm text-amber-900">
+    <div class="flex gap-3 mb-2">
+       <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+       <strong>Why don't I see messages in Firebase Console?</strong>
+    </div>
+    <p class="ml-8 mb-4">
+        Messages sent via the <strong>Firebase Admin SDK</strong> (which this dashboard uses) do <u>not</u> appear in the "Cloud Messaging" history list in the Firebase Console. That list is exclusively for marketing campaigns sent manually from the Console itself. 
+    </p>
+    <p class="ml-8">
+        To track delivery, please check the <strong>Notifications</strong> tab in this dashboard, or view the <strong>Cloud Functions logs</strong> in the Firebase Console.
+    </p>
+  </div>
+
+  <div class="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-900">
+     <div class="flex gap-3 mb-2">
+       <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+       <strong>Receiver App Configuration (Android/Ionic)</strong>
+    </div>
+    <p class="ml-8 mb-2">
+       To handle taps correctly in your Capacitor app, verify your <code>AndroidManifest.xml</code> includes this intent filter inside the <code>.MainActivity</code>:
+    </p>
+    <pre class="ml-8 bg-blue-100 p-2 rounded text-xs font-mono overflow-x-auto select-all">
+<intent-filter>
+  <action android:name="FCM_PLUGIN_ACTIVITY" />
+  <category android:name="android.intent.category.DEFAULT" />
+</intent-filter></pre>
+    <p class="ml-8 mt-2 text-xs">See <code>src/components/notifications/ANDROID_SETUP.md</code> for full details.</p>
+  </div>
+</div>

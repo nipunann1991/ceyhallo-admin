@@ -1,1 +1,1 @@
-export { NewsRssImportComponent } from './rss-import.component.ts';
+export { NewsRssImportComponent } from './rss-import/rss-import.component.ts';

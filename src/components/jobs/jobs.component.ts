@@ -8,7 +8,7 @@ import { Job } from '../../models/job.model';
 import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
-import { JobDetailComponent } from './job-detail.component';
+import { JobDetailComponent } from './job-detail/job-detail.component';
 
 @Component({
   selector: 'app-jobs',

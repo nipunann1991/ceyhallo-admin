@@ -8,7 +8,7 @@ import { Banner } from '../../models/banner.model';
 import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
-import { BannerDetailComponent } from './banner-detail.component';
+import { BannerDetailComponent } from './banner-detail/banner-detail.component';
 
 @Component({
   selector: 'app-banners',

@@ -9,7 +9,7 @@ import { Business } from '../../models/business.model';
 import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
-import { BusinessDetailComponent } from './business-detail.component';
+import { BusinessDetailComponent } from './business-detail/business-detail.component';
 import { BusinessStateService } from '../../services/business-state.service';
 
 @Component({

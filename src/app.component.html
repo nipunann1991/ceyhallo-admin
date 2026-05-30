@@ -21,10 +21,12 @@
       }
 
       <!-- Sidebar -->
-      <app-sidebar class="w-[240px] flex-shrink-0" [isSidebarOpen]="isSidebarOpen()" [isMobile]="isMobile()" (logout)="authService.logout()"></app-sidebar>
+      <aside class="fixed left-0 top-0 z-50 hidden h-screen w-[240px] md:block">
+        <app-sidebar class="block h-full w-full" [isSidebarOpen]="isSidebarOpen()" [isMobile]="isMobile()" (logout)="authService.logout()"></app-sidebar>
+      </aside>
 
       <!-- Main Content -->
-      <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+      <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full md:ml-[240px]">
         <!-- Header -->
         <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 z-30">
           <div class="flex items-center gap-3">
@@ -54,4 +56,3 @@
     }
   </div>
 }
-

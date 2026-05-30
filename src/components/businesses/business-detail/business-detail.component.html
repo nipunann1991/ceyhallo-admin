@@ -1,0 +1,173 @@
+    <div class="pb-10" *ngIf="item() as biz">
+       <div class="grid grid-cols-1 gap-6">
+          <!-- Main Content - Full Width -->
+          <div class="space-y-6">
+             <!-- Header with Logo & Info -->
+             <div class="bg-white rounded-xl p-6 border border-slate-200">
+                <div class="flex items-start gap-4">
+                   <div class="w-20 h-20 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                      <img *ngIf="biz.logoUrl" [src]="biz.logoUrl" class="w-full h-full object-contain">
+                      <div *ngIf="!biz.logoUrl" class="w-full h-full flex items-center justify-center bg-slate-100">
+                         <span class="text-2xl font-bold text-slate-400">{{ biz.title?.charAt(0) }}</span>
+                      </div>
+                   </div>
+                   <div class="flex-1">
+                      <div class="flex items-center justify-between">
+                         <h1 class="text-2xl font-bold text-slate-800">{{ biz.title }}</h1>
+                         <a *ngIf="authService.isAdmin()" [routerLink]="['/businesses/edit', biz.id]" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                            Edit
+                         </a>
+                      </div>
+                      <div class="flex items-center gap-3 mt-2">
+                         <span class="px-2 py-0.5 rounded text-xs font-medium"
+                             [class.bg-green-100]="biz.isPublished && !biz.isArchived"
+                             [class.text-green-700]="biz.isPublished && !biz.isArchived"
+                             [class.bg-yellow-100]="!biz.isPublished && !biz.isArchived"
+                             [class.text-yellow-700]="!biz.isPublished && !biz.isArchived"
+                             [class.bg-red-100]="biz.isArchived"
+                             [class.text-red-700]="biz.isArchived">
+                             {{ biz.isArchived ? 'Archived' : (biz.isPublished ? 'Published' : 'Draft') }}
+                         </span>
+                         <span *ngIf="biz.category" class="text-slate-500 text-sm">{{ biz.category }}</span>
+                         <span *ngIf="biz.isVerified" class="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded">Verified</span>
+                         <span *ngIf="biz.isPremium" class="px-2 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded">Premium</span>
+                         <span *ngIf="biz.isFeatured" class="px-2 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded">Featured</span>
+                      </div>
+                   </div>
+                </div>
+             </div>
+
+             <!-- Cover Image -->
+             <div class="w-full h-48 bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
+                <img *ngIf="biz.imageUrl" [src]="biz.imageUrl" class="w-full h-full object-cover">
+             </div>
+
+             <!-- About -->
+             <div class="bg-white rounded-xl p-6 border border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">About</h3>
+                <div class="prose text-slate-600 text-sm max-w-none" [innerHTML]="biz.description"></div>
+                
+                <div class="mt-4" *ngIf="biz.services && biz.services.length > 0">
+                   <h4 class="text-sm font-bold text-slate-700 mb-2">Services</h4>
+                   <div class="flex flex-wrap gap-2">
+                      <span *ngFor="let s of biz.services" class="px-2.5 py-1 rounded bg-slate-100 text-slate-700 text-xs font-medium">
+                         {{ s }}
+                      </span>
+                   </div>
+                </div>
+             </div>
+
+             <!-- Quick Info -->
+             <div class="bg-white rounded-xl p-6 border border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Quick Info</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                   <div *ngIf="biz.type" class="py-2 border-b border-slate-100">
+                      <span class="text-slate-500 text-sm block">Type</span>
+                      <span class="text-slate-900 font-medium text-sm">{{ biz.type }}</span>
+                   </div>
+                   <div *ngIf="biz.priceRange" class="py-2 border-b border-slate-100">
+                      <span class="text-slate-500 text-sm block">Price</span>
+                      <span class="text-green-600 font-bold text-sm">{{ biz.priceRange }}</span>
+                   </div>
+                   <div class="py-2 border-b border-slate-100">
+                      <span class="text-slate-500 text-sm block">Rating</span>
+                      <div class="flex items-center gap-1 font-bold text-slate-900 text-sm">
+                          <span class="text-amber-500">★</span> {{ biz.rating }} <span class="text-slate-400 font-normal text-xs">({{ biz.reviews }})</span>
+                      </div>
+                   </div>
+                   <div class="py-2 border-b border-slate-100">
+                      <span class="text-slate-500 text-sm block">Location</span>
+                      <span class="text-slate-900 font-medium text-sm block">{{ biz.location }}</span>
+                      <span class="text-xs text-slate-400">{{ biz.cityCode }}, {{ biz.countryCode }}</span>
+                   </div>
+                </div>
+             </div>
+
+             <!-- Contact -->
+             <div class="bg-white rounded-xl p-6 border border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Contact</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div *ngFor="let p of phones(biz)" class="text-slate-700 text-sm flex items-center gap-2">
+                      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                      {{ p }}
+                   </div>
+                   <div *ngIf="biz.contact?.website" class="text-slate-700 text-sm flex items-center gap-2">
+                      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                      <a [href]="biz.contact.website" target="_blank" class="hover:underline text-blue-600">{{ biz.contact.website }}</a>
+                   </div>
+                   <div *ngIf="biz.contact?.instagram || biz.contact?.facebook || biz.contact?.tiktok" class="flex gap-3 md:col-span-2">
+                      <a *ngIf="biz.contact.instagram" [href]="biz.contact.instagram" target="_blank" class="text-slate-400 hover:text-pink-600">
+                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                      </a>
+                      <a *ngIf="biz.contact.facebook" [href]="biz.contact.facebook" target="_blank" class="text-slate-400 hover:text-blue-600">
+                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                      </a>
+                      <a *ngIf="biz.contact.tiktok" [href]="biz.contact.tiktok" target="_blank" class="text-slate-400 hover:text-black">
+                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+                      </a>
+                   </div>
+                </div>
+             </div>
+
+             <!-- Action Button -->
+             <div class="bg-white rounded-xl p-4 border border-slate-200" *ngIf="biz.actionType && biz.actionType !== 'none' && biz.actionTarget">
+                <a [href]="getLink(biz)" target="_blank" class="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                   <svg *ngIf="biz.actionType === 'whatsapp'" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                   {{ getLabel(biz) }}
+                </a>
+             </div>
+
+             <!-- Opening Hours -->
+             <div class="bg-white rounded-xl p-6 border border-slate-200" *ngIf="biz.openingHours && biz.openingHours.length > 0">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Opening Hours</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                   <div *ngFor="let hour of biz.openingHours" class="flex justify-between py-2 px-3 rounded bg-slate-50">
+                       <span class="text-slate-500">{{ hour.day }}</span>
+                       <span class="text-slate-900 font-medium">{{ hour.hours }}</span>
+                   </div>
+                </div>
+             </div>
+
+             <!-- Delivery -->
+             <div class="bg-white rounded-xl p-6 border border-slate-200" *ngIf="biz.isDeliveryAvailable && biz.deliveryInfo && biz.deliveryInfo.length > 0">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Delivery</h3>
+                <div class="space-y-2 text-sm">
+                   <div *ngFor="let delivery of biz.deliveryInfo" class="flex justify-between py-2 px-3 rounded bg-slate-50">
+                       <span class="text-slate-500">{{ delivery.location }}</span>
+                       <span class="text-slate-900 font-medium">{{ delivery.charge }}</span>
+                   </div>
+                </div>
+             </div>
+
+             <!-- Catalog/Flyer -->
+             <div class="bg-white rounded-xl p-4 border border-slate-200" *ngIf="biz.menuUrl">
+                <a [href]="biz.menuUrl" target="_blank" class="flex items-center justify-between w-full p-2 hover:bg-slate-50 rounded-lg transition-colors">
+                   <div class="flex items-center gap-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span class="font-medium text-slate-700">View Catalog / Flyer</span>
+                   </div>
+                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                </a>
+             </div>
+
+             <!-- Offers -->
+             <div class="bg-white rounded-xl p-6 border border-slate-200" *ngIf="relatedOffers().length > 0">
+                <h3 class="text-lg font-bold text-slate-800 mb-4">Active Offers ({{ relatedOffers().length }})</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   <div *ngFor="let offer of relatedOffers()" class="flex gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50">
+                      <div class="w-16 h-16 rounded bg-white border border-slate-200 shrink-0 overflow-hidden">
+                         <img *ngIf="offer.image" [src]="offer.image" class="w-full h-full object-cover">
+                      </div>
+                      <div class="flex-1 min-w-0">
+                         <span class="text-[10px] font-bold uppercase text-slate-500">{{ offer.tag || 'Promo' }}</span>
+                         <h4 class="font-bold text-slate-800 text-sm truncate">{{ offer.title }}</h4>
+                         <div class="text-xs text-slate-500 line-clamp-1" [innerHTML]="offer.description"></div>
+                      </div>
+                   </div>
+                </div>
+             </div>
+          </div>
+       </div>
+    </div>
+  

@@ -1,0 +1,76 @@
+<div class="space-y-6">
+  <div>
+    <h2 class="text-2xl font-bold text-slate-800">Settings</h2>
+    <p class="text-slate-500 text-sm">Manage application configuration.</p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[600px] flex">
+    <!-- Stylish Left Sidebar -->
+    <aside class="w-[240px] flex-shrink-0 bg-gradient-to-b from-slate-50 to-white border-r border-slate-200">
+      <div class="p-3">
+        <!-- Section: General -->
+        <div class="mb-4">
+          <p class="px-3 mb-2 text-sm font-bold uppercase tracking-wider text-slate-400">General</p>
+          <div class="space-y-0.5">
+            <a routerLink="app-config" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem]  font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">settings_applications</span>
+              App Config
+            </a>
+            <a routerLink="home-page" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">phone_iphone</span>
+              Mobile Home
+            </a>
+            <a routerLink="categories" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">apps</span>
+              App Categories
+            </a>
+            <a routerLink="locations" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">place</span>
+              Locations
+            </a>
+            <a routerLink="business-categories" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">domain</span>
+              Business Categories
+            </a>
+            <a routerLink="news-categories" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">newspaper</span>
+              News Categories
+            </a>
+            <a routerLink="hub-info" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">info</span>
+              Hub &amp; Info
+            </a>
+            <a routerLink="emailing" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">mail_outline</span>
+              Email Config
+            </a>
+          </div>
+        </div>
+
+        <!-- Section: Legal -->
+        <div>
+          <p class="px-3 mb-2 text-sm font-bold uppercase tracking-wider text-slate-400">Legal</p>
+          <div class="space-y-0.5">
+            <a routerLink="terms" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">article</span>
+              Terms &amp; Conditions
+            </a>
+            <a routerLink="privacy" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">shield</span>
+              Privacy Policy
+            </a>
+            <a routerLink="help" routerLinkActive="bg-slate-200 text-slate-900" class="flex items-center gap-3 px-3 py-3 rounded-lg text-[0.85rem] font-medium transition-all duration-200 text-slate-600 hover:bg-slate-100">
+              <span class="material-icons text-[1.4rem]">support_agent</span>
+              Help &amp; Support
+            </a>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <div class="flex-1 p-6">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

@@ -1,4 +1,9 @@
 app-sidebar {
+  display: block;
+  height: 100%;
+}
+
+app-sidebar {
   width: 245px;
   color: white;
   font-size: 0.75rem; /* 12px base font-size - much smaller */

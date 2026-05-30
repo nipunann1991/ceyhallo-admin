@@ -9,7 +9,7 @@ import { AppEvent } from '../../models/event.model';
 import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
-import { EventDetailComponent } from './event-detail.component';
+import { EventDetailComponent } from './event-detail/event-detail.component';
 
 @Component({
   selector: 'app-events',

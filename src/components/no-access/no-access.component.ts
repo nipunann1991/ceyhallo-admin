@@ -1,12 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-no-access',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   template: `
     <div class="min-h-[60vh] flex items-center justify-center px-6">
       <div class="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">

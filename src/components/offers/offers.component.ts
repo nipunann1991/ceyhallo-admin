@@ -8,7 +8,7 @@ import { Offer } from '../../models/offer.model';
 import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
-import { OfferDetailComponent } from './offer-detail.component';
+import { OfferDetailComponent } from './offer-detail/offer-detail.component';
 
 @Component({
   selector: 'app-offers',

@@ -9,7 +9,7 @@ import { News } from '../../models/news.model';
 import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
-import { NewsDetailComponent } from './news-detail.component';
+import { NewsDetailComponent } from './news-detail/news-detail.component';
 
 @Component({
   selector: 'app-news',
