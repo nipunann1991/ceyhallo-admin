@@ -23,7 +23,9 @@ import { CommonModule } from '@angular/common';
       <div class="absolute inset-y-0 right-0 max-w-full flex pointer-events-none">
         <!-- Panel Content -->
         <div 
-          class="pointer-events-auto w-screen max-w-2xl bg-white shadow-2xl flex flex-col h-full transform transition-transform duration-300 ease-in-out"
+          class="pointer-events-auto w-screen bg-white shadow-2xl flex flex-col h-full transform transition-transform duration-300 ease-in-out"
+          [class.max-w-2xl]="size() === 'default'"
+          [class.max-w-4xl]="size() === 'wide'"
           style="transform: translateX(100%)"
           [style.transform]="isOpen() ? 'translateX(0)' : 'translateX(100%)'">
              
@@ -47,5 +49,6 @@ import { CommonModule } from '@angular/common';
 export class SlidingPanelComponent {
   isOpen = input.required<boolean>();
   title = input<string>('Details');
+  size = input<'default' | 'wide'>('default');
   close = output<void>();
 }

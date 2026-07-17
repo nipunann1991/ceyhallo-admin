@@ -142,7 +142,7 @@ export class JobsComponent implements OnInit {
   // --- Reorder Logic ---
 
   toggleReorderMode() {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     this.isReordering.update(v => !v);
     this.currentPage.set(1);
     this.searchQuery.set('');
@@ -219,6 +219,10 @@ export class JobsComponent implements OnInit {
   }
 
   async confirmDelete() {
+    if (!this.authService.isAdmin()) {
+      this.closeConfirmModal();
+      return;
+    }
     const id = this.itemToDelete();
     if (!id) return;
 
@@ -233,7 +237,7 @@ export class JobsComponent implements OnInit {
   }
 
   async toggleArchive(job: Job) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     this.itemToArchive.set(job);
     this.showArchiveConfirmModal.set(true);
   }

@@ -102,7 +102,7 @@ export class BannersComponent implements OnInit {
   // --- Reordering Logic ---
 
   toggleReorderMode() {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     this.isReordering.update(v => !v);
     this.currentPage.set(1);
     this.searchQuery.set('');
@@ -178,6 +178,10 @@ export class BannersComponent implements OnInit {
   }
 
   async confirmDelete() {
+    if (!this.authService.isAdmin()) {
+      this.closeConfirmModal();
+      return;
+    }
     const id = this.itemToDelete();
     if (!id) return;
 
@@ -192,7 +196,7 @@ export class BannersComponent implements OnInit {
   }
 
   async duplicate(banner: Banner) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     
     try {
       const { id, ...bannerData } = banner;
@@ -211,7 +215,7 @@ export class BannersComponent implements OnInit {
   }
 
   async toggleArchive(banner: Banner) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     this.itemToArchive.set(banner);
     this.showArchiveConfirmModal.set(true);
   }

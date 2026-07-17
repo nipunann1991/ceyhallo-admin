@@ -26,6 +26,16 @@ export class BusinessDetailComponent implements OnInit {
      return this.allOffers().filter(o => o.targetId === current.id && o.isActive);
   });
 
+  galleryImages = computed(() => {
+    const business = this.item();
+    if (!business) return [];
+
+    return [...new Set([business.imageUrl, ...(business.gallery || [])].filter(Boolean))];
+  });
+  activeGalleryIndex = signal(0);
+  visibleGalleryIndex = computed(() => Math.min(this.activeGalleryIndex(), Math.max(0, this.galleryImages().length - 1)));
+  currentGalleryImage = computed(() => this.galleryImages()[this.visibleGalleryIndex()]);
+
   phones(biz: Business): string[] {
      if (biz.contact?.phones && biz.contact.phones.length > 0) return biz.contact.phones;
      if ((biz.contact as any)?.phone) return [(biz.contact as any).phone];
@@ -51,5 +61,19 @@ export class BusinessDetailComponent implements OnInit {
     if (biz.actionType === 'whatsapp') return 'Chat on WhatsApp';
     if (biz.actionType === 'call') return 'Call Now';
     return 'Contact';
+  }
+
+  selectGalleryImage(index: number) {
+    this.activeGalleryIndex.set(index);
+  }
+
+  previousGalleryImage() {
+    const total = this.galleryImages().length;
+    if (total > 0) this.activeGalleryIndex.set((this.visibleGalleryIndex() - 1 + total) % total);
+  }
+
+  nextGalleryImage() {
+    const total = this.galleryImages().length;
+    if (total > 0) this.activeGalleryIndex.set((this.visibleGalleryIndex() + 1) % total);
   }
 }

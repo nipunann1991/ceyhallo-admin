@@ -92,13 +92,15 @@ export function drawWeeklyActivityChart(el: HTMLElement, data: WeeklyPoint[]) {
   const height = 360;
   const margin = { top: 20, right: 20, bottom: 65, left: 45 };
 
+  const chartData = data.length > 0 ? data : [];
+
   const x = d3.scaleBand<string>()
-    .domain(data.map(d => d.label))
+    .domain(chartData.map(d => d.label))
     .range([margin.left, width - margin.right])
     .padding(0.16);
 
   const y = d3.scaleLinear()
-    .domain([0, Math.max(5, d3.max(data, d => d.value) || 0)])
+    .domain([0, Math.max(5, d3.max(chartData, d => d.value) || 0)])
     .range([height - margin.bottom, margin.top]);
 
   const svg = d3.select(el)
@@ -134,7 +136,7 @@ export function drawWeeklyActivityChart(el: HTMLElement, data: WeeklyPoint[]) {
   svg.append('g')
     .attr('fill', '#083594')
     .selectAll('rect')
-    .data(data)
+    .data(chartData)
     .join('rect')
     .attr('x', d => x(d.label)!)
     .attr('y', d => y(d.value))
@@ -143,7 +145,7 @@ export function drawWeeklyActivityChart(el: HTMLElement, data: WeeklyPoint[]) {
 
   svg.append('g')
     .selectAll('text')
-    .data(data)
+    .data(chartData)
     .join('text')
     .attr('x', d => (x(d.label)! + x.bandwidth() / 2))
     .attr('y', d => y(d.value) - 8)

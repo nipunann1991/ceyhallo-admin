@@ -29,6 +29,11 @@ export class AuthService {
     return this.currentUser()?.role === 'admin';
   });
 
+  canManageContent = computed(() => {
+    const role = this.currentUser()?.role;
+    return role === 'admin' || role === 'editor';
+  });
+
   private normalizeAllowedPages(user: User): string[] {
     if (user.role === 'admin') return ALL_ADMIN_PAGE_PATHS;
 
@@ -36,7 +41,9 @@ export class AuthService {
       ? user.allowedPages.filter((page): page is string => typeof page === 'string' && page.length > 0)
       : [];
 
-    return allowedPages;
+    return user.role === 'editor'
+      ? Array.from(new Set([...allowedPages, '/media']))
+      : allowedPages;
   }
 
   getAllowedPages(): string[] {

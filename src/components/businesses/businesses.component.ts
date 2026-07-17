@@ -2,6 +2,7 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import * as XLSX from 'xlsx';
 import { FirebaseService } from '../../services/firebase.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
@@ -50,6 +51,7 @@ export class BusinessesComponent implements OnInit {
   
   // Selection
   selectedBusiness = signal<Business | null>(null);
+  selectedBusinessIds = signal<string[]>([]);
 
   // Reorder State
   isReordering = signal(false);
@@ -98,13 +100,23 @@ export class BusinessesComponent implements OnInit {
       const matchesPremium = !isPremium || b.isPremium === true;
       return matchesCategory && matchesType && matchesPrice && matchesQuery && matchesFeatured && matchesVerified && matchesPremium;
     }).sort((a, b) => {
-      if (this.sortBy() === 'order') {
+      const sort = this.sortBy();
+      if (sort === 'order') {
         return (a.order || 9999) - (b.order || 9999);
       }
-      if (this.sortBy() === 'newest') {
-        return b.createdDate && a.createdDate ? b.createdDate.localeCompare(a.createdDate) : 0;
-      }
-      return a.title.localeCompare(b.title);
+      const [column, direction] = sort.split('-');
+      const multiplier = direction === 'desc' ? -1 : 1;
+      const value = (business: Business): string | number => {
+        if (column === 'category') return business.category || '';
+        if (column === 'phone') return business.contact?.phones?.[0] || (business.contact as any)?.phone || '';
+        if (column === 'rating') return business.rating || 0;
+        if (column === 'state') return business.isArchived ? 'Archived' : (business.isPublished ? 'Published' : 'Draft');
+        return business.title || '';
+      };
+      const left = value(a);
+      const right = value(b);
+      if (typeof left === 'number' && typeof right === 'number') return (left - right) * multiplier;
+      return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' }) * multiplier;
     });
   });
 
@@ -117,8 +129,41 @@ export class BusinessesComponent implements OnInit {
     return data.slice(start, start + this.itemsPerPage);
   });
 
+  selectedBusinesses = computed(() => {
+    const selectedIds = new Set(this.selectedBusinessIds());
+    return this.filteredBusinesses().filter((business) => selectedIds.has(business.id));
+  });
+
+  allFilteredSelected = computed(() => {
+    const filtered = this.filteredBusinesses();
+    const selectedIds = new Set(this.selectedBusinessIds());
+    return filtered.length > 0 && filtered.every((business) => selectedIds.has(business.id));
+  });
+
+  selectionLabel = computed(() => {
+    const selectedCount = this.selectedBusinessIds().length;
+    const filteredCount = this.filteredBusinesses().length;
+    return selectedCount > 0 ? `${selectedCount} selected` : `${filteredCount} records`;
+  });
+
   showConfirmModal = signal(false);
   itemToDelete = signal<string | null>(null);
+  showArchiveConfirmModal = signal(false);
+  archiveTargetIds = signal<string[]>([]);
+  archiveMode = signal<'archive' | 'unarchive'>('archive');
+  isImporting = signal(false);
+
+  exportButtonLabel = computed(() =>
+    this.selectedBusinessIds().length > 0 ? 'Export Selected to Excel' : 'Export to Excel'
+  );
+
+  archiveActionLabel = computed(() => {
+    const selectedIds = new Set(this.selectedBusinessIds());
+    const selected = this.businesses().filter((business) => selectedIds.has(business.id));
+    return selected.length > 0 && selected.every((business) => business.isArchived)
+      ? 'Unarchive Selected'
+      : 'Archive Selected';
+  });
 
   constructor() {
     if (this.businessStateService.selectedCategory() === null) {
@@ -137,24 +182,35 @@ export class BusinessesComponent implements OnInit {
     this.route.queryParamMap.subscribe((params) => {
       const query = params.get('q');
       const categoryName = params.get('category');
+      const categoryId = params.get('categoryId');
+      const requestedPage = Number(params.get('page'));
       const featured = params.get('featured');
       const verified = params.get('verified');
       const premium = params.get('premium');
 
-      this.searchQuery.set(query ?? '');
-      this.typeFilter.set('all');
-      this.priceFilter.set('all');
-      this.sortBy.set('newest');
-      this.businessStateService.isFeaturedFilter.set(featured === 'true');
-      this.businessStateService.isVerifiedFilter.set(verified === 'true');
-      this.businessStateService.isPremiumFilter.set(premium === 'true');
-      this.currentPage.set(1);
+      const hasQueryFilters = [query, categoryName, categoryId, featured, verified, premium]
+        .some((value) => value !== null);
+      if (!hasQueryFilters) return;
 
-      if (categoryName) {
+      if (query !== null || categoryName !== null || featured !== null || verified !== null || premium !== null) {
+        this.searchQuery.set(query ?? '');
+        this.typeFilter.set('all');
+        this.priceFilter.set('all');
+        this.sortBy.set('title-asc');
+        this.businessStateService.isFeaturedFilter.set(featured === 'true');
+        this.businessStateService.isVerifiedFilter.set(verified === 'true');
+        this.businessStateService.isPremiumFilter.set(premium === 'true');
+      }
+
+      if (categoryId) {
+        this.businessStateService.selectedCategory.set(categoryId);
+      } else if (categoryName) {
         this.updateCategoryFilterByValue(categoryName);
-      } else {
+      } else if (query !== null || featured !== null || verified !== null || premium !== null) {
         this.businessStateService.selectedCategory.set('all');
       }
+
+      this.currentPage.set(Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
     });
   }
 
@@ -217,16 +273,436 @@ export class BusinessesComponent implements OnInit {
     }
   }
 
+  businessReturnQueryParams() {
+    const categoryId = this.categoryFilter();
+    return {
+      categoryId: categoryId && categoryId !== 'all' ? categoryId : null,
+      page: this.currentPage() > 1 ? this.currentPage() : null
+    };
+  }
+
   clearFilters() {
     this.searchQuery.set('');
     this.businessStateService.selectedCategory.set('all');
     this.typeFilter.set('all');
     this.priceFilter.set('all');
-    this.sortBy.set('newest');
+    this.sortBy.set('title-asc');
     this.businessStateService.isFeaturedFilter.set(false);
     this.businessStateService.isVerifiedFilter.set(false);
     this.businessStateService.isPremiumFilter.set(false);
     this.currentPage.set(1);
+  }
+
+  toggleBusinessSelection(id: string, checked: boolean) {
+    this.selectedBusinessIds.update((current) => {
+      const selected = new Set(current);
+      if (checked) {
+        selected.add(id);
+      } else {
+        selected.delete(id);
+      }
+      return Array.from(selected);
+    });
+  }
+
+  toggleSelectAllFiltered(checked: boolean) {
+    if (!checked) {
+      this.selectedBusinessIds.set([]);
+      return;
+    }
+
+    this.selectedBusinessIds.set(this.filteredBusinesses().map((business) => business.id));
+  }
+
+  isBusinessSelected(id: string) {
+    return this.selectedBusinessIds().includes(id);
+  }
+
+  exportBusinessesToExcel() {
+    const selectedIds = new Set(this.selectedBusinessIds());
+    const rows = selectedIds.size > 0
+      ? this.businesses().filter((business) => selectedIds.has(business.id))
+      : this.businesses();
+    if (rows.length === 0) {
+      this.toastService.error('No businesses to export.');
+      return;
+    }
+
+    const headers = [
+      'id', 'title', 'description', 'category', 'categoryId', 'type', 'priceRange',
+      'location', 'countryCode', 'cityCode', 'googlePlaceId', 'rating', 'reviews',
+      'contactPhones', 'contactEmail', 'contactWebsite', 'contactInstagram',
+      'contactFacebook', 'contactTiktok', 'imageUrl', 'logoUrl', 'menuUrl',
+      'gallery', 'services', 'openingHours', 'locations', 'deliveryInfo', 'isPublished',
+      'isArchived', 'isPremium', 'isVerified', 'isFeatured', 'isDeliveryAvailable',
+      'actionType', 'actionTarget', 'order', 'createdDate', 'publishedDate', 'additionalData'
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(
+      rows.map((business) => this.toBusinessExportRow(business)),
+      { header: headers }
+    );
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Businesses');
+    const date = new Date().toISOString().slice(0, 10);
+    const filePrefix = selectedIds.size > 0 ? 'selected-businesses' : 'businesses';
+    XLSX.writeFileXLSX(workbook, `${filePrefix}-${date}.xlsx`, { compression: true });
+    this.toastService.success(`Exported ${rows.length} business${rows.length === 1 ? '' : 'es'}.`);
+  }
+
+  async importBusinessesFromExcel(event: Event) {
+    if (!this.authService.canManageContent()) return;
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.isImporting.set(true);
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      if (!firstSheetName) throw new Error('The workbook does not contain a worksheet.');
+
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[firstSheetName], {
+        defval: '',
+        raw: false
+      });
+      if (rows.length === 0) throw new Error('The worksheet does not contain any business rows.');
+
+      const invalidRows: number[] = [];
+      const operations: Array<{ id?: string; data: Record<string, unknown> }> = [];
+      let unchanged = 0;
+      const existingBusinesses = this.businesses();
+
+      rows.forEach((row, index) => {
+        const imported = this.toImportedBusiness(row);
+        if (!imported.title || !imported.category || !imported.location) {
+          invalidRows.push(index + 2);
+          return;
+        }
+
+        const existing = this.findExistingBusiness(row, imported, existingBusinesses);
+        if (!existing && !imported['createdDate']) {
+          imported['createdDate'] = new Date().toISOString();
+        }
+        const changes = existing ? this.getChangedFields(existing, imported) : imported;
+        if (existing && Object.keys(changes).length === 0) {
+          unchanged += 1;
+          return;
+        }
+
+        operations.push({ id: existing?.id, data: changes });
+      });
+
+      if (invalidRows.length > 0) {
+        throw new Error(`Rows ${invalidRows.join(', ')} must include title, category, and location.`);
+      }
+
+      if (operations.length === 0) {
+        this.toastService.success(`No changes found. ${unchanged} business${unchanged === 1 ? '' : 'es'} already match the spreadsheet.`);
+        return;
+      }
+
+      const result = await this.firebaseService.saveMany('businesses', operations);
+      const summary = [
+        result.created ? `${result.created} created` : '',
+        result.updated ? `${result.updated} updated` : '',
+        unchanged ? `${unchanged} unchanged` : ''
+      ].filter(Boolean).join(', ');
+      this.toastService.success(`Import complete: ${summary}.`);
+    } catch (error: any) {
+      this.toastService.error('Import failed: ' + (error?.message || 'Unable to read the Excel file.'));
+    } finally {
+      input.value = '';
+      this.isImporting.set(false);
+    }
+  }
+
+  private findExistingBusiness(row: Record<string, unknown>, imported: Record<string, unknown>, businesses: Business[]) {
+    const spreadsheetId = this.stringCell(row['id']);
+    if (spreadsheetId) {
+      const byId = businesses.find((business) => business.id === spreadsheetId);
+      if (byId) return byId;
+    }
+
+    const googlePlaceId = this.stringCell(imported['googlePlaceId']);
+    if (googlePlaceId) {
+      const byPlaceId = businesses.find((business) => business.googlePlaceId === googlePlaceId);
+      if (byPlaceId) return byPlaceId;
+    }
+
+    const fingerprint = this.businessFingerprint(imported);
+    return businesses.find((business) => this.businessFingerprint(business as unknown as Record<string, unknown>) === fingerprint);
+  }
+
+  private getChangedFields(existing: Business, imported: Record<string, unknown>) {
+    return Object.fromEntries(
+      Object.entries(imported).filter(([key, value]) => !this.isSameImportValue(existing[key as keyof Business], value))
+    );
+  }
+
+  private businessFingerprint(value: Record<string, unknown>) {
+    return [value['title'], value['location'], value['countryCode'], value['cityCode']]
+      .map((item) => this.stringCell(item).toLocaleLowerCase())
+      .join('|');
+  }
+
+  private isSameImportValue(current: unknown, incoming: unknown) {
+    return this.stableJson(current) === this.stableJson(incoming);
+  }
+
+  private stableJson(value: unknown): string {
+    if (Array.isArray(value)) return `[${value.map((item) => this.stableJson(item)).join(',')}]`;
+    if (value && typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${this.stableJson(record[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value) ?? 'undefined';
+  }
+
+  private toBusinessExportRow(business: Business) {
+    const data = business as Business & Record<string, unknown>;
+    const knownFields = new Set([
+      'id', 'title', 'description', 'category', 'categoryId', 'type', 'priceRange',
+      'location', 'countryCode', 'cityCode', 'googlePlaceId', 'rating', 'reviews',
+      'contact', 'imageUrl', 'logoUrl', 'menuUrl', 'gallery', 'services', 'openingHours',
+      'locations', 'deliveryInfo', 'isPublished', 'isArchived', 'isPremium', 'isVerified',
+      'isFeatured', 'isDeliveryAvailable', 'actionType', 'actionTarget', 'order',
+      'createdDate', 'publishedDate'
+    ]);
+    const additionalData = Object.fromEntries(
+      Object.entries(data).filter(([key]) => !knownFields.has(key))
+    );
+
+    return {
+      id: business.id || '',
+      title: business.title || '',
+      description: this.stripHtml(business.description),
+      category: business.category || '',
+      categoryId: business.categoryId || '',
+      type: business.type || '',
+      priceRange: business.priceRange || '',
+      location: business.location || '',
+      countryCode: business.countryCode || '',
+      cityCode: business.cityCode || '',
+      googlePlaceId: business.googlePlaceId || '',
+      rating: business.rating ?? '',
+      reviews: business.reviews ?? '',
+      contactPhones: JSON.stringify(business.contact?.phones || []),
+      contactEmail: (business.contact as any)?.email || '',
+      contactWebsite: business.contact?.website || '',
+      contactInstagram: business.contact?.instagram || '',
+      contactFacebook: business.contact?.facebook || '',
+      contactTiktok: business.contact?.tiktok || '',
+      imageUrl: business.imageUrl || '',
+      logoUrl: business.logoUrl || '',
+      menuUrl: business.menuUrl || '',
+      gallery: JSON.stringify(business.gallery || []),
+      services: JSON.stringify(business.services || []),
+      openingHours: JSON.stringify(business.openingHours || []),
+      locations: JSON.stringify(business.locations || []),
+      deliveryInfo: JSON.stringify(business.deliveryInfo || []),
+      isPublished: business.isPublished ?? false,
+      isArchived: business.isArchived ?? false,
+      isPremium: business.isPremium ?? false,
+      isVerified: business.isVerified ?? false,
+      isFeatured: business.isFeatured ?? false,
+      isDeliveryAvailable: business.isDeliveryAvailable ?? false,
+      actionType: business.actionType || '',
+      actionTarget: business.actionTarget || '',
+      order: business.order ?? '',
+      createdDate: business.createdDate || '',
+      publishedDate: business.publishedDate || '',
+      additionalData: Object.keys(additionalData).length ? JSON.stringify(additionalData) : ''
+    };
+  }
+
+  private toImportedBusiness(row: Record<string, unknown>) {
+    const additionalData = this.parseJsonCell(row['additionalData'], {});
+    const contactEmail = this.stringCell(row['contactEmail']);
+    const business = {
+      ...(this.isPlainObject(additionalData) ? additionalData : {}),
+      title: this.stringCell(row['title']),
+      description: this.toRichTextDescription(this.stringCell(row['description'])),
+      category: this.stringCell(row['category']),
+      categoryId: this.optionalStringCell(row['categoryId']),
+      type: this.stringCell(row['type']),
+      priceRange: this.stringCell(row['priceRange']),
+      location: this.stringCell(row['location']),
+      imageUrl: this.stringCell(row['imageUrl']),
+      logoUrl: this.stringCell(row['logoUrl']),
+      menuUrl: this.stringCell(row['menuUrl']),
+      googlePlaceId: this.stringCell(row['googlePlaceId']),
+      rating: this.numberCell(row['rating']),
+      reviews: this.numberCell(row['reviews']),
+      countryCode: this.stringCell(row['countryCode']),
+      cityCode: this.stringCell(row['cityCode']),
+      contact: {
+        phones: this.stringArrayCell(row['contactPhones']),
+        website: this.stringCell(row['contactWebsite']),
+        instagram: this.stringCell(row['contactInstagram']),
+        facebook: this.stringCell(row['contactFacebook']),
+        tiktok: this.stringCell(row['contactTiktok']),
+        ...(contactEmail ? { email: contactEmail } : {})
+      },
+      gallery: this.stringArrayCell(row['gallery']),
+      services: this.stringArrayCell(row['services']),
+      openingHours: this.openingHoursCell(row['openingHours']),
+      locations: this.locationsCell(row['locations']),
+      deliveryInfo: this.deliveryInfoCell(row['deliveryInfo']),
+      isPublished: this.booleanCell(row['isPublished']),
+      isArchived: this.booleanCell(row['isArchived']),
+      isPremium: this.booleanCell(row['isPremium']),
+      isVerified: this.booleanCell(row['isVerified']),
+      isFeatured: this.booleanCell(row['isFeatured']),
+      isDeliveryAvailable: this.booleanCell(row['isDeliveryAvailable']),
+      actionType: this.stringCell(row['actionType']),
+      actionTarget: this.stringCell(row['actionTarget']),
+      order: this.optionalNumberCell(row['order']),
+      createdDate: this.optionalStringCell(row['createdDate']),
+      publishedDate: this.optionalStringCell(row['publishedDate'])
+    };
+
+    return Object.fromEntries(Object.entries(business).filter(([, value]) => value !== undefined));
+  }
+
+  private stringCell(value: unknown) {
+    return String(value ?? '').trim();
+  }
+
+  private numberCell(value: unknown) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private optionalNumberCell(value: unknown) {
+    const text = this.stringCell(value);
+    return text === '' ? undefined : this.numberCell(value);
+  }
+
+  private optionalStringCell(value: unknown) {
+    return this.stringCell(value) || undefined;
+  }
+
+  private booleanCell(value: unknown) {
+    return value === true || value === 1 || ['true', 'yes', '1'].includes(this.stringCell(value).toLowerCase());
+  }
+
+  private parseJsonCell<T>(value: unknown, fallback: T): T {
+    if (!value || typeof value !== 'string') return fallback;
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return fallback;
+    }
+  }
+
+  private stringArrayCell(value: unknown) {
+    const parsed = this.parseJsonCell<unknown[]>(value, []);
+    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+  }
+
+  private openingHoursCell(value: unknown) {
+    const parsed = this.parseJsonCell<Array<Record<string, unknown>>>(value, []);
+    return Array.isArray(parsed)
+      ? parsed.map((item) => ({ day: this.stringCell(item.day), hours: this.stringCell(item.hours) }))
+      : [];
+  }
+
+  private locationsCell(value: unknown) {
+    const parsed = this.parseJsonCell<Array<Record<string, unknown>>>(value, []);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map((item) => ({
+      isPrimary: this.booleanCell(item.isPrimary),
+      location: this.stringCell(item.location),
+      ...(this.optionalStringCell(item.mapQuery) ? { mapQuery: this.optionalStringCell(item.mapQuery) } : {}),
+      ...(item.useBusinessNameForMap !== undefined ? { useBusinessNameForMap: this.booleanCell(item.useBusinessNameForMap) } : {}),
+      googlePlaceId: this.stringCell(item.googlePlaceId),
+      rating: this.numberCell(item.rating),
+      reviews: this.numberCell(item.reviews),
+      countryCode: this.stringCell(item.countryCode),
+      cityCode: this.stringCell(item.cityCode),
+      phones: this.stringArrayValue(item.phones),
+      openingHours: this.openingHoursValue(item.openingHours)
+    }));
+  }
+
+  private deliveryInfoCell(value: unknown) {
+    const parsed = this.parseJsonCell<Array<Record<string, unknown>>>(value, []);
+    return Array.isArray(parsed)
+      ? parsed.map((item) => ({ location: this.stringCell(item.location), charge: this.stringCell(item.charge) }))
+      : [];
+  }
+
+  private stringArrayValue(value: unknown) {
+    return Array.isArray(value) ? value.map((item) => String(item)) : [];
+  }
+
+  private openingHoursValue(value: unknown) {
+    return Array.isArray(value)
+      ? value.map((item: Record<string, unknown>) => ({ day: this.stringCell(item?.day), hours: this.stringCell(item?.hours) }))
+      : [];
+  }
+
+  private toRichTextDescription(value: string) {
+    if (!value) return '';
+    if (/<[a-z][\s\S]*>/i.test(value)) return value;
+    return value
+      .split(/\n{2,}/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean)
+      .map((paragraph) => `<p>${this.escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+      .join('');
+  }
+
+  private escapeHtml(value: string) {
+    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  private isPlainObject(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private stripHtml(value?: string) {
+    if (!value) return '';
+    const document = new DOMParser().parseFromString(value.replace(/<\/p>\s*<p[^>]*>/gi, '\n'), 'text/html');
+    return document.body.textContent?.trim() || '';
+  }
+
+  requestArchiveSelected() {
+    if (!this.authService.canManageContent()) return;
+    const selectedIds = new Set(this.selectedBusinessIds());
+    const selected = this.businesses().filter((business) => selectedIds.has(business.id));
+
+    if (selected.length === 0) {
+      this.toastService.error('Select at least one business first.');
+      return;
+    }
+
+    this.archiveMode.set(selected.every((business) => business.isArchived) ? 'unarchive' : 'archive');
+    this.archiveTargetIds.set(selected.map((business) => business.id));
+    this.showArchiveConfirmModal.set(true);
+  }
+
+  async confirmArchiveSelected() {
+    const ids = this.archiveTargetIds();
+    if (ids.length === 0) return;
+    const isArchived = this.archiveMode() === 'archive';
+
+    try {
+      await Promise.all(ids.map((id) => this.firebaseService.update('businesses', id, { isArchived })));
+      this.selectedBusinessIds.update((selected) => selected.filter((id) => !ids.includes(id)));
+      const action = isArchived ? 'Archived' : 'Unarchived';
+      this.toastService.success(`${action} ${ids.length} business${ids.length === 1 ? '' : 'es'}.`);
+    } catch (e: any) {
+      this.toastService.error(`Failed to ${isArchived ? 'archive' : 'unarchive'} businesses: ` + e.message);
+    } finally {
+      this.closeArchiveConfirmModal();
+    }
+  }
+
+  closeArchiveConfirmModal() {
+    this.showArchiveConfirmModal.set(false);
+    this.archiveTargetIds.set([]);
   }
 
   toggleFeaturedFilter(checked: boolean) {
@@ -244,8 +720,23 @@ export class BusinessesComponent implements OnInit {
     this.currentPage.set(1);
   }
 
-  updateSortBy(event: Event) {
-    this.sortBy.set((event.target as HTMLSelectElement).value);
+  sortByColumn(column: 'title' | 'category' | 'phone' | 'rating' | 'state') {
+    const direction = this.isSortedBy(column) && this.sortDirection() === 'asc' ? 'desc' : 'asc';
+    this.sortBy.set(`${column}-${direction}`);
+    this.currentPage.set(1);
+  }
+
+  isSortedBy(column: string): boolean {
+    return this.sortBy().startsWith(`${column}-`);
+  }
+
+  sortDirection(): 'asc' | 'desc' {
+    return this.sortBy().endsWith('-desc') ? 'desc' : 'asc';
+  }
+
+  sortAriaValue(column: string): 'ascending' | 'descending' | 'none' {
+    if (!this.isSortedBy(column)) return 'none';
+    return this.sortDirection() === 'asc' ? 'ascending' : 'descending';
   }
 
   view(biz: Business) {
@@ -267,7 +758,7 @@ export class BusinessesComponent implements OnInit {
   // --- Reordering Logic ---
 
   toggleReorderMode() {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     this.isReordering.update(v => !v);
     if (this.isReordering()) {
       this.sortBy.set('order');
@@ -338,7 +829,7 @@ export class BusinessesComponent implements OnInit {
   }
 
   async duplicate(item: Business) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, ...data } = item;
@@ -376,6 +867,10 @@ export class BusinessesComponent implements OnInit {
 
 
   async confirmDelete() {
+    if (!this.authService.isAdmin()) {
+      this.closeConfirmModal();
+      return;
+    }
     const id = this.itemToDelete();
     if (!id) return;
     try {

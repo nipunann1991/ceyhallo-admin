@@ -11,7 +11,7 @@
     </div>
   </div>
 
-  @if (!authService.isAdmin()) {
+  @if (!authService.canManageContent()) {
     <div class="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
       You can view this page, but converting, saving links, and exporting items are admin-only.
     </div>

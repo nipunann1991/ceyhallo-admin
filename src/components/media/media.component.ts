@@ -55,6 +55,9 @@ export class MediaComponent implements OnInit {
   showCreateFolderModal = signal(false);
   newFolderName = signal('');
   isCreatingFolder = signal(false);
+  showFolderDeleteModal = signal(false);
+  folderToDelete = signal<MediaFolder | null>(null);
+  isDeletingFolder = signal(false);
 
   // Move State
   showMoveModal = signal(false);
@@ -65,9 +68,9 @@ export class MediaComponent implements OnInit {
 
   breadcrumbs = computed(() => {
     const path = this.currentPath();
-    const parts = path.split('/').filter(p => p);
+    const parts = path.split('/').filter(p => p).slice(path.startsWith('uploads') ? 1 : 0);
     // Build array of { name, path }
-    let accum = '';
+    let accum = path.startsWith('uploads') ? 'uploads' : '';
     return parts.map(part => {
       accum = accum ? `${accum}/${part}` : part;
       return { name: part, path: accum };
@@ -106,14 +109,14 @@ export class MediaComponent implements OnInit {
   }
 
   async loadFiles(path?: string) {
-    const targetPath = path || this.currentPath();
+    const targetPath = path ?? this.currentPath();
     this.isLoading.set(true);
     try {
       const result = await this.firebaseService.listFiles(targetPath);
       this.files.set(result.items);
       this.folders.set(result.folders);
       
-      if (path) {
+      if (path !== undefined) {
         this.currentPath.set(path);
         this.currentPage.set(1);
         this.selectedPaths.set(new Set()); // Reset selection on nav
@@ -135,7 +138,7 @@ export class MediaComponent implements OnInit {
   }
 
   navigateUp() {
-    const parts = this.currentPath().split('/');
+    const parts = this.currentPath().split('/').filter(Boolean);
     if (parts.length > 1) {
       parts.pop();
       this.navigateTo(parts.join('/'));
@@ -160,7 +163,7 @@ export class MediaComponent implements OnInit {
     if (!name) return;
 
     this.isCreatingFolder.set(true);
-    const newPath = `${this.currentPath()}/${name}`;
+    const newPath = this.joinStoragePath(this.currentPath(), name);
 
     try {
       await this.firebaseService.createFolder(newPath);
@@ -171,6 +174,33 @@ export class MediaComponent implements OnInit {
       this.toastService.error('Failed to create folder: ' + e.message);
     } finally {
       this.isCreatingFolder.set(false);
+    }
+  }
+
+  requestDeleteFolder(folder: MediaFolder) {
+    this.folderToDelete.set(folder);
+    this.showFolderDeleteModal.set(true);
+  }
+
+  closeFolderDeleteModal() {
+    this.showFolderDeleteModal.set(false);
+    this.folderToDelete.set(null);
+  }
+
+  async confirmDeleteFolder() {
+    const folder = this.folderToDelete();
+    if (!folder) return;
+
+    this.isDeletingFolder.set(true);
+    try {
+      await this.firebaseService.deleteFolder(folder.path);
+      this.folders.update((current) => current.filter((item) => item.path !== folder.path));
+      this.toastService.success(`Deleted folder '${folder.name}' and its contents.`);
+      this.closeFolderDeleteModal();
+    } catch (error: any) {
+      this.toastService.error('Folder deletion failed: ' + error.message);
+    } finally {
+      this.isDeletingFolder.set(false);
     }
   }
 
@@ -225,7 +255,7 @@ export class MediaComponent implements OnInit {
         const file = await optimizeImage(rawFile);
         
         // Use current path
-        const path = `${this.currentPath()}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const path = this.joinStoragePath(this.currentPath(), `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`);
         
         const metadata = {
            uploadedBy: this.authService.currentUser()?.name || 'User',
@@ -383,7 +413,7 @@ export class MediaComponent implements OnInit {
 
   openMoveModal() {
     if (this.selectedPaths().size === 0) return;
-    this.movePickerPath.set('uploads'); // Start at root
+    this.movePickerPath.set('uploads'); // Start at the media library root
     this.loadPickerFolders('uploads');
     this.showMoveModal.set(true);
   }
@@ -427,7 +457,7 @@ export class MediaComponent implements OnInit {
       const promises = sourcePaths.map(async (oldPath: string) => {
          const fileName = oldPath.split('/').pop();
          if (!fileName) return;
-         const newPath = `${destPath}/${fileName}`;
+         const newPath = this.joinStoragePath(destPath, fileName);
          await this.firebaseService.moveFile(oldPath, newPath);
          
          // Update DB Ref if exists
@@ -451,5 +481,9 @@ export class MediaComponent implements OnInit {
     } finally {
       this.isMoving.set(false);
     }
+  }
+
+  private joinStoragePath(parent: string, child: string) {
+    return [parent, child].filter(Boolean).join('/');
   }
 }

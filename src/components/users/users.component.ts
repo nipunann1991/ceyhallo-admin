@@ -21,7 +21,7 @@ export class UsersComponent implements OnInit {
   showTitle = input(true);
   readonly pageOptions = ADMIN_PAGE_OPTIONS;
   selectedAllowedPages = signal<string[]>([]);
-  activeTab = signal<'users' | 'page-access'>('users');
+  activeTab = signal<'admins' | 'users'>('admins');
   newUserAllowedPages = signal<string[]>([]);
   
   users = signal<User[]>([]);
@@ -40,30 +40,39 @@ export class UsersComponent implements OnInit {
     );
   });
 
-  paginatedUsers = computed(() => {
-    const data = this.filteredUsers();
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
-  });
-
-  paginatedAccessUsers = computed(() => {
-    const data = this.filteredUsers().filter((user) =>
-      user.role === 'admin' || (user.allowedPages?.length || 0) > 0
-    );
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
-  });
-
-  accessUsersCount = computed(() =>
-    this.filteredUsers().filter((user) => user.role === 'admin' || (user.allowedPages?.length || 0) > 0).length
+  filteredAdminUsers = computed(() =>
+    this.filteredUsers().filter((user) => user.role !== 'user')
   );
-  
+
+  filteredNormalUsers = computed(() =>
+    this.filteredUsers().filter((user) => user.role === 'user')
+  );
+
+  paginatedUsers = computed(() => {
+    const data = this.filteredNormalUsers();
+    const start = (this.currentPage() - 1) * this.itemsPerPage;
+    return data.slice(start, start + this.itemsPerPage);
+  });
+
+  paginatedAdminUsers = computed(() => {
+    const data = this.filteredAdminUsers();
+    const start = (this.currentPage() - 1) * this.itemsPerPage;
+    return data.slice(start, start + this.itemsPerPage);
+  });
+
+  paginatedDirectoryUsers = computed(() =>
+    this.activeTab() === 'admins' ? this.paginatedAdminUsers() : this.paginatedUsers()
+  );
+
+  directoryUsersCount = computed(() =>
+    this.activeTab() === 'admins' ? this.filteredAdminUsers().length : this.filteredNormalUsers().length
+  );
+
   showModal = signal(false);
   isEditing = signal(false);
   currentId: string | null = null;
   errorMessage = signal<string | null>(null);
   form: FormGroup;
-  accessForm: FormGroup;
 
   showConfirmModal = signal(false);
   itemToDelete = signal<string | null>(null);
@@ -86,12 +95,6 @@ export class UsersComponent implements OnInit {
       status: ['active', Validators.required],
       region: ['']
     });
-    this.accessForm = this.fb.group({
-      name: [''],
-      email: ['', [Validators.required, Validators.email]],
-      temporaryPassword: ['', [Validators.required, Validators.minLength(6)]],
-      role: ['user', Validators.required]
-    });
   }
 
   ngOnInit() {
@@ -112,14 +115,14 @@ export class UsersComponent implements OnInit {
 
         // Normalize Role: case-insensitive
         let rawRole = (user.role || 'user').toLowerCase();
-        if (!['admin', 'manager', 'user'].includes(rawRole)) {
+        if (!['admin', 'editor', 'user', 'manager'].includes(rawRole)) {
             rawRole = 'user';
         }
 
         return {
           ...user,
           status: displayStatus,
-          role: rawRole as 'admin' | 'manager' | 'user',
+          role: rawRole as 'admin' | 'editor' | 'user' | 'manager',
           allowedPages: Array.isArray(user.allowedPages) ? user.allowedPages : []
         };
       });
@@ -139,25 +142,9 @@ export class UsersComponent implements OnInit {
     this.currentPage.set(1);
   }
 
-  setActiveTab(tab: 'users' | 'page-access') {
+  setActiveTab(tab: 'admins' | 'users') {
     this.activeTab.set(tab);
     this.currentPage.set(1);
-  }
-
-  toggleNewUserPageAccess(path: string, checked: boolean) {
-    this.newUserAllowedPages.update((current) => {
-      const pages = new Set(current);
-      if (checked) {
-        pages.add(path);
-      } else {
-        pages.delete(path);
-      }
-      return Array.from(pages);
-    });
-  }
-
-  isNewUserPageSelected(path: string) {
-    return this.newUserAllowedPages().includes(path);
   }
 
   openModal() {
@@ -196,18 +183,6 @@ export class UsersComponent implements OnInit {
     this.selectedUser.set(null);
   }
 
-  openAccessModal(user: User) {
-    if (!this.authService.isAdmin()) return;
-    this.accessUser.set(user);
-    this.selectedAllowedPages.set(user.role === 'admin' ? [...ALL_ADMIN_PAGE_PATHS] : [...(user.allowedPages || [])]);
-    this.showAccessModal.set(true);
-  }
-
-  closeAccessModal() {
-    this.showAccessModal.set(false);
-    this.accessUser.set(null);
-  }
-
   togglePageAccess(path: string, checked: boolean) {
     this.selectedAllowedPages.update((current) => {
       const pages = new Set(current);
@@ -225,7 +200,11 @@ export class UsersComponent implements OnInit {
   }
 
   getRoleLabel(role: User['role']) {
-    return role === 'admin' ? 'Administrator' : role === 'manager' ? 'Manager' : 'User';
+    return role === 'admin' ? 'Administrator' : role === 'editor' || role === 'manager' ? 'Editor' : 'User';
+  }
+
+  canAssignPages(role: User['role']) {
+    return role !== 'admin';
   }
 
   getUserInitials(name?: string | null) {
@@ -239,9 +218,10 @@ export class UsersComponent implements OnInit {
     if (role === 'admin') {
       this.selectedAllowedPages.set([...ALL_ADMIN_PAGE_PATHS]);
     } else if (this.isEditing()) {
-      this.selectedAllowedPages.set([...(this.users().find(user => user.id === this.currentId)?.allowedPages || [])]);
+      const existingPages = this.users().find(user => user.id === this.currentId)?.allowedPages || [];
+      this.selectedAllowedPages.set(role === 'editor' ? Array.from(new Set([...existingPages, '/media'])) : [...existingPages]);
     } else {
-      this.selectedAllowedPages.set([]);
+      this.selectedAllowedPages.set(role === 'editor' ? ['/media'] : []);
     }
   }
 
@@ -253,61 +233,6 @@ export class UsersComponent implements OnInit {
       .map((page) => page.label);
   }
 
-  async savePageAccess() {
-    const user = this.accessUser();
-    if (!this.authService.isAdmin() || !user?.id) return;
-
-    const allowedPages = user.role === 'admin'
-      ? [...ALL_ADMIN_PAGE_PATHS]
-      : [...this.selectedAllowedPages()];
-
-    try {
-      await this.firebaseService.update('users', user.id, { allowedPages });
-      this.toastService.success('Page access updated successfully.');
-      this.closeAccessModal();
-    } catch (e: any) {
-      console.error(e);
-      this.toastService.error('Failed to update page access: ' + (e.message || 'Unknown error'));
-    }
-  }
-
-  async createAccessUser() {
-    if (!this.authService.isAdmin()) {
-      this.toastService.error('Unauthorized: Only admins can create dashboard users.');
-      return;
-    }
-
-    if (this.accessForm.invalid) {
-      this.accessForm.markAllAsTouched();
-      return;
-    }
-
-    const formValue = this.accessForm.getRawValue();
-    const allowedPages = formValue.role === 'admin' ? [...ALL_ADMIN_PAGE_PATHS] : [...this.newUserAllowedPages()];
-
-    try {
-      await this.firebaseService.callFunction('createDashboardAccessUser', {
-        name: formValue.name,
-        email: formValue.email,
-        temporaryPassword: formValue.temporaryPassword,
-        role: formValue.role,
-        allowedPages
-      });
-
-      this.toastService.success('Dashboard user created successfully.');
-      this.accessForm.reset({
-        name: '',
-        email: '',
-        temporaryPassword: '',
-        role: 'user'
-      });
-      this.newUserAllowedPages.set([]);
-    } catch (e: any) {
-      console.error(e);
-      this.toastService.error('Failed to create dashboard user: ' + (e.message || 'Unknown error'));
-    }
-  }
-
   async save() {
     if (!this.authService.isAdmin()) {
       this.errorMessage.set("Unauthorized: Only admins can perform this action.");
@@ -317,23 +242,32 @@ export class UsersComponent implements OnInit {
     this.errorMessage.set(null);
     
     const formValue = this.form.getRawValue();
-    const normalizedAllowedPages = formValue.role === 'admin'
-      ? [...ALL_ADMIN_PAGE_PATHS]
-      : this.isEditing()
-        ? [...(this.users().find(user => user.id === this.currentId)?.allowedPages || [])]
-        : [];
-
-    // Transform form data back to the Firebase data structure
-    const dataToSave: any = {
-      name: formValue.name,
-      email: formValue.email,
-      role: formValue.role,
-      allowedPages: normalizedAllowedPages,
-      region: formValue.region,
-      status: formValue.status, // Save status explicitly
-      isVerified: formValue.status === 'active',
-      emailVerified: formValue.status === 'active',
-    };
+    const existingUser = this.isEditing() && this.currentId
+      ? this.users().find((user) => user.id === this.currentId)
+      : undefined;
+    const isStandardUser = formValue.role === 'user';
+    const dataToSave: any = isStandardUser
+      ? {
+          name: formValue.name,
+          email: formValue.email,
+          role: 'user',
+          source: existingUser?.source || 'admin',
+          ...(formValue.region ? { region: formValue.region } : {})
+        }
+      : {
+          name: formValue.name,
+          email: formValue.email,
+          role: formValue.role,
+          allowedPages: formValue.role === 'admin'
+            ? [...ALL_ADMIN_PAGE_PATHS]
+            : formValue.role === 'editor'
+              ? Array.from(new Set([...this.selectedAllowedPages(), '/media']))
+              : [...this.selectedAllowedPages()],
+          region: formValue.region,
+          status: formValue.status,
+          isVerified: formValue.status === 'active',
+          emailVerified: formValue.status === 'active'
+        };
 
     if (!this.isEditing()) {
       dataToSave.createdAt = new Date().toISOString();
@@ -344,14 +278,14 @@ export class UsersComponent implements OnInit {
         await this.firebaseService.update('users', this.currentId, dataToSave);
         this.toastService.success('User updated successfully.');
       } else {
-        await this.firebaseService.create('users', dataToSave);
+        await this.firebaseService.createAuthUserWithProfile(dataToSave);
         this.toastService.success('User created successfully.');
       }
       this.closeModal();
     } catch (e: any) {
       console.error(e);
-      if (e.message?.includes('PERMISSION_DENIED') || e.code === 'PERMISSION_DENIED') {
-        const msg = `PERMISSION DENIED: You must enable "write: true" in your Firebase Console rules.`;
+      if (e.message?.includes('PERMISSION_DENIED') || e.code === 'PERMISSION_DENIED' || e.code === 'permission-denied') {
+        const msg = `Permission denied. Only an authorized admin account can create users.`;
         this.errorMessage.set(msg);
         this.toastService.error(msg);
       } else {
@@ -362,12 +296,16 @@ export class UsersComponent implements OnInit {
     }
   }
 
-  delete(id: string) {
+  delete(user: User) {
     if (!this.authService.isAdmin()) {
       alert("Unauthorized: Only admins can delete users.");
       return;
     }
-    this.itemToDelete.set(id);
+    if (user.role === 'admin') {
+      this.toastService.error('Admin users cannot be deleted.');
+      return;
+    }
+    this.itemToDelete.set(user.id);
     this.showConfirmModal.set(true);
   }
 
@@ -379,6 +317,12 @@ export class UsersComponent implements OnInit {
   async confirmDelete() {
     const id = this.itemToDelete();
     if (!this.authService.isAdmin() || !id) {
+      this.closeConfirmModal();
+      return;
+    }
+
+    if (this.users().find((user) => user.id === id)?.role === 'admin') {
+      this.toastService.error('Admin users cannot be deleted.');
       this.closeConfirmModal();
       return;
     }

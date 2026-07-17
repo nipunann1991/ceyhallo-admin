@@ -478,7 +478,7 @@ export class NewsRssImportComponent implements OnInit {
   }
 
   async deleteSavedFeed(id: string) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     try {
       const next = this.savedRssFeeds().filter(feed => feed.id !== id);
       await this.firebaseService.set(`${this.settingsCollection}/${this.rssSettingsDocId}`, { rssFeeds: next });
@@ -493,7 +493,7 @@ export class NewsRssImportComponent implements OnInit {
   }
 
   async importRssItems() {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
 
     const items = this.overviewItems().filter(item => !item.isDuplicate);
     if (!items.length) {
@@ -552,7 +552,7 @@ export class NewsRssImportComponent implements OnInit {
   }
 
   async exportSelectedNews() {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
 
     const selectedKeys = new Set(this.selectedSourceKeys());
     const selectedItems = this.overviewItems().filter(item => selectedKeys.has(item.sourceKey));
@@ -600,7 +600,7 @@ export class NewsRssImportComponent implements OnInit {
   }
 
   private async processRssFeedText(feedText: string) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
 
     const value = String(feedText || '').trim();
     if (!value) {

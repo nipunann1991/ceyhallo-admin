@@ -2,9 +2,9 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'user' | 'manager';
+  role: 'admin' | 'user' | 'manager' | 'editor';
   allowedPages?: string[];
-  status: 'active' | 'inactive' | 'blocked'; // Updated status types
+  status?: 'active' | 'inactive' | 'blocked';
   // Fields from Firebase
   createdAt?: string;
   isVerified?: boolean;
@@ -14,5 +14,9 @@ export interface User {
   dateOfBirth?: string;
   address?: string;
   photoUrl?: string;
+  photoURL?: string;
+  source?: string;
+  fcmToken?: string;
+  lastLogin?: string;
   lastLoginAt?: string;
 }

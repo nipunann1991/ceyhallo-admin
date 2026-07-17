@@ -4,7 +4,7 @@
       <h2 class="text-2xl font-bold text-slate-800">Banners</h2>
       <p class="text-slate-500 text-sm">Manage app home screen banners and promotions.</p>
     </div>
-    @if (authService.isAdmin()) {
+    @if (authService.canManageContent()) {
       <div class="flex gap-3">
         <button (click)="toggleReorderMode()" 
           class="px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm border"
@@ -78,7 +78,7 @@
             <th class="px-6 py-4">Published By</th>
             <th class="px-6 py-4">Date</th>
             <th class="px-6 py-4">Status</th>
-            @if (authService.isAdmin()) {
+            @if (authService.canManageContent()) {
               <th class="px-6 py-4 text-right">Actions</th>
             }
           </tr>
@@ -144,7 +144,7 @@
                   {{ banner.isActive ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              @if (authService.isAdmin()) {
+              @if (authService.canManageContent()) {
                 <td class="px-6 py-6 text-right">
                   <div class="flex flex-col items-end gap-2">
                     <div class="flex items-center justify-end gap-2">
@@ -164,9 +164,11 @@
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                         }
                       </button>
-                      <button (click)="delete(banner.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                      </button>
+                      @if (authService.isAdmin()) {
+                        <button (click)="delete(banner.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
+                      }
                     </div>
                     <button (click)="copyId(banner.id)" class="group flex items-center gap-1 text-[10px] text-slate-400 font-mono hover:text-slate-600 transition-colors" title="Copy ID">
                       <span class="truncate max-w-[80px] opacity-70 group-hover:opacity-100">{{ banner.id }}</span>
@@ -178,11 +180,11 @@
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="authService.isAdmin() ? (isReordering() ? 6 : 5) : 4" class="px-6 py-12 text-center text-slate-400">
+              <td [attr.colspan]="authService.canManageContent() ? (isReordering() ? 6 : 5) : 4" class="px-6 py-12 text-center text-slate-400">
                 <div class="flex flex-col items-center gap-2">
                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
                    <p>{{ isReordering() ? 'No active banners to order.' : 'No banners found.' }}</p>
-                   @if (authService.isAdmin() && !isReordering()) {
+                   @if (authService.canManageContent() && !isReordering()) {
                      <a routerLink="/banners/new" class="text-orange-600 font-medium text-sm hover:underline">Add one now</a>
                    }
                 </div>

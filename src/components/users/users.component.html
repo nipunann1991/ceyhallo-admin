@@ -41,6 +41,17 @@
   <div class="border-b border-slate-200">
     <div class="flex items-center gap-2">
       <button
+        (click)="setActiveTab('admins')"
+        class="rounded-t-xl px-4 py-2.5 text-sm font-medium transition-colors"
+        [class.bg-white]="activeTab() === 'admins'"
+        [class.text-[#083594]]="activeTab() === 'admins'"
+        [class.border]="activeTab() === 'admins'"
+        [class.border-slate-200]="activeTab() === 'admins'"
+        [class.border-b-white]="activeTab() === 'admins'"
+        [class.text-slate-500]="activeTab() !== 'admins'">
+        Admin Users
+      </button>
+      <button
         (click)="setActiveTab('users')"
         class="rounded-t-xl px-4 py-2.5 text-sm font-medium transition-colors"
         [class.bg-white]="activeTab() === 'users'"
@@ -49,23 +60,12 @@
         [class.border-slate-200]="activeTab() === 'users'"
         [class.border-b-white]="activeTab() === 'users'"
         [class.text-slate-500]="activeTab() !== 'users'">
-        Users
-      </button>
-      <button
-        (click)="setActiveTab('page-access')"
-        class="rounded-t-xl px-4 py-2.5 text-sm font-medium transition-colors"
-        [class.bg-white]="activeTab() === 'page-access'"
-        [class.text-[#083594]]="activeTab() === 'page-access'"
-        [class.border]="activeTab() === 'page-access'"
-        [class.border-slate-200]="activeTab() === 'page-access'"
-        [class.border-b-white]="activeTab() === 'page-access'"
-        [class.text-slate-500]="activeTab() !== 'page-access'">
-        Page Access
+        Normal Users
       </button>
     </div>
   </div>
 
-  @if (activeTab() === 'users') {
+  @if (activeTab() === 'admins' || activeTab() === 'users') {
   <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-left text-sm text-slate-600">
@@ -84,7 +84,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
-          @for (user of paginatedUsers(); track user.id; let i = $index) {
+          @for (user of paginatedDirectoryUsers(); track user.id; let i = $index) {
             <tr class="hover:bg-slate-50 transition-colors">
               <td class="px-6 py-6 text-center text-slate-400 text-xs font-mono">
                 {{ (currentPage() - 1) * itemsPerPage + i + 1 }}
@@ -146,9 +146,11 @@
                     <button (click)="edit(user)" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                     </button>
-                    <button (click)="delete(user.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    </button>
+                    @if (user.role !== 'admin') {
+                      <button (click)="delete(user)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      </button>
+                    }
                   </div>
                 </td>
               }
@@ -158,7 +160,7 @@
               <td [attr.colspan]="authService.isAdmin() ? 8 : 7" class="px-6 py-12 text-center text-slate-400">
                 <div class="flex flex-col items-center gap-2">
                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
-                   <p>No users found.</p>
+                   <p>No {{ activeTab() === 'admins' ? 'admin users' : 'normal users' }} found.</p>
                    @if (authService.isAdmin()) {
                      <button (click)="openModal()" class="text-orange-600 font-medium text-sm hover:underline">Add one now</button>
                    }
@@ -172,159 +174,7 @@
     
     <app-pagination-controls 
       [currentPage]="currentPage()"
-      [totalItems]="filteredUsers().length"
-      [pageSize]="itemsPerPage"
-      (pageChange)="currentPage.set($event)">
-    </app-pagination-controls>
-  </div>
-  } @else {
-  <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-    <div class="grid grid-cols-1 gap-6 p-6 xl:grid-cols-[0.95fr_1.05fr]">
-      <div class="space-y-5">
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Permissions</p>
-          <h3 class="mt-2 text-lg font-bold text-slate-900">Available dashboard pages</h3>
-          <p class="mt-1 text-sm text-slate-500">These are the pages an admin can explicitly assign to non-admin users.</p>
-          <div class="mt-4 flex flex-wrap gap-2">
-            @for (page of pageOptions; track page.path) {
-              <span class="inline-flex items-center rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-700 border border-slate-200">{{ page.label }}</span>
-            }
-          </div>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white p-5">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Create Access User</p>
-              <h3 class="mt-2 text-lg font-bold text-slate-900">Add by email and temporary password</h3>
-              <p class="mt-1 text-sm text-slate-500">Admins can create a dashboard user and assign page access in one step.</p>
-            </div>
-          </div>
-
-          <form [formGroup]="accessForm" class="mt-5 space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Name</label>
-              <input formControlName="name" type="text" placeholder="Optional display name" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-              <input formControlName="email" type="email" placeholder="user@example.com" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Temporary Password</label>
-              <input formControlName="temporaryPassword" type="text" placeholder="Minimum 6 characters" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Role</label>
-              <select formControlName="role" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border bg-white">
-                <option value="user">User</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div class="flex items-start justify-between gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-slate-700">Assign Pages</label>
-                  <p class="mt-1 text-xs text-slate-500">Choose the pages this user can access after login.</p>
-                </div>
-                @if (accessForm.value.role === 'admin') {
-                  <span class="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">Full access</span>
-                }
-              </div>
-
-              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                @for (page of pageOptions; track page.path) {
-                  <label class="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3"
-                    [class.opacity-60]="accessForm.value.role === 'admin'">
-                    <input
-                      type="checkbox"
-                      class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#083594] focus:ring-[#083594]"
-                      [checked]="accessForm.value.role === 'admin' || isNewUserPageSelected(page.path)"
-                      [disabled]="accessForm.value.role === 'admin'"
-                      (change)="toggleNewUserPageAccess(page.path, $any($event.target).checked)">
-                    <span class="min-w-0">
-                      <span class="block text-sm font-medium text-slate-800">{{ page.label }}</span>
-                      <span class="block text-xs text-slate-500">{{ page.description }}</span>
-                    </span>
-                  </label>
-                }
-              </div>
-            </div>
-
-            <button (click)="createAccessUser()" type="button" class="inline-flex items-center justify-center rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#062a71]">
-              Create Dashboard User
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <div class="rounded-2xl border border-slate-200 bg-white p-5">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Assignments</p>
-            <h3 class="mt-2 text-lg font-bold text-slate-900">Current page access</h3>
-            <p class="mt-1 text-sm text-slate-500">Review assigned permissions and open the access popup to update them.</p>
-          </div>
-        </div>
-
-        <div class="mt-5 space-y-3">
-          @for (user of paginatedAccessUsers(); track user.id) {
-            <div class="rounded-xl border border-slate-200 px-4 py-4">
-              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2">
-                    <p class="font-semibold text-slate-900">{{ user.name }}</p>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide border"
-                      [class.bg-purple-50]="user.role === 'admin'"
-                      [class.text-purple-700]="user.role === 'admin'"
-                      [class.border-purple-200]="user.role === 'admin'"
-                      [class.bg-blue-50]="user.role === 'manager'"
-                      [class.text-blue-700]="user.role === 'manager'"
-                      [class.border-blue-200]="user.role === 'manager'"
-                      [class.bg-slate-50]="user.role === 'user'"
-                      [class.text-slate-600]="user.role === 'user'"
-                      [class.border-slate-200]="user.role === 'user'">
-                      {{ user.role }}
-                    </span>
-                  </div>
-                  <p class="mt-1 text-sm text-slate-500">{{ user.email }}</p>
-                  <div class="mt-3 flex flex-wrap gap-1.5">
-                    @for (label of getAllowedPageLabels(user).slice(0, 5); track label) {
-                      <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600">{{ label }}</span>
-                    }
-                    @if (getAllowedPageLabels(user).length === 0) {
-                      <span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700">No access assigned</span>
-                    }
-                    @if (getAllowedPageLabels(user).length > 5) {
-                      <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600">+{{ getAllowedPageLabels(user).length - 5 }}</span>
-                    }
-                  </div>
-                </div>
-                @if (authService.isAdmin()) {
-                  <button (click)="openAccessModal(user)" class="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h10"/><path d="M7 12h6"/><path d="m16 19 2 2 4-4"/></svg>
-                    Manage Access
-                  </button>
-                }
-              </div>
-            </div>
-          } @empty {
-            <div class="py-12 text-center text-slate-400">
-              <div class="flex flex-col items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
-                <p>No users found.</p>
-              </div>
-            </div>
-          }
-        </div>
-      </div>
-    </div>
-
-    <app-pagination-controls
-      [currentPage]="currentPage()"
-      [totalItems]="accessUsersCount()"
+      [totalItems]="directoryUsersCount()"
       [pageSize]="itemsPerPage"
       (pageChange)="currentPage.set($event)">
     </app-pagination-controls>
@@ -458,6 +308,7 @@
 @if (showModal()) {
   <app-modal 
     [title]="isEditing() ? 'Edit User' : 'Add New User'" 
+    size="wide"
     (close)="closeModal()">
     
     <div body class="space-y-4">
@@ -477,34 +328,70 @@
       }
 
       <form [formGroup]="form" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-          <input formControlName="name" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-          <input formControlName="email" type="email" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Region</label>
-          <input formControlName="region" type="text" placeholder="e.g. AE" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border">
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Role</label>
-            <select formControlName="role" (change)="updateRole($any($event.target).value)" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border bg-white">
-              <option value="user">User</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-            </select>
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+              <input formControlName="name" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+              <input formControlName="email" type="email" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Region</label>
+              <input formControlName="region" type="text" placeholder="e.g. AE" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border">
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                <select formControlName="role" (change)="updateRole($any($event.target).value)" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border bg-white">
+                  <option value="user">User</option>
+                  <option value="editor">Editor</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              @if (form.value.role !== 'user') {
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                  <select formControlName="status" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border bg-white">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="blocked">Blocked</option>
+                  </select>
+                </div>
+              }
+            </div>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
-            <select formControlName="status" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm p-2.5 border bg-white">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="blocked">Blocked</option>
-            </select>
+
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h4 class="text-sm font-semibold text-slate-900">Assign Pages</h4>
+                <p class="mt-1 text-xs text-slate-500">Set the dashboard pages this user can open after login.</p>
+              </div>
+              @if (form.value.role === 'admin') {
+                <span class="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">Full access</span>
+              }
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              @for (page of pageOptions; track page.path) {
+                <label class="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3"
+                  [class.opacity-60]="form.value.role === 'admin'">
+                  <input
+                    type="checkbox"
+                    class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#083594] focus:ring-[#083594]"
+                  [checked]="form.value.role === 'admin' || (form.value.role === 'editor' && page.path === '/media') || selectedAllowedPages().includes(page.path)"
+                    [disabled]="form.value.role === 'admin' || (form.value.role === 'editor' && page.path === '/media')"
+                    (change)="togglePageAccess(page.path, $any($event.target).checked)">
+                  <span class="min-w-0">
+                    <span class="block text-sm font-medium text-slate-800">{{ page.label }}</span>
+                    <span class="block text-xs text-slate-500">{{ page.description }}</span>
+                  </span>
+                </label>
+              }
+            </div>
           </div>
         </div>
 

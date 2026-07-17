@@ -1,15 +1,15 @@
 <div class="max-w-7xl pb-10">
   <div class="flex items-center gap-4 mb-6">
-    <a routerLink="/businesses" class="p-2 rounded-full hover:bg-slate-200 text-[#083594] hover:text-[#062a71] transition-colors">
+    <a routerLink="/businesses" [queryParams]="businessReturnQueryParams()" class="p-2 rounded-full hover:bg-slate-200 text-[#083594] hover:text-[#062a71] transition-colors">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
     </a>
     <h1 class="text-2xl font-bold text-slate-800">{{ isEditing() ? 'Edit Business' : 'Add New Business' }}</h1>
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)]">
     
     <!-- Main Content -->
-    <div class="lg:col-span-2 space-y-6">
+    <div class="min-w-0 space-y-6">
       <div class="-mb-2">
         <div class="flex flex-wrap items-center gap-6 border-b border-slate-200 px-1">
           <button
@@ -33,6 +33,17 @@
             [class.text-slate-500]="activeEditorTab() !== 'locations'"
             [class.hover:text-slate-800]="activeEditorTab() !== 'locations'">
             Locations
+          </button>
+          <button
+            type="button"
+            (click)="activeEditorTab.set('gallery')"
+            class="relative -mb-px border-b-2 px-1 pb-3 text-sm font-semibold transition-colors"
+            [class.border-[#083594]]="activeEditorTab() === 'gallery'"
+            [class.text-[#083594]]="activeEditorTab() === 'gallery'"
+            [class.border-transparent]="activeEditorTab() !== 'gallery'"
+            [class.text-slate-500]="activeEditorTab() !== 'gallery'"
+            [class.hover:text-slate-800]="activeEditorTab() !== 'gallery'">
+            Gallery
           </button>
           <button
             type="button"
@@ -378,6 +389,40 @@
       </div>
       }
 
+      <!-- Gallery -->
+      @if (activeEditorTab() === 'gallery') {
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5 animate-in fade-in">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 class="text-base font-bold text-slate-800">Gallery Images</h3>
+              <p class="mt-1 text-sm text-slate-500">Add images by URL or upload multiple files.</p>
+            </div>
+            <button type="button" (click)="openMediaLibrary()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#062a71]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              Open Media Library
+            </button>
+          </div>
+
+          <div class="flex gap-2">
+            <input formControlName="galleryUrl" type="url" placeholder="https://example.com/image.jpg" class="min-w-0 flex-1 rounded-lg border border-slate-300 p-2.5 text-sm focus:border-[#083594] focus:outline-none">
+            <button type="button" (click)="addGalleryUrl()" class="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">Add URL</button>
+          </div>
+
+          <div formArrayName="gallery" class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            @for (image of galleryArray.controls; track $index; let index = $index) {
+              <div class="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                <img [src]="image.value" class="h-full w-full object-cover" alt="Gallery image" onerror="this.style.display='none'">
+                <button type="button" (click)="removeGalleryImage(index)" class="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 text-slate-600 shadow-sm transition-colors hover:bg-red-50 hover:text-red-600" title="Remove image">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+                </button>
+              </div>
+            } @empty {
+              <div class="col-span-full border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">No gallery images added.</div>
+            }
+          </div>
+        </div>
+      }
+
       <!-- Contact Information -->
       @if (activeEditorTab() === 'contact') {
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
@@ -475,7 +520,7 @@
     </div>
 
     <!-- Sidebar -->
-    <div class="space-y-6">
+    <aside class="min-w-0 space-y-6">
        
        <!-- Publish -->
        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -529,6 +574,12 @@
 <button type="submit" [disabled]="isUploading()" class="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-[#083594] hover:bg-[#062a71] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#083594]-500 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
             {{ isEditing() ? 'Update Business' : 'Create Business' }}
          </button>
+         @if (isEditing()) {
+           <button type="button" (click)="save(true)" [disabled]="isUploading()" class="mt-2 w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-[#083594] text-sm font-bold rounded-lg text-[#083594] bg-white hover:bg-[#083594]/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#083594]-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+             Update & Preview
+           </button>
+         }
 
        </div>
 
@@ -536,22 +587,16 @@
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
          <h3 class="text-base font-bold text-slate-800 mb-4">Logo</h3>
          <div class="space-y-4">
-            <div class="w-full aspect-square rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center relative overflow-hidden bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 32px;">
+            <div class="relative w-full aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100 bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 32px;">
                @if (form.get('logoUrl')?.value) {
                   <img [src]="form.get('logoUrl')?.value" class="w-full h-full object-contain bg-white p-2" onerror="this.style.display='none'">
                }
-               @if (isUploading()) {
-                  <div class="absolute inset-0 bg-white/80 flex items-center justify-center">
-                     <span class="animate-spin w-6 h-6 border-2 border-[#083594] border-t-transparent rounded-full"></span>
-                  </div>
-               }
             </div>
-            <div class="flex gap-2">
+            <div class="flex min-w-0 gap-2">
                <input formControlName="logoUrl" type="text" class="flex-1 min-w-0 border-slate-300 rounded-lg text-xs p-2 border" placeholder="https://...">
-               <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-center transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <input type="file" (change)="onLogoSelected($event)" accept="image/*" class="sr-only" [disabled]="isUploading()">
-               </label>
+               <button type="button" (click)="openMediaLibrary('logo')" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200" title="Choose logo from media library">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+               </button>
             </div>
          </div>
       </div>
@@ -560,28 +605,96 @@
       <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
          <h3 class="text-base font-bold text-slate-800 mb-4">Featured Image</h3>
          <div class="space-y-4">
-            <div class="aspect-video w-full rounded-lg bg-slate-100 border border-slate-200 overflow-hidden relative flex items-center justify-center bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 48px;">
+            <div class="relative w-full aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-100 bg-center bg-no-repeat" style="background-image: url('https://i.ibb.co/nNsGtRqn/placeholder-80x80.png'); background-size: 48px;">
                @if (form.get('imageUrl')?.value) {
                   <img [src]="form.get('imageUrl')?.value" class="w-full h-full object-cover bg-white" onerror="this.style.display='none'">
                }
                
-               @if (isUploading()) {
-                  <div class="absolute inset-0 bg-white/80 flex items-center justify-center">
-                     <span class="animate-spin w-6 h-6 border-2 border-[#083594] border-t-transparent rounded-full"></span>
-                  </div>
-               }
             </div>
             
-            <div class="flex gap-2">
+            <div class="flex min-w-0 gap-2">
                <input formControlName="imageUrl" type="text" class="flex-1 min-w-0 border-slate-300 rounded-lg text-xs p-2 border" placeholder="https://...">
-               <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-center transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <input type="file" (change)="onMainImageSelected($event)" accept="image/*" class="sr-only" [disabled]="isUploading()">
-               </label>
+               <button type="button" (click)="openMediaLibrary('featured')" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200" title="Choose featured image from media library">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+               </button>
             </div>
          </div>
       </div>
 
-    </div>
+    </aside>
   </form>
 </div>
+
+@if (showMediaLibrary()) {
+  <app-modal title="Media Library" size="wide" (close)="showMediaLibrary.set(false)">
+    <label header class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#062a71]" [class.cursor-not-allowed]="mediaLibraryUploading()" [class.opacity-50]="mediaLibraryUploading()">
+      <input type="file" class="sr-only" accept="image/*" multiple [disabled]="mediaLibraryUploading()" (change)="uploadMediaLibraryImages($event)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+      {{ mediaLibraryUploading() ? 'Uploading...' : 'Upload Images' }}
+    </label>
+    <div body class="space-y-4">
+      @if (mediaLibraryPath() !== 'uploads') {
+        <button type="button" (click)="navigateMediaLibraryUp()" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="Back to parent folder">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+      }
+
+      @if (mediaLibraryLoading()) {
+        <div class="flex h-72 items-center justify-center text-sm text-slate-500">
+          <span class="h-6 w-6 animate-spin rounded-full border-2 border-[#083594] border-t-transparent"></span>
+        </div>
+      } @else {
+        <div class="max-h-[52vh] overflow-y-auto pr-1">
+          @if (mediaLibraryFolders().length > 0) {
+            <div class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              @for (folder of mediaLibraryFolders(); track folder.path) {
+                <button type="button" (click)="loadMediaLibrary(folder.path)" class="flex min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-center text-sm font-medium text-slate-700 transition-colors hover:border-[#083594]/30 hover:bg-[#083594]/5">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" class="text-amber-400"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
+                  <span class="w-full truncate">{{ folder.name }}</span>
+                </button>
+              }
+            </div>
+          }
+
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            @for (file of mediaLibraryImages(); track file.path) {
+              <div role="button" tabindex="0" (click)="toggleMediaSelection(file.path)" (keydown.enter)="toggleMediaSelection(file.path)" (keydown.space)="$event.preventDefault(); toggleMediaSelection(file.path)" class="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border bg-slate-100 text-left transition" [class.border-[#083594]]="isMediaSelected(file.path)" [class.ring-2]="isMediaSelected(file.path)" [class.ring-[#083594]/30]="isMediaSelected(file.path)" [class.border-slate-200]="!isMediaSelected(file.path)">
+                <img [src]="file.url" [alt]="file.name" class="h-full w-full object-cover">
+                <span class="absolute inset-x-0 bottom-0 truncate bg-slate-950/65 px-2 py-1.5 text-xs font-medium text-white">{{ file.name }}</span>
+                @if (isMediaSelected(file.path)) {
+                  <span class="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#083594] text-white shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>
+                  </span>
+                }
+                <button type="button" (click)="$event.stopPropagation(); requestDeleteMediaFromLibrary(file)" class="absolute bottom-8 right-2 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/95 text-slate-500 shadow-sm transition-colors hover:bg-red-50 hover:text-red-600" title="Delete image">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+                </button>
+              </div>
+            } @empty {
+              <div class="col-span-full border border-dashed border-slate-300 px-4 py-12 text-center text-sm text-slate-500">No images in this folder.</div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+    <div footer>
+      <button type="button" (click)="addSelectedMediaToGallery()" [disabled]="selectedMediaPaths().length === 0" class="rounded-lg bg-[#083594] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#062a71] disabled:cursor-not-allowed disabled:opacity-50">{{ mediaLibraryTarget() === 'gallery' ? 'Add ' + selectedMediaPaths().length + ' Image' + (selectedMediaPaths().length === 1 ? '' : 's') : 'Use Selected Image' }}</button>
+      <button type="button" (click)="showMediaLibrary.set(false)" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+    </div>
+  </app-modal>
+}
+
+@if (showMediaDeleteConfirm()) {
+  <app-confirm-modal
+    title="Delete Image"
+    [message]="'Delete ' + (mediaItemToDelete()?.name || 'this image') + ' from the media library? This action cannot be undone.'"
+    (confirm)="confirmDeleteMediaFromLibrary()"
+    (cancel)="closeMediaDeleteConfirm()">
+  </app-confirm-modal>
+}
+
+@if (previewBusiness(); as business) {
+  <app-sliding-panel [isOpen]="true" [title]="'Business Preview'" (close)="closePreview()">
+    <app-business-detail [item]="business"></app-business-detail>
+  </app-sliding-panel>
+}

@@ -1,5 +1,5 @@
 
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -8,10 +8,15 @@ import { FirebaseService } from '../../../services/firebase.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { RichTextEditorComponent } from '../../ui/rich-text-editor.component';
-import { BusinessLocation } from '../../../models/business.model';
+import { ModalComponent } from '../../ui/modal.component';
+import { ConfirmModalComponent } from '../../ui/confirm-modal.component';
+import { Business, BusinessLocation } from '../../../models/business.model';
 import { BusinessContact, DeliveryInfo, OpeningHour } from '../../../models/common.model';
+import { MediaItem } from '../../../models/media.model';
 import { TaxonomyItem } from '../../../models/taxonomy.model';
 import { optimizeImage } from '../../../utils/image-optimizer';
+import { SlidingPanelComponent } from '../../ui/sliding-panel.component';
+import { BusinessDetailComponent } from '../business-detail/business-detail.component';
 
 interface GoogleReviewStats {
   rating: number;
@@ -22,14 +27,14 @@ interface GoogleReviewStats {
 @Component({
   selector: 'app-business-editor',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, RichTextEditorComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, RichTextEditorComponent, ModalComponent, ConfirmModalComponent, SlidingPanelComponent, BusinessDetailComponent],
   templateUrl: './business-editor.component.html'
 })
 export class BusinessEditorComponent implements OnInit {
   form: FormGroup;
   isEditing = signal(false);
   isUploading = signal(false);
-  activeEditorTab = signal<'details' | 'locations' | 'contact'>('details');
+  activeEditorTab = signal<'details' | 'locations' | 'gallery' | 'contact'>('details');
   currentId: string | null = null;
   
   locations = signal<any[]>([]);
@@ -42,6 +47,19 @@ export class BusinessEditorComponent implements OnInit {
   googleReviewLoading = signal<Record<number, boolean>>({});
   googleReviewError = signal<Record<number, string>>({});
   googleMapEmbedUrl = signal<Record<number, SafeResourceUrl | null>>({});
+  showMediaLibrary = signal(false);
+  mediaLibraryTarget = signal<'gallery' | 'logo' | 'featured'>('gallery');
+  mediaLibraryPath = signal('uploads');
+  mediaLibraryFiles = signal<MediaItem[]>([]);
+  mediaLibraryFolders = signal<Array<{ name: string; path: string }>>([]);
+  selectedMediaPaths = signal<string[]>([]);
+  mediaLibraryLoading = signal(false);
+  mediaLibraryUploading = signal(false);
+  mediaItemToDelete = signal<MediaItem | null>(null);
+  showMediaDeleteConfirm = signal(false);
+  previewBusiness = signal<Business | null>(null);
+  private uploadedMediaUrls = new Set<string>();
+  mediaLibraryImages = computed(() => this.mediaLibraryFiles().filter((file) => file.type.startsWith('image/')));
 
   constructor(
     private authService: AuthService,
@@ -69,6 +87,8 @@ export class BusinessEditorComponent implements OnInit {
       isDeliveryAvailable: [false],
       isArchived: [false],
       services: [''],
+      galleryUrl: [''],
+      gallery: this.fb.array([]),
       
       contactWebsite: [''],
       contactInstagram: [''],
@@ -93,6 +113,7 @@ export class BusinessEditorComponent implements OnInit {
 
   get deliveryInfoArray() { return this.form.get('deliveryInfo') as FormArray; }
   get businessLocationsArray() { return this.form.get('businessLocations') as FormArray; }
+  get galleryArray() { return this.form.get('gallery') as FormArray; }
 
   filteredCategories() {
     const search = this.categorySearch().toLowerCase();
@@ -300,6 +321,11 @@ export class BusinessEditorComponent implements OnInit {
         this.form.patchValue(formData);
         this.categorySearch.set(doc.category || '');
 
+        this.galleryArray.clear();
+        this.normalizeGalleryUrls(doc.gallery).forEach((url) => {
+          if (url) this.galleryArray.push(this.fb.control(url));
+        });
+
         this.businessLocationsArray.clear();
         const savedLocations = Array.isArray(doc.locations) && doc.locations.length > 0
           ? doc.locations
@@ -335,7 +361,7 @@ export class BusinessEditorComponent implements OnInit {
       }
     } catch (e) {
       this.toastService.error('Failed to load business data');
-      this.router.navigate(['/businesses']);
+      this.returnToBusinesses();
     }
   }
 
@@ -483,36 +509,181 @@ export class BusinessEditorComponent implements OnInit {
     }));
   }
 
-  async onMainImageSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length) return;
-    const rawFile = input.files[0];
-    this.isUploading.set(true);
+  addGalleryUrl() {
+    const url = String(this.form.get('galleryUrl')?.value || '').trim();
+    if (!url) return;
+    this.galleryArray.push(this.fb.control(url));
+    this.form.patchValue({ galleryUrl: '' });
+  }
+
+  removeGalleryImage(index: number) {
+    this.galleryArray.removeAt(index);
+  }
+
+  async openMediaLibrary(target: 'gallery' | 'logo' | 'featured' = 'gallery') {
+    this.mediaLibraryTarget.set(target);
+    this.showMediaLibrary.set(true);
+    this.selectedMediaPaths.set([]);
+    this.uploadedMediaUrls.clear();
+    await this.loadMediaLibrary('uploads');
+  }
+
+  async loadMediaLibrary(path = this.mediaLibraryPath()) {
+    this.mediaLibraryLoading.set(true);
     try {
-      const file = await optimizeImage(rawFile);
-      const path = `businesses/${Date.now()}_${file.name.replace(/\W+/g, '_')}`;
-      const url = await this.firebaseService.uploadFile(path, file);
-      this.form.patchValue({ imageUrl: url });
-    } catch (e) {
-      this.toastService.error('Upload failed');
+      const result = await this.firebaseService.listFiles(path);
+      this.mediaLibraryPath.set(path);
+      this.mediaLibraryFiles.set(result.items);
+      this.mediaLibraryFolders.set(result.folders);
+      this.selectedMediaPaths.set(result.items
+        .filter((file) => this.uploadedMediaUrls.has(file.url))
+        .map((file) => file.path));
+    } catch (error) {
+      this.toastService.error('Failed to load the media library.');
     } finally {
-      this.isUploading.set(false);
+      this.mediaLibraryLoading.set(false);
     }
   }
 
-  async onLogoSelected(event: Event) {
+  navigateMediaLibraryUp() {
+    const parts = this.mediaLibraryPath().split('/').filter(Boolean);
+    if (parts.length <= 1) return;
+    parts.pop();
+    this.loadMediaLibrary(parts.join('/'));
+  }
+
+  toggleMediaSelection(path: string) {
+    if (this.mediaLibraryTarget() !== 'gallery') {
+      this.selectedMediaPaths.update((current) => current[0] === path ? [] : [path]);
+      return;
+    }
+
+    this.selectedMediaPaths.update((current) => current.includes(path)
+      ? current.filter((item) => item !== path)
+      : [...current, path]);
+  }
+
+  isMediaSelected(path: string) {
+    return this.selectedMediaPaths().includes(path);
+  }
+
+  addSelectedMediaToGallery() {
+    const selectedPaths = new Set(this.selectedMediaPaths());
+    const selectedFiles = this.mediaLibraryFiles().filter((file) => selectedPaths.has(file.path));
+    const target = this.mediaLibraryTarget();
+
+    if (target === 'logo' || target === 'featured') {
+      const selectedFile = selectedFiles[0];
+      if (!selectedFile) return;
+      this.form.patchValue(target === 'logo' ? { logoUrl: selectedFile.url } : { imageUrl: selectedFile.url });
+      this.showMediaLibrary.set(false);
+      return;
+    }
+
+    const existingUrls = new Set(this.galleryArray.getRawValue().map((url: unknown) => String(url)));
+    const selectedUrls = selectedFiles
+      .map((file) => file.url)
+      .filter((url) => !existingUrls.has(url));
+
+    selectedUrls.forEach((url) => this.galleryArray.push(this.fb.control(url)));
+    this.showMediaLibrary.set(false);
+    this.toastService.success(`${selectedUrls.length} image${selectedUrls.length === 1 ? '' : 's'} added to the gallery.`);
+  }
+
+  requestDeleteMediaFromLibrary(file: MediaItem) {
+    this.mediaItemToDelete.set(file);
+    this.showMediaDeleteConfirm.set(true);
+  }
+
+  closeMediaDeleteConfirm() {
+    this.showMediaDeleteConfirm.set(false);
+    this.mediaItemToDelete.set(null);
+  }
+
+  async confirmDeleteMediaFromLibrary() {
+    const file = this.mediaItemToDelete();
+    if (!file) return;
+
+    try {
+      await this.firebaseService.deleteFile(file.path);
+      this.mediaLibraryFiles.update((files) => files.filter((item) => item.path !== file.path));
+      this.selectedMediaPaths.update((paths) => paths.filter((path) => path !== file.path));
+      for (let index = this.galleryArray.length - 1; index >= 0; index -= 1) {
+        if (this.galleryArray.at(index).value === file.url) this.galleryArray.removeAt(index);
+      }
+      this.toastService.success('Image deleted from the media library.');
+    } catch (error: any) {
+      this.toastService.error('Image deletion failed: ' + error.message);
+    } finally {
+      this.closeMediaDeleteConfirm();
+    }
+  }
+
+  async uploadMediaLibraryImages(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (!input.files?.length) return;
-    const rawFile = input.files[0];
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+
+    const targetPath = this.mediaLibraryPath() || 'uploads';
+    this.mediaLibraryUploading.set(true);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const rawFile of files) {
+        const file = await optimizeImage(rawFile);
+        const path = `${targetPath}/${Date.now()}_${file.name.replace(/\W+/g, '_')}`;
+        const url = await this.firebaseService.uploadFile(path, file);
+        uploadedUrls.push(url);
+        this.uploadedMediaUrls.add(url);
+      }
+      await this.loadMediaLibrary(targetPath);
+      if (this.mediaLibraryTarget() !== 'gallery') {
+        const newestUploaded = this.mediaLibraryFiles().find((file) => uploadedUrls.includes(file.url));
+        this.selectedMediaPaths.set(newestUploaded ? [newestUploaded.path] : []);
+      }
+      this.toastService.success(`${uploadedUrls.length} image${uploadedUrls.length === 1 ? '' : 's'} uploaded.`);
+    } catch (error) {
+      this.toastService.error('Media upload failed.');
+    } finally {
+      input.value = '';
+      this.mediaLibraryUploading.set(false);
+    }
+  }
+
+  private normalizeGalleryUrls(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.map((url) => String(url).trim()).filter(Boolean);
+    }
+
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed.map((url) => String(url).trim()).filter(Boolean) : [];
+      } catch {
+        return value.trim() ? [value.trim()] : [];
+      }
+    }
+
+    return [];
+  }
+
+  async onGalleryImagesSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+
     this.isUploading.set(true);
     try {
-      const file = await optimizeImage(rawFile, 500); 
-      const path = `businesses/logos/${Date.now()}_${file.name.replace(/\W+/g, '_')}`;
-      const url = await this.firebaseService.uploadFile(path, file);
-      this.form.patchValue({ logoUrl: url });
+      for (const rawFile of files) {
+        const file = await optimizeImage(rawFile);
+        const path = `businesses/gallery/${Date.now()}_${file.name.replace(/\W+/g, '_')}`;
+        const url = await this.firebaseService.uploadFile(path, file);
+        this.galleryArray.push(this.fb.control(url));
+      }
+      this.toastService.success(`${files.length} gallery image${files.length === 1 ? '' : 's'} uploaded.`);
     } catch (e) {
-      this.toastService.error('Logo upload failed');
+      this.toastService.error('Gallery upload failed');
     } finally {
+      input.value = '';
       this.isUploading.set(false);
     }
   }
@@ -647,8 +818,8 @@ export class BusinessEditorComponent implements OnInit {
     await this.resolveGooglePlaceFromAddress(index, query, true);
   }
 
-  async save() {
-    if (!this.authService.isAdmin()) {
+  async save(openPreview = false) {
+    if (!this.authService.canManageContent()) {
       this.toastService.error('Unauthorized');
       return;
     }
@@ -743,6 +914,7 @@ export class BusinessEditorComponent implements OnInit {
       isDeliveryAvailable: raw.isDeliveryAvailable,
       isArchived: raw.isArchived,
       services: raw.services ? raw.services.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+      gallery: (raw.gallery || []).map((url: unknown) => String(url).trim()).filter(Boolean),
       contact,
       openingHours: primaryLocation.openingHours || [],
       deliveryInfo: raw.deliveryInfo as DeliveryInfo[],
@@ -756,16 +928,37 @@ export class BusinessEditorComponent implements OnInit {
     }
 
     try {
+      let savedBusiness: Business;
       if (this.isEditing() && this.currentId) {
         await this.firebaseService.update('businesses', this.currentId, dataToSave);
+        savedBusiness = { id: this.currentId, ...dataToSave } as Business;
         this.toastService.success('Business updated');
       } else {
-        await this.firebaseService.create('businesses', dataToSave);
+        savedBusiness = await this.firebaseService.create('businesses', dataToSave) as Business;
         this.toastService.success('Business created');
       }
-      this.router.navigate(['/businesses']);
+      if (openPreview) {
+        this.previewBusiness.set(savedBusiness);
+      } else {
+        this.returnToBusinesses();
+      }
     } catch (e: any) {
       this.toastService.error('Save failed: ' + e.message);
     }
+  }
+
+  businessReturnQueryParams() {
+    return {
+      categoryId: this.route.snapshot.queryParamMap.get('categoryId'),
+      page: this.route.snapshot.queryParamMap.get('page')
+    };
+  }
+
+  private returnToBusinesses() {
+    this.router.navigate(['/businesses'], { queryParams: this.businessReturnQueryParams() });
+  }
+
+  closePreview() {
+    this.previewBusiness.set(null);
   }
 }

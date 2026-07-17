@@ -13,7 +13,7 @@ export interface DashboardKpi {
 
 @Injectable({ providedIn: 'root' })
 export class DashboardState {
-  readonly businessPalette = ['#083594', '#b0e0ca', '#f9e286', '#ffa86c', '#f274b2', '#9ea0ed', '#7dc8ea'];
+  readonly businessPalette = ['#083594', '#b0e0ca', '#f9e286', '#ffa86c', '#f274b2', '#9ea0ed', '#7dc8ea', '#78b6c5', '#b99ce2'];
 
   readonly users = signal<any[]>([]);
   readonly restaurants = signal<any[]>([]);
@@ -66,7 +66,7 @@ export class DashboardState {
   readonly newsPublishedCount = computed(() => this.news().filter((item: any) => item?.isPublished === true).length);
   readonly newsDraftCount = computed(() => this.news().filter((item: any) => item?.isPublished !== true && item?.isArchived !== true).length);
   readonly archivedNewsCount = computed(() => this.news().filter((item: any) => item?.isArchived === true).length);
-  readonly newsFeed14DayCount = computed(() => this.countRecentItems(this.news(), ['publishedDate', 'createdDate', 'date'], 14));
+  readonly newsFeed14DayCount = computed(() => this.countRecentItems(this.news().filter((item: any) => item?.isPublished === true), ['publishedDate', 'createdDate', 'date'], 14));
   readonly recentNewsCount = computed(() => this.countRecentItems(this.news(), ['publishedDate', 'createdDate', 'date'], 7));
   readonly recentBusinessCount = computed(() => this.countRecentItems(this.businesses(), ['publishedDate', 'createdDate', 'date'], 7));
   readonly recentEventCount = computed(() => this.countRecentItems(this.events(), ['publishedDate', 'createdDate', 'date'], 7));
@@ -154,6 +154,7 @@ export class DashboardState {
 
     const counts = new Map<string, number>();
     this.news().forEach((item: any) => {
+      if (item?.isPublished !== true) return;
       const rawDate = item?.publishedDate || item?.createdDate || item?.date;
       const parsed = rawDate ? new Date(rawDate) : null;
       if (!parsed || Number.isNaN(parsed.getTime())) return;
@@ -174,13 +175,17 @@ export class DashboardState {
 
     const total = Math.max(1, Array.from(counts.values()).reduce((sum, value) => sum + value, 0));
 
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([category, value], index) => ({
+    const sortedCategories = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    const topCategories = sortedCategories.slice(0, 9);
+    const otherCount = sortedCategories.slice(9).reduce((sum, [, value]) => sum + value, 0);
+    const categories = otherCount > 0 ? [...topCategories, ['Other', otherCount] as [string, number]] : topCategories;
+
+    return categories.map(([category, value], index) => ({
         category,
         value,
         percentage: (value / total) * 100,
-        color: this.businessPalette[index % this.businessPalette.length]
+        color: category === 'Other' ? '#94a3b8' : this.businessPalette[index],
+        isOther: category === 'Other'
       }));
   }
 }

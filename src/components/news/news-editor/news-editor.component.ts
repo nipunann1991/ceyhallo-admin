@@ -119,7 +119,7 @@ export class NewsEditorComponent implements OnInit {
   }
 
   async save() {
-    if (!this.authService.isAdmin()) {
+    if (!this.authService.canManageContent()) {
       this.toastService.error('Unauthorized');
       return;
     }

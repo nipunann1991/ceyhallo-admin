@@ -4,7 +4,7 @@
       <h2 class="text-2xl font-bold text-slate-800">Latest Offers</h2>
       <p class="text-slate-500 text-sm">Manage promotions and featured offers for the mobile app.</p>
     </div>
-    @if (authService.isAdmin()) {
+    @if (authService.canManageContent()) {
       <div class="flex gap-3">
         <button (click)="toggleReorderMode()" 
           class="px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm border"
@@ -123,7 +123,7 @@
             <th class="px-6 py-4">Target Link</th>
             <th class="px-6 py-4">Visibility</th>
             <th class="px-6 py-4">Status</th>
-            @if (authService.isAdmin()) {
+            @if (authService.canManageContent()) {
               <th class="px-6 py-4 text-right">Actions</th>
             }
           </tr>
@@ -229,7 +229,7 @@
                     {{ item.isActive ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              @if (authService.isAdmin()) {
+              @if (authService.canManageContent()) {
                 <td class="px-6 py-6 text-right">
                   <div class="flex flex-col items-end gap-2">
                     <div class="flex items-center justify-end gap-2">
@@ -246,9 +246,11 @@
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                         }
                       </button>
-                      <button (click)="delete(item.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                      </button>
+                      @if (authService.isAdmin()) {
+                        <button (click)="delete(item.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
+                      }
                     </div>
                     <button (click)="copyId(item.id)" class="group flex items-center gap-1 text-[10px] text-slate-400 font-mono hover:text-slate-600 transition-colors" title="Copy ID">
                       <span class="truncate max-w-[80px] opacity-70 group-hover:opacity-100">{{ item.id }}</span>
@@ -260,11 +262,11 @@
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="authService.isAdmin() ? (isReordering() ? 8 : 8) : 7" class="px-6 py-12 text-center text-slate-400">
+              <td [attr.colspan]="authService.canManageContent() ? (isReordering() ? 8 : 8) : 7" class="px-6 py-12 text-center text-slate-400">
                 <div class="flex flex-col items-center gap-2">
                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                    <p>{{ isReordering() ? 'No active offers found.' : 'No offers found.' }}</p>
-                   @if (authService.isAdmin() && !isReordering()) {
+                   @if (authService.canManageContent() && !isReordering()) {
                      <a routerLink="/offers/new" class="text-orange-600 font-medium text-sm hover:underline">Add one now</a>
                    }
                 </div>

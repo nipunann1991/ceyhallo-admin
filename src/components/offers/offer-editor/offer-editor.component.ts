@@ -239,7 +239,7 @@ export class OfferEditorComponent implements OnInit {
   }
 
   async save() {
-    if (!this.authService.isAdmin()) {
+    if (!this.authService.canManageContent()) {
       this.toastService.error('Unauthorized');
       return;
     }

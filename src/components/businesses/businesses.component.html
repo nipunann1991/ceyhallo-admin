@@ -4,7 +4,7 @@
       <h2 class="text-2xl font-bold text-slate-800">Businesses</h2>
       <p class="text-slate-500 text-sm">Manage business listings, services, and contact info.</p>
     </div>
-    @if (authService.isAdmin()) {
+    @if (authService.canManageContent()) {
       <div class="flex items-center gap-2">
         @if (categoryFilter() !== 'all') {
           <button (click)="toggleReorderMode()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm" [class.bg-indigo-100]="isReordering()" [class.text-indigo-700]="isReordering()">
@@ -12,10 +12,26 @@
             {{ isReordering() ? 'Done Reordering' : 'Reorder' }}
           </button>
         }
-        <a routerLink="/businesses/new" class="bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm">
+        <a routerLink="/businesses/new" class="order-2 bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add Business
         </a>
+        <details class="relative order-3">
+          <summary class="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50" title="More business actions" aria-label="More business actions">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.75"/><circle cx="12" cy="12" r="1.75"/><circle cx="12" cy="19" r="1.75"/></svg>
+          </summary>
+          <div class="absolute right-0 z-30 mt-2 w-64 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+            <label class="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50" [class.cursor-not-allowed]="isImporting()" [class.opacity-50]="isImporting()">
+          <input type="file" class="sr-only" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" [disabled]="isImporting()" (change)="importBusinessesFromExcel($event)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-emerald-600"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5Z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13v5"/><path d="m11.5 15.5 2.5 2.5 2.5-2.5"/></svg>
+              <span>{{ isImporting() ? 'Importing Excel...' : 'Import Excel' }}</span>
+            </label>
+            <button type="button" (click)="exportBusinessesToExcel()" class="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-[#083594]"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5Z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 12v5"/><path d="m11.5 14.5 2.5-2.5 2.5 2.5"/></svg>
+              <span>{{ exportButtonLabel() }}</span>
+            </button>
+          </div>
+        </details>
       </div>
     }
   </div>
@@ -51,26 +67,13 @@
       <button (click)="clearFilters()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
         Clear
       </button>
-      <div class="relative">
-        <select
-          [value]="sortBy()"
-          (change)="updateSortBy($event)"
-          class="block w-full sm:w-48 pl-3 pr-10 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#083594]-500 focus:border-transparent text-sm appearance-none bg-white"
-        >
-          <option value="newest">Sort by Newest</option>
-          <option value="title">Sort by Title</option>
-          <option value="order">Custom Order</option>
-        </select>
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700">
-          <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-        </div>
-      </div>
     </div>
 
     <!-- Status Filters -->
     <div class="flex flex-wrap items-center gap-4 pt-2 border-t border-slate-100">
-      <span class="text-sm font-medium text-slate-600">Filter by:</span>
-      <label class="flex items-center gap-2 cursor-pointer select-none">
+      <div class="flex flex-wrap items-center gap-4">
+        <span class="text-sm font-medium text-slate-600">Filter by:</span>
+        <label class="flex items-center gap-2 cursor-pointer select-none">
         <input 
           type="checkbox" 
           [checked]="isFeaturedFilter()"
@@ -81,7 +84,7 @@
           <svg class="w-4 h-4 text-amber-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           Featured
         </span>
-      </label>
+        </label>
       <label class="flex items-center gap-2 cursor-pointer select-none">
         <input 
           type="checkbox" 
@@ -93,7 +96,7 @@
           <svg class="w-4 h-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/> <polyline points="22 4 12 14.01 9 11.01"/></svg>
           Verified
         </span>
-      </label>
+        </label>
       <label class="flex items-center gap-2 cursor-pointer select-none">
         <input 
           type="checkbox" 
@@ -105,24 +108,76 @@
           <svg class="w-4 h-4 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>
           Premium
         </span>
-      </label>
+        </label>
+      </div>
+      @if (authService.canManageContent()) {
+        <button (click)="requestArchiveSelected()" [disabled]="selectedBusinessIds().length === 0" class="ml-auto text-sm font-medium text-[#083594] underline underline-offset-4 transition-colors hover:text-[#062a71] disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline">
+          {{ archiveActionLabel() }}
+        </button>
+      }
     </div>
 
   </div>
 
   <!-- Data Table -->
   <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <div class="flex flex-col gap-3 border-b border-slate-100 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-sm text-slate-500">
+        {{ selectionLabel() }}
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        @if (selectedBusinessIds().length > 0) {
+          <button (click)="toggleSelectAllFiltered(false)" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100">
+            Clear selection
+          </button>
+        }
+      </div>
+    </div>
     <div class="overflow-x-auto">
       <table class="w-full text-left text-sm text-slate-600">
         <thead class="bg-slate-50 text-[0.82rem] leading-[1.2rem] uppercase font-semibold text-slate-500 border-b border-slate-200">
           <tr>
+            <th class="px-6 py-4 w-12 text-center">
+              <input
+                type="checkbox"
+                class="h-4 w-4 rounded border-slate-300 text-[#083594] focus:ring-[#083594]"
+                [checked]="allFilteredSelected()"
+                [disabled]="filteredBusinesses().length === 0"
+                (change)="toggleSelectAllFiltered($any($event.target).checked)"
+                title="Select all filtered records">
+            </th>
             <th class="px-6 py-4 w-12 text-center">#</th>
-            <th class="px-6 py-4">Business</th>
-            <th class="px-6 py-4">Category</th>
-            <th class="px-6 py-4">Telephone</th>
-            <th class="px-6 py-4">Rating</th>
-            <th class="px-6 py-4">State</th>
-            @if (authService.isAdmin()) {
+            <th class="px-6 py-4">
+              <button type="button" (click)="sortByColumn('title')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('title')" [attr.aria-sort]="sortAriaValue('title')">
+                Business
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.rotate-180]="isSortedBy('title') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('title')"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </th>
+            <th class="px-6 py-4">
+              <button type="button" (click)="sortByColumn('category')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('category')" [attr.aria-sort]="sortAriaValue('category')">
+                Category
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.rotate-180]="isSortedBy('category') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('category')"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </th>
+            <th class="px-6 py-4">
+              <button type="button" (click)="sortByColumn('phone')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('phone')" [attr.aria-sort]="sortAriaValue('phone')">
+                Telephone
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.rotate-180]="isSortedBy('phone') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('phone')"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </th>
+            <th class="px-6 py-4">
+              <button type="button" (click)="sortByColumn('rating')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('rating')" [attr.aria-sort]="sortAriaValue('rating')">
+                Rating
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.rotate-180]="isSortedBy('rating') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('rating')"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </th>
+            <th class="px-6 py-4">
+              <button type="button" (click)="sortByColumn('state')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('state')" [attr.aria-sort]="sortAriaValue('state')">
+                State
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.rotate-180]="isSortedBy('state') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('state')"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </th>
+            @if (authService.canManageContent()) {
               <th class="px-6 py-4 text-right">Actions</th>
             }
           </tr>
@@ -135,7 +190,16 @@
                 (dragover)="onDragOver($event)"
                 (drop)="onDrop($event, i)"
                 [class.cursor-move]="isReordering()"
+                [class.bg-blue-50]="isBusinessSelected(item.id)"
                 [class.opacity-50]="draggedIndex === i">
+              <td class="px-6 py-6 text-center">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-slate-300 text-[#083594] focus:ring-[#083594]"
+                  [checked]="isBusinessSelected(item.id)"
+                  (change)="toggleBusinessSelection(item.id, $any($event.target).checked)"
+                  (click)="$event.stopPropagation()">
+              </td>
               <td class="px-6 py-6 text-center text-slate-400 text-xs font-mono">
                 @if (isReordering()) {
                     <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-500 font-bold font-mono">
@@ -231,7 +295,7 @@
                   {{ item.isArchived ? 'Archived' : (item.isPublished ? 'Published' : 'Draft') }}
                  </span>
               </td>
-              @if (authService.isAdmin()) {
+              @if (authService.canManageContent()) {
                 <td class="px-6 py-6 text-right">
                   <div class="flex flex-col items-end gap-2">
                     <div class="flex items-center justify-end gap-2">
@@ -241,12 +305,14 @@
                       <button (click)="duplicate(item)" class="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Duplicate">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="13" height="13" x="9" y="9" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                       </button>
-                      <a [routerLink]="['/businesses/edit', item.id]" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
+                      <a [routerLink]="['/businesses/edit', item.id]" [queryParams]="businessReturnQueryParams()" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                       </a>
-                      <button (click)="delete(item.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                      </button>
+                      @if (authService.isAdmin()) {
+                        <button (click)="delete(item.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
+                      }
                     </div>
                     <button (click)="copyId(item.id)" class="group flex items-center gap-1 text-[10px] text-slate-400 font-mono hover:text-slate-600 transition-colors" title="Copy ID">
                       <span class="truncate max-w-[80px] opacity-70 group-hover:opacity-100">{{ item.id }}</span>
@@ -258,11 +324,11 @@
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="authService.isAdmin() ? 7 : 6" class="px-6 py-12 text-center text-slate-400">
+              <td [attr.colspan]="authService.canManageContent() ? 8 : 7" class="px-6 py-12 text-center text-slate-400">
                 <div class="flex flex-col items-center gap-2">
                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                    <p>No businesses found.</p>
-                   @if (authService.isAdmin()) {
+                   @if (authService.canManageContent()) {
                      <a routerLink="/businesses/new" class="text-[#083594]-600 font-medium text-sm hover:underline">Add listing</a>
                    }
                 </div>
@@ -282,7 +348,7 @@
   </div>
 </div>
 
-<app-sliding-panel [isOpen]="!!selectedBusiness()" [title]="'Business Details'" (close)="closePanel()">
+<app-sliding-panel [isOpen]="!!selectedBusiness()" [title]="'Business Preview'" (close)="closePanel()">
   <app-business-detail [item]="selectedBusiness()"></app-business-detail>
 </app-sliding-panel>
 
@@ -296,3 +362,13 @@
   </app-confirm-modal>
 }
 
+@if (showArchiveConfirmModal()) {
+  <app-confirm-modal
+    [title]="archiveMode() === 'archive' ? 'Archive Businesses' : 'Unarchive Businesses'"
+    [message]="(archiveMode() === 'archive' ? 'Archive ' : 'Unarchive ') + archiveTargetIds().length + ' selected business' + (archiveTargetIds().length === 1 ? '' : 'es') + '?'"
+    [confirmLabel]="archiveMode() === 'archive' ? 'Archive' : 'Unarchive'"
+    [variant]="archiveMode() === 'archive' ? 'destructive' : 'primary'"
+    (confirm)="confirmArchiveSelected()"
+    (cancel)="closeArchiveConfirmModal()">
+  </app-confirm-modal>
+}

@@ -141,7 +141,7 @@ export class EventsComponent implements OnInit {
   }
 
   async duplicate(item: AppEvent) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, ...data } = item;
@@ -163,7 +163,7 @@ export class EventsComponent implements OnInit {
   // --- Reorder Logic ---
 
   toggleReorderMode() {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     this.isReordering.update(v => !v);
     this.currentPage.set(1);
     this.searchQuery.set('');
@@ -240,6 +240,10 @@ export class EventsComponent implements OnInit {
   }
 
   async confirmDelete() {
+    if (!this.authService.isAdmin()) {
+      this.closeConfirmModal();
+      return;
+    }
     const id = this.itemToDelete();
     if (!id) return;
 
@@ -254,7 +258,7 @@ export class EventsComponent implements OnInit {
   }
 
   async toggleArchive(event: AppEvent) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     this.itemToArchive.set(event);
     this.showArchiveConfirmModal.set(true);
   }

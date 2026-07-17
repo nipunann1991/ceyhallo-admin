@@ -183,7 +183,7 @@ export class NewsComponent implements OnInit {
   }
 
   async duplicate(item: News) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, ...data } = item;
@@ -205,7 +205,7 @@ export class NewsComponent implements OnInit {
   // --- Reorder Logic ---
 
   toggleReorderMode() {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     this.isReordering.update(v => !v);
     this.currentPage.set(1);
     this.searchQuery.set('');
@@ -292,6 +292,10 @@ export class NewsComponent implements OnInit {
   }
 
   async confirmDelete() {
+    if (!this.authService.isAdmin()) {
+      this.closeConfirmModal();
+      return;
+    }
     try {
       if (this.deleteMode() === 'bulk') {
         const ids = this.selectedNewsIds();
@@ -314,7 +318,7 @@ export class NewsComponent implements OnInit {
   }
 
   async toggleArchive(news: News) {
-    if (!this.authService.isAdmin()) return;
+    if (!this.authService.canManageContent()) return;
     
     try {
       const newArchivedState = !news.isArchived;

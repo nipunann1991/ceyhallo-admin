@@ -8,7 +8,7 @@ export class BusinessStateService {
   searchQuery = signal<string>('');
   typeFilter = signal<string>('all');
   priceFilter = signal<string>('all');
-  sortBy = signal<string>('newest');
+  sortBy = signal<string>('title-asc');
   currentPage = signal<number>(1);
 
   // Status filters

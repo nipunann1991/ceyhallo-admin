@@ -1,6 +1,6 @@
 
 import { Injectable } from '@angular/core';
-import { initializeApp, FirebaseApp } from 'firebase/app';
+import { deleteApp, initializeApp, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
   Firestore, 
@@ -12,6 +12,7 @@ import {
   getDocs,
   updateDoc, 
   deleteDoc, 
+  writeBatch,
   onSnapshot,
   query, 
   where
@@ -26,7 +27,7 @@ import {
   listAll,
   getMetadata
 } from 'firebase/storage';
-import { getAuth, Auth } from 'firebase/auth';
+import { createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail, signOut, updateProfile, Auth } from 'firebase/auth';
 import { getFunctions, httpsCallable, Functions } from 'firebase/functions';
 
 const firebaseConfig = {
@@ -112,6 +113,88 @@ export class FirebaseService {
     const colRef = collection(this.firestore, path);
     const docRef = await addDoc(colRef, data);
     return { id: docRef.id, ...data };
+  }
+
+  async createMany(path: string, records: any[]) {
+    const created: any[] = [];
+    const chunkSize = 500;
+
+    for (let start = 0; start < records.length; start += chunkSize) {
+      const batch = writeBatch(this.firestore);
+      const chunk = records.slice(start, start + chunkSize);
+
+      chunk.forEach((data) => {
+        const docRef = doc(collection(this.firestore, path));
+        batch.set(docRef, data);
+        created.push({ id: docRef.id, ...data });
+      });
+
+      await batch.commit();
+    }
+
+    return created;
+  }
+
+  async saveMany(path: string, operations: Array<{ id?: string; data: any }>) {
+    let created = 0;
+    let updated = 0;
+    const chunkSize = 500;
+
+    for (let start = 0; start < operations.length; start += chunkSize) {
+      const batch = writeBatch(this.firestore);
+      const chunk = operations.slice(start, start + chunkSize);
+
+      chunk.forEach((operation) => {
+        if (operation.id) {
+          batch.update(doc(this.firestore, path, operation.id), operation.data);
+          updated += 1;
+        } else {
+          batch.set(doc(collection(this.firestore, path)), operation.data);
+          created += 1;
+        }
+      });
+
+      await batch.commit();
+    }
+
+    return { created, updated };
+  }
+
+  async createAuthUserWithProfile(data: any) {
+    const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}`);
+    const secondaryAuth = getAuth(secondaryApp);
+    const password = this.generateInvitePassword();
+
+    try {
+      const credential = await createUserWithEmailAndPassword(secondaryAuth, data.email, password);
+      if (data.name) {
+        await updateProfile(credential.user, { displayName: data.name });
+      }
+
+      const userData = {
+        ...data,
+        id: credential.user.uid
+      };
+
+      await setDoc(doc(this.firestore, 'users', credential.user.uid), userData, { merge: true });
+      try {
+        await sendPasswordResetEmail(secondaryAuth, data.email);
+      } catch (error) {
+        // The account and profile are valid even when Firebase email delivery is not configured.
+        console.warn('Unable to send the account setup email:', error);
+      }
+      await signOut(secondaryAuth);
+
+      return userData;
+    } finally {
+      await deleteApp(secondaryApp);
+    }
+  }
+
+  private generateInvitePassword(): string {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+    const values = crypto.getRandomValues(new Uint32Array(20));
+    return Array.from(values, (value) => alphabet[value % alphabet.length]).join('');
   }
   
   async set(path: string, data: any) {
@@ -208,7 +291,9 @@ export class FirebaseService {
       });
       
       const results = await Promise.all(promises);
-      const items = results.filter(r => r !== null);
+      const items = results
+        .filter((item): item is NonNullable<typeof item> => item !== null)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
       return { items, folders };
     } catch (error) {
@@ -225,6 +310,16 @@ export class FirebaseService {
       console.error('File delete failed:', error);
       throw error;
     }
+  }
+
+  async deleteFolder(path: string): Promise<void> {
+    const folderRef = storageRef(this.storage, path);
+    const contents = await listAll(folderRef);
+
+    await Promise.all([
+      ...contents.items.map((item) => deleteObject(item)),
+      ...contents.prefixes.map((folder) => this.deleteFolder(folder.fullPath))
+    ]);
   }
 
   async createFolder(path: string): Promise<void> {
