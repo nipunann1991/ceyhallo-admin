@@ -1,6 +1,7 @@
 
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { Store } from '@ngrx/store';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -14,6 +15,8 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
 import { User } from '../models/user.model';
 import { ALL_ADMIN_PAGE_PATHS } from '../constants/admin-pages';
+import { AuthActions } from '../store/auth.actions';
+import { selectAuthError, selectAuthIsLoading, selectCurrentUser } from '../store/auth.selectors';
 
 @Injectable({
   providedIn: 'root'
@@ -21,9 +24,11 @@ import { ALL_ADMIN_PAGE_PATHS } from '../constants/admin-pages';
 export class AuthService {
   private firebaseService = inject(FirebaseService);
   private router: Router = inject(Router);
+  private store = inject(Store);
 
-  currentUser = signal<User | null>(null);
-  isLoading = signal<boolean>(true);
+  currentUser = this.store.selectSignal(selectCurrentUser);
+  isLoading = this.store.selectSignal(selectAuthIsLoading);
+  error = this.store.selectSignal(selectAuthError);
 
   isAdmin = computed(() => {
     return this.currentUser()?.role === 'admin';
@@ -69,12 +74,17 @@ export class AuthService {
     return allowedPages[0] || '/no-access';
   }
 
+  hasAccessiblePages(): boolean {
+    return this.getAllowedPages().length > 0;
+  }
+
   constructor() {
     this.initAuthListener();
   }
 
   private initAuthListener() {
     onAuthStateChanged(this.firebaseService.auth, async (firebaseUser) => {
+      this.store.dispatch(AuthActions.setLoading({ isLoading: true }));
       if (firebaseUser) {
         // Fetch user profile from Firestore to get role
         try {
@@ -83,11 +93,12 @@ export class AuthService {
           
           if (userDoc.exists()) {
             const userData = userDoc.data() as User;
-            this.currentUser.set({
+            const user = {
               id: firebaseUser.uid,
               ...userData,
               allowedPages: this.normalizeAllowedPages({ id: firebaseUser.uid, ...userData })
-            });
+            };
+            this.store.dispatch(AuthActions.setCurrentUser({ user }));
           } else {
             // Fallback: User in Auth but not in Firestore (e.g. deleted manually or create failed)
             const newUser: User = {
@@ -103,39 +114,48 @@ export class AuthService {
             // Restore the document in Firestore
             await setDoc(userDocRef, newUser);
             
-            this.currentUser.set(newUser);
+            this.store.dispatch(AuthActions.setCurrentUser({ user: newUser }));
           }
           
+          if (!this.hasAccessiblePages()) {
+            await this.logout();
+            return;
+          }
+
           // Redirect if on login page
           if (this.router.url === '/login' || this.router.url === '/') {
              await this.router.navigate([this.getFirstAccessiblePath()]);
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
+          this.store.dispatch(AuthActions.setError({ error: 'Unable to load user profile.' }));
         }
       } else {
-        this.currentUser.set(null);
+        this.store.dispatch(AuthActions.setCurrentUser({ user: null }));
         if (this.router.url !== '/login') {
            await this.router.navigate(['/login']);
         }
       }
-      this.isLoading.set(false);
+      this.store.dispatch(AuthActions.setLoading({ isLoading: false }));
     });
   }
 
   async login(email: string, pass: string) {
-    this.isLoading.set(true);
+    this.store.dispatch(AuthActions.setLoading({ isLoading: true }));
+    this.store.dispatch(AuthActions.setError({ error: null }));
     try {
       await signInWithEmailAndPassword(this.firebaseService.auth, email, pass);
     } catch (error) {
+      this.store.dispatch(AuthActions.setError({ error: this.toAuthErrorMessage(error) }));
       throw error;
     } finally {
-      this.isLoading.set(false);
+      this.store.dispatch(AuthActions.setLoading({ isLoading: false }));
     }
   }
 
   async register(email: string, pass: string) {
-    this.isLoading.set(true);
+    this.store.dispatch(AuthActions.setLoading({ isLoading: true }));
+    this.store.dispatch(AuthActions.setError({ error: null }));
     try {
       const credential = await createUserWithEmailAndPassword(this.firebaseService.auth, email, pass);
       
@@ -152,18 +172,19 @@ export class AuthService {
 
       await setDoc(doc(this.firebaseService.firestore, 'users', credential.user.uid), newUser);
       
-      this.currentUser.set(newUser);
+      this.store.dispatch(AuthActions.setCurrentUser({ user: newUser }));
       await this.router.navigate([this.getFirstAccessiblePath()]);
     } catch (error) {
+      this.store.dispatch(AuthActions.setError({ error: this.toAuthErrorMessage(error) }));
       throw error;
     } finally {
-      this.isLoading.set(false);
+      this.store.dispatch(AuthActions.setLoading({ isLoading: false }));
     }
   }
 
   async logout() {
     await signOut(this.firebaseService.auth);
-    this.currentUser.set(null);
+    this.store.dispatch(AuthActions.logout());
     await this.router.navigate(['/login']);
   }
 
@@ -173,5 +194,21 @@ export class AuthService {
 
     const credential = EmailAuthProvider.credential(user.email, password);
     await reauthenticateWithCredential(user, credential);
+  }
+
+  private toAuthErrorMessage(error: unknown) {
+    if (error && typeof error === 'object' && 'code' in error) {
+      const code = String((error as { code: unknown }).code);
+      if (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password') {
+        return 'Invalid email or password.';
+      }
+      if (code === 'auth/too-many-requests') {
+        return 'Too many failed attempts. Please try again later.';
+      }
+    }
+    if (error && typeof error === 'object' && 'message' in error) {
+      return 'Authentication failed: ' + String((error as { message: unknown }).message);
+    }
+    return 'Authentication failed.';
   }
 }

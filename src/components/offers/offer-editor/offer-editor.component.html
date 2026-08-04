@@ -34,8 +34,8 @@
          <div>
             @if (form.get('linkType')?.value === 'businesses') {
                <label class="block text-sm font-medium text-slate-700 mb-1">Select Business</label>
-               <select formControlName="targetId" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
-                  <option value="" disabled>Choose a business...</option>
+               <select formControlName="targetId" (change)="onEntitySelect($event)" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594]-500 focus:border-[#083594]-500 p-2.5 border bg-white">
+                  <option value="">No business selected</option>
                   @for (b of sortedBusinesses(); track b.id) {
                      <option [value]="b.id">{{ b.title }}</option>
                   }

@@ -86,6 +86,9 @@ export class BusinessEditorComponent implements OnInit {
       isFeatured: [false],
       isDeliveryAvailable: [false],
       isArchived: [false],
+      alphabeticalSortKey: [''],
+      categorySortId: [null],
+      featuredSortId: [null],
       services: [''],
       galleryUrl: [''],
       gallery: this.fb.array([]),
@@ -310,6 +313,9 @@ export class BusinessEditorComponent implements OnInit {
            isFeatured: doc.isFeatured,
            isDeliveryAvailable: doc.isDeliveryAvailable || false,
            isArchived: doc.isArchived || false,
+           alphabeticalSortKey: doc.alphabeticalSortKey || this.buildAlphabeticalSortKey(doc.title),
+           categorySortId: doc.categorySortId ?? doc.order ?? null,
+           featuredSortId: doc.featuredSortId ?? null,
            services: doc.services ? doc.services.join(', ') : '',
            contactWebsite: doc.contact?.website || '',
            contactInstagram: doc.contact?.instagram || '',
@@ -830,6 +836,7 @@ export class BusinessEditorComponent implements OnInit {
     }
 
     const raw = this.form.getRawValue();
+    const alphabeticalSortKey = String(raw.alphabeticalSortKey || '').trim() || this.buildAlphabeticalSortKey(raw.title);
     if (!Array.isArray(raw.businessLocations) || raw.businessLocations.length === 0) {
       this.toastService.error('Please add at least one business location.');
       return;
@@ -913,6 +920,9 @@ export class BusinessEditorComponent implements OnInit {
       isFeatured: raw.isFeatured,
       isDeliveryAvailable: raw.isDeliveryAvailable,
       isArchived: raw.isArchived,
+      alphabeticalSortKey,
+      categorySortId: this.optionalNumberValue(raw.categorySortId),
+      featuredSortId: this.optionalNumberValue(raw.featuredSortId),
       services: raw.services ? raw.services.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
       gallery: (raw.gallery || []).map((url: unknown) => String(url).trim()).filter(Boolean),
       contact,
@@ -960,5 +970,16 @@ export class BusinessEditorComponent implements OnInit {
 
   closePreview() {
     this.previewBusiness.set(null);
+  }
+
+  private buildAlphabeticalSortKey(value: unknown) {
+    return String(value || '').trim().toLocaleLowerCase();
+  }
+
+  private optionalNumberValue(value: unknown) {
+    const parsed = Number(value);
+    return value === null || value === undefined || String(value).trim() === '' || !Number.isFinite(parsed)
+      ? null
+      : parsed;
   }
 }

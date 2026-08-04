@@ -9,6 +9,6 @@ import { CommonModule } from '@angular/common';
 })
 export class ModalComponent {
   title = input.required<string>();
-  size = input<'default' | 'wide'>('default');
+  size = input<'compact' | 'default' | 'wide'>('default');
   close = output<void>();
 }

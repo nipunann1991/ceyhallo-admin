@@ -25,7 +25,7 @@ export class OfferEditorComponent implements OnInit {
   // Data Sources
   categories = signal<Category[]>([]);
   businesses = signal<any[]>([]);
-  sortedBusinesses = computed(() => this.businesses().sort((a,b) => a.title.localeCompare(b.title)));
+  sortedBusinesses = computed(() => [...this.businesses()].sort((a, b) => a.title.localeCompare(b.title)));
 
   constructor(
     private authService: AuthService,
@@ -81,7 +81,7 @@ export class OfferEditorComponent implements OnInit {
      const isExternal = type === 'external';
 
      if (isBusiness) {
-        targetControl?.setValidators(Validators.required);
+        targetControl?.clearValidators();
         targetControl?.enable();
         urlControl?.clearValidators();
         urlControl?.disable();
@@ -262,8 +262,13 @@ export class OfferEditorComponent implements OnInit {
        finalTargetId = raw.externalUrl;
        finalTargetName = 'External Link';
     } else if (isBusiness) {
-       const b = this.businesses().find(i => i.id === raw.targetId);
-       finalTargetName = b ? b.title : 'Unknown Business';
+       if (raw.targetId) {
+          const b = this.businesses().find(i => i.id === raw.targetId);
+          finalTargetName = b ? b.title : '';
+       } else {
+          finalTargetId = '';
+          finalTargetName = '';
+       }
     } else {
        // For 'none'
        finalTargetName = 'No Link';

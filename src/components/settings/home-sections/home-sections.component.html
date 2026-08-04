@@ -103,6 +103,11 @@
                               Limit: <span class="text-slate-800">{{ section.limit || 10 }}</span>
                            </span>
 
+                           <span class="text-slate-300">•</span>
+                           <span class="text-slate-500">
+                              Sort: <span class="text-slate-800">{{ getSortDisplay(section.sortBy) }}</span>
+                           </span>
+
                            @if (section.linkUrl) {
                               <span class="text-slate-300">•</span>
                               <a href="{{section.linkUrl}}" target="_blank" class="text-[#083594] hover:underline font-mono text-[11px] break-all min-w-0">
@@ -165,150 +170,201 @@
 @if (showConfigModal()) {
   <app-modal [title]="editingIndex !== null ? 'Configure Section' : 'Add New Section'" (close)="showConfigModal.set(false)">
      <div body>
-        <form [formGroup]="configForm" class="space-y-5">
+        <form [formGroup]="configForm" class="space-y-4">
+           <div class="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1">
+              @for (tab of configTabs; track tab.id) {
+                 <button
+                    type="button"
+                    (click)="activeConfigTab.set(tab.id)"
+                    class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition-colors"
+                    [class.bg-white]="activeConfigTab() === tab.id"
+                    [class.text-[#083594]]="activeConfigTab() === tab.id"
+                    [class.shadow-sm]="activeConfigTab() === tab.id"
+                    [class.text-slate-500]="activeConfigTab() !== tab.id"
+                    [class.hover:text-slate-800]="activeConfigTab() !== tab.id">
+                    {{ tab.label }}
+                 </button>
+              }
+           </div>
            
-           <!-- Text Fields -->
-           <div class="grid grid-cols-2 gap-4">
-              <div class="col-span-2 sm:col-span-1">
-                 <label class="block text-sm font-medium text-slate-700 mb-1">Section Title</label>
-                 <input formControlName="title" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border" placeholder="e.g. Featured Places">
-              </div>
-              <div class="col-span-2 sm:col-span-1">
-                 <label class="block text-sm font-medium text-slate-700 mb-1">Subtitle</label>
-                 <input formControlName="subTitle" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border" placeholder="e.g. Handpicked for you">
-              </div>
-           </div>
-
-           <!-- Link Fields -->
-           <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-              <div class="col-span-2 sm:col-span-1">
-                 <label class="block text-sm font-medium text-slate-700 mb-1">Link Title</label>
-                 <input formControlName="linkTitle" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border" placeholder="e.g. Link URL">
-              </div>
-              <div class="col-span-2 sm:col-span-1">
-                 <label class="block text-sm font-medium text-slate-700 mb-1">Link URL</label>
-                 <input formControlName="linkUrl" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border" placeholder="e.g. /offers">
-              </div>
-           </div>
-
-           <!-- Data Source & Limit -->
-           <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-              <div class="col-span-2 sm:col-span-1">
-                 <label class="block text-sm font-medium text-slate-700 mb-1">Data Source</label>
-                 <select formControlName="dataSource" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border bg-white">
-                    <option value="restaurants">Restaurants</option>
-                    <option value="businesses">Businesses</option>
-                    <option value="events">Events</option>
-                    <option value="jobs">Jobs</option>
-                    <option value="offers">Offers</option>
-                    <option value="news">News</option>
-                    <option value="banners">Banners</option>
-                    <option value="categories">Navigation (Categories)</option>
-                 </select>
-                 <p class="text-xs text-slate-500 mt-1">What content to show.</p>
-              </div>
-              <div class="col-span-2 sm:col-span-1">
-                 <label class="block text-sm font-medium text-slate-700 mb-1">Max Results</label>
-                 <input formControlName="limit" type="number" min="1" max="50" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border">
-                 <p class="text-xs text-slate-500 mt-1">Limit items shown.</p>
-              </div>
-           </div>
-           <!-- Layout Type -->
-           <div class="pt-2">
-              <label class="block text-sm font-medium text-slate-700 mb-1">Layout Type</label>
-              <select formControlName="type" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border bg-white">
-                 <option value="content_carousel">Carousel (Horizontal)</option>
-                 <option value="content_list">List (Vertical)</option>
-                 <option value="content_grid">Grid (2 Col)</option>
-                 <option value="banner_carousel">Banner Slider</option>
-                 <option value="category_grid">Category Icons</option>
-              </select>
-              <p class="text-xs text-slate-500 mt-1">How it looks.</p>
-           </div>
-
-           <!-- Excluded Categories -->
-           @if (['businesses', 'events', 'jobs', 'offers'].includes(configForm.get('dataSource')?.value)) {
-              <div class="pt-2 border-t border-slate-100">
-                 <label class="block text-sm font-medium text-slate-700 mb-1">Exclude Categories</label>
-                 <div class="h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 bg-white">
-                    @for (cat of businessCategories(); track cat.id) {
-                       <div class="flex items-center py-1">
-                          <input type="checkbox" [id]="'ex-cat-' + cat.id" [checked]="isExcludedCategorySelected(cat.name)" (change)="onExcludedCategoryChange($event, cat.name)" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                          <label [for]="'ex-cat-' + cat.id" class="ml-2 text-sm text-slate-700">{{ cat.name }}</label>
-                       </div>
-                    }
+           @if (activeConfigTab() === 'display') {
+              <section class="rounded-xl border border-slate-200 bg-white p-4">
+                 <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2 sm:col-span-1">
+                       <label class="block text-sm font-medium text-slate-700 mb-1">Section Title</label>
+                       <input formControlName="title" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border" placeholder="e.g. Featured Places">
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                       <label class="block text-sm font-medium text-slate-700 mb-1">Subtitle</label>
+                       <input formControlName="subTitle" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border" placeholder="e.g. Handpicked for you">
+                    </div>
+                    <div class="col-span-2">
+                       <label class="block text-sm font-medium text-slate-700 mb-1">Layout Type</label>
+                       <select formControlName="type" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border bg-white">
+                          <option value="content_carousel">Carousel (Horizontal)</option>
+                          <option value="content_list">List (Vertical)</option>
+                          <option value="content_grid">Grid (2 Col)</option>
+                          <option value="banner_carousel">Banner Slider</option>
+                          <option value="category_grid">Category Icons</option>
+                       </select>
+                    </div>
                  </div>
-                 <p class="text-xs text-slate-500 mt-1">Content from these categories will be hidden.</p>
-              </div>
+              </section>
            }
 
-           <!-- Filtering Logic (Only if supported source) -->
-           @if (['businesses', 'events', 'jobs', 'offers', 'news', 'banners'].includes(configForm.get('dataSource')?.value)) {
-              <div class="pt-2 border-t border-slate-100">
-                 <h4 class="text-sm font-bold text-slate-800 mb-3">Content Filter</h4>
+           @if (activeConfigTab() === 'content') {
+              <section class="rounded-xl border border-slate-200 bg-white p-4">
                  <div class="grid grid-cols-2 gap-4">
-                    <div>
-                       <label class="block text-sm font-medium text-slate-700 mb-1">Filter By (Multiple)</label>
-                       <div class="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                          <div class="flex items-center">
-                             <input type="checkbox" [checked]="isFilterTypeSelected('all')" (change)="onFilterTypeChange($event, 'all')" id="filter-all" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                             <label for="filter-all" class="ml-2 block text-sm text-slate-900 font-medium">Show All (Recent)</label>
-                          </div>
-                          <div class="flex items-center">
-                             <input type="checkbox" [checked]="isFilterTypeSelected('isFeatured')" (change)="onFilterTypeChange($event, 'isFeatured')" id="filter-featured" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                             <label for="filter-featured" class="ml-2 block text-sm text-slate-900 font-medium">Featured Only</label>
-                          </div>
-                          <div class="flex items-center">
-                             <input type="checkbox" [checked]="isFilterTypeSelected('category')" (change)="onFilterTypeChange($event, 'category')" id="filter-category" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                             <label for="filter-category" class="ml-2 block text-sm text-slate-900 font-medium">By Category / Tag</label>
-                          </div>
-                          @if (configForm.get('dataSource')?.value === 'businesses') {
-                             <div class="flex items-center">
-                                <input type="checkbox" [checked]="isFilterTypeSelected('businessCategory')" (change)="onFilterTypeChange($event, 'businessCategory')" id="filter-business-category" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                                <label for="filter-business-category" class="ml-2 block text-sm text-slate-900 font-medium">By Business Category</label>
-                             </div>
-                          }
-                       </div>
+                    <div class="col-span-2 sm:col-span-1">
+                       <label class="block text-sm font-medium text-slate-700 mb-1">Data Source</label>
+                       <select formControlName="dataSource" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border bg-white">
+                          <option value="restaurants">Restaurants</option>
+                          <option value="businesses">Businesses</option>
+                          <option value="events">Events</option>
+                          <option value="jobs">Jobs</option>
+                          <option value="offers">Offers</option>
+                          <option value="news">News</option>
+                          <option value="banners">Banners</option>
+                          <option value="categories">Navigation (Categories)</option>
+                       </select>
+                       <p class="text-xs text-slate-500 mt-1">What content to show.</p>
                     </div>
-                    
-                    @if (isFilterTypeSelected('category')) {
-                       <div>
-                          <label class="block text-sm font-medium text-slate-700 mb-1">
-                             @if (['businesses', 'jobs'].includes(configForm.get('dataSource')?.value)) { Select Categories }
-                             @else if (configForm.get('dataSource')?.value === 'restaurants') { Cuisine Name }
-                             @else { Tag / Category }
-                          </label>
-                          
-                          @if (['businesses', 'jobs'].includes(configForm.get('dataSource')?.value)) {
-                             <div class="h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 bg-white">
-                                @for (cat of businessCategories(); track cat.id) {
-                                   <div class="flex items-center py-1">
-                                      <input type="checkbox" [id]="'cat-' + cat.id" [checked]="isCategorySelected(cat.name, 'category')" (change)="onCategoryChange($event, cat.name, 'category')" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                                      <label [for]="'cat-' + cat.id" class="ml-2 text-sm text-slate-700">{{ cat.name }}</label>
-                                   </div>
-                                }
-                             </div>
-                          } @else {
-                             <input formControlName="filterValue_text" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border" placeholder="e.g. Italian, Tech, Urgent">
+                    <div class="col-span-2 sm:col-span-1">
+                       <label class="block text-sm font-medium text-slate-700 mb-1">Max Results</label>
+                       <input formControlName="limit" type="number" min="1" max="50" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border">
+                       <p class="text-xs text-slate-500 mt-1">Limit items shown.</p>
+                    </div>
+                    <div class="col-span-2">
+                       <label class="block text-sm font-medium text-slate-700 mb-1">Sort By</label>
+                       <select formControlName="sortBy" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border bg-white">
+                          @for (option of sortOptions; track option.value) {
+                             <option [value]="option.value">{{ option.label }}</option>
                           }
-                       </div>
-                    }
-                    
-                    @if (isFilterTypeSelected('businessCategory')) {
-                       <div [class.mt-4]="isFilterTypeSelected('category')">
-                          <label class="block text-sm font-medium text-slate-700 mb-1">Select Business Categories</label>
-                          <div class="h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 bg-white">
-                             @for (cat of businessCategories(); track cat.id) {
-                                <div class="flex items-center py-1">
-                                   <input type="checkbox" [id]="'bus-cat-' + cat.id" [checked]="isCategorySelected(cat.name, 'businessCategory')" (change)="onCategoryChange($event, cat.name, 'businessCategory')" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                                   <label [for]="'bus-cat-' + cat.id" class="ml-2 text-sm text-slate-700">{{ cat.name }}</label>
+                       </select>
+                       <p class="text-xs text-slate-500 mt-1">Featured business sections should use Featured sort ID.</p>
+                    </div>
+                 </div>
+              </section>
+           }
+
+           @if (activeConfigTab() === 'filters') {
+              <!-- Excluded Categories -->
+              @if (['businesses', 'events', 'jobs', 'offers'].includes(configForm.get('dataSource')?.value)) {
+                 <section class="rounded-xl border border-slate-200 bg-white p-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Exclude Categories</label>
+                    <div class="h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 bg-white">
+                       @for (cat of businessCategories(); track cat.id) {
+                          <div class="flex items-center py-1">
+                             <input type="checkbox" [id]="'ex-cat-' + cat.id" [checked]="isExcludedCategorySelected(cat.name)" (change)="onExcludedCategoryChange($event, cat.name)" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                             <label [for]="'ex-cat-' + cat.id" class="ml-2 text-sm text-slate-700">{{ cat.name }}</label>
+                          </div>
+                       }
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Content from these categories will be hidden.</p>
+                 </section>
+              }
+
+              <!-- Filtering Logic (Only if supported source) -->
+              @if (['businesses', 'events', 'jobs', 'offers', 'news', 'banners'].includes(configForm.get('dataSource')?.value)) {
+                 <section class="rounded-xl border border-slate-200 bg-white p-4">
+                    <h4 class="text-sm font-bold text-slate-800 mb-3">Content Filter</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                       <div>
+                          <label class="block text-sm font-medium text-slate-700 mb-1">Filter By (Multiple)</label>
+                          <div class="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                             <div class="flex items-center">
+                                <input type="checkbox" [checked]="isFilterTypeSelected('all')" (change)="onFilterTypeChange($event, 'all')" id="filter-all" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <label for="filter-all" class="ml-2 block text-sm text-slate-900 font-medium">Show All (Recent)</label>
+                             </div>
+                             <div class="flex items-center">
+                                <input type="checkbox" [checked]="isFilterTypeSelected('isFeatured')" (change)="onFilterTypeChange($event, 'isFeatured')" id="filter-featured" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <label for="filter-featured" class="ml-2 block text-sm text-slate-900 font-medium">Featured Only</label>
+                             </div>
+                             <div class="flex items-center">
+                                <input type="checkbox" [checked]="isFilterTypeSelected('category')" (change)="onFilterTypeChange($event, 'category')" id="filter-category" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <label for="filter-category" class="ml-2 block text-sm text-slate-900 font-medium">By Category / Tag</label>
+                             </div>
+                             @if (configForm.get('dataSource')?.value === 'businesses') {
+                                <div class="flex items-center">
+                                   <input type="checkbox" [checked]="isFilterTypeSelected('businessCategory')" (change)="onFilterTypeChange($event, 'businessCategory')" id="filter-business-category" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                   <label for="filter-business-category" class="ml-2 block text-sm text-slate-900 font-medium">By Business Category</label>
                                 </div>
                              }
                           </div>
                        </div>
+                       
+                       @if (isFilterTypeSelected('category')) {
+                          <div>
+                             <label class="block text-sm font-medium text-slate-700 mb-1">
+                                @if (['businesses', 'jobs'].includes(configForm.get('dataSource')?.value)) { Select Categories }
+                                @else if (configForm.get('dataSource')?.value === 'restaurants') { Cuisine Name }
+                                @else { Tag / Category }
+                             </label>
+                             
+                             @if (['businesses', 'jobs'].includes(configForm.get('dataSource')?.value)) {
+                                <div class="h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 bg-white">
+                                   @for (cat of businessCategories(); track cat.id) {
+                                      <div class="flex items-center py-1">
+                                         <input type="checkbox" [id]="'cat-' + cat.id" [checked]="isCategorySelected(cat.name, 'category')" (change)="onCategoryChange($event, cat.name, 'category')" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                         <label [for]="'cat-' + cat.id" class="ml-2 text-sm text-slate-700">{{ cat.name }}</label>
+                                      </div>
+                                   }
+                                </div>
+                             } @else {
+                                <input formControlName="filterValue_text" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border" placeholder="e.g. Italian, Tech, Urgent">
+                             }
+                          </div>
+                       }
+                       
+                       @if (isFilterTypeSelected('businessCategory')) {
+                          <div [class.mt-4]="isFilterTypeSelected('category')">
+                             <label class="block text-sm font-medium text-slate-700 mb-1">Select Business Categories</label>
+                             <div class="h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 bg-white">
+                                @for (cat of businessCategories(); track cat.id) {
+                                   <div class="flex items-center py-1">
+                                      <input type="checkbox" [id]="'bus-cat-' + cat.id" [checked]="isCategorySelected(cat.name, 'businessCategory')" (change)="onCategoryChange($event, cat.name, 'businessCategory')" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                      <label [for]="'bus-cat-' + cat.id" class="ml-2 text-sm text-slate-700">{{ cat.name }}</label>
+                                   </div>
+                                }
+                             </div>
+                          </div>
+                       }
+                    </div>
+                 </section>
+              }
+           }
+
+           @if (activeConfigTab() === 'link') {
+              <section class="rounded-xl border border-slate-200 bg-white p-4">
+                 <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2 sm:col-span-1">
+                       <label class="block text-sm font-medium text-slate-700 mb-1">Link Type</label>
+                       <select formControlName="linkType" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border bg-white">
+                          <option value="custom">Custom URL</option>
+                          <option value="appCategory">App Category</option>
+                       </select>
+                    </div>
+                    @if (configForm.get('linkType')?.value === 'appCategory') {
+                       <div class="col-span-2 sm:col-span-1">
+                          <label class="block text-sm font-medium text-slate-700 mb-1">App Category</label>
+                          <select formControlName="appCategory" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border bg-white">
+                             <option value="businesses">Businesses</option>
+                             <option value="events">Events</option>
+                             <option value="jobs">Jobs</option>
+                             <option value="news">News</option>
+                          </select>
+                       </div>
                     }
+                    <div class="col-span-2 sm:col-span-1">
+                       <label class="block text-sm font-medium text-slate-700 mb-1">Link Title</label>
+                       <input formControlName="linkTitle" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border" placeholder="e.g. View All">
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                       <label class="block text-sm font-medium text-slate-700 mb-1">Link URL</label>
+                       <input formControlName="linkUrl" type="text" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2 border disabled:bg-slate-100 disabled:text-slate-500" placeholder="e.g. /offers">
+                    </div>
                  </div>
-              </div>
+              </section>
            }
 
         </form>

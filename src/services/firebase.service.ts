@@ -271,8 +271,10 @@ export class FirebaseService {
           // Skip .keep files
           if (itemRef.name === '.keep') return null;
 
-          const url = await getDownloadURL(itemRef);
-          const meta = await getMetadata(itemRef);
+          const [url, meta] = await Promise.all([
+            getDownloadURL(itemRef),
+            getMetadata(itemRef)
+          ]);
           
           return {
             id: itemRef.name, // Use filename as ID since we don't have a DB ID

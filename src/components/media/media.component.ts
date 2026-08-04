@@ -1,5 +1,5 @@
 
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FirebaseService } from '../../services/firebase.service';
 import { AuthService } from '../../services/auth.service';
@@ -22,7 +22,7 @@ interface MediaFolder {
   imports: [CommonModule, ConfirmModalComponent, PaginationControlsComponent, ModalComponent, FormsModule],
   templateUrl: './media.component.html'
 })
-export class MediaComponent implements OnInit {
+export class MediaComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
@@ -33,6 +33,9 @@ export class MediaComponent implements OnInit {
   folders = signal<MediaFolder[]>([]);
   
   searchQuery = signal('');
+  unassociatedOnly = signal(false);
+  associatedMediaKeys = signal<Set<string>>(new Set());
+  isLoadingAssociations = signal(false);
   isUploading = signal(false);
   uploadProgress = signal(0);
   isLoading = signal(false);
@@ -65,6 +68,9 @@ export class MediaComponent implements OnInit {
   moveTargetFolder = signal<MediaFolder | null>(null); // Null = current root of picker
   movePickerPath = signal('uploads'); // Independent navigation for picker
   movePickerFolders = signal<MediaFolder[]>([]); // Folders shown in picker
+  private folderCache = new Map<string, { items: MediaItem[]; folders: MediaFolder[] }>();
+  private associationUnsubscribers: Array<() => void> = [];
+  private associationsLoaded = false;
 
   breadcrumbs = computed(() => {
     const path = this.currentPath();
@@ -79,7 +85,14 @@ export class MediaComponent implements OnInit {
 
   filteredFiles = computed(() => {
     const query = this.searchQuery().toLowerCase();
-    const sorted = [...this.files()].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const associatedKeys = this.associatedMediaKeys();
+    const showUnassociatedOnly = this.unassociatedOnly();
+    const sorted = [...this.files()]
+      .filter((file) => {
+        if (!showUnassociatedOnly) return true;
+        return file.type.startsWith('image/') && !this.isAssociatedFile(file, associatedKeys);
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     
     if (!query) return sorted;
     return sorted.filter(f => f.name.toLowerCase().includes(query));
@@ -108,11 +121,21 @@ export class MediaComponent implements OnInit {
     this.loadFiles();
   }
 
-  async loadFiles(path?: string) {
+  ngOnDestroy() {
+    this.associationUnsubscribers.forEach((unsubscribe) => unsubscribe());
+  }
+
+  async loadFiles(path?: string, forceRefresh = false) {
     const targetPath = path ?? this.currentPath();
     this.isLoading.set(true);
     try {
-      const result = await this.firebaseService.listFiles(targetPath);
+      const cached = this.folderCache.get(targetPath);
+      const result = cached && !forceRefresh
+        ? cached
+        : await this.firebaseService.listFiles(targetPath);
+      if (!cached || forceRefresh) {
+        this.folderCache.set(targetPath, result);
+      }
       this.files.set(result.items);
       this.folders.set(result.folders);
       
@@ -151,6 +174,20 @@ export class MediaComponent implements OnInit {
     this.selectedPaths.set(new Set()); 
   }
 
+  async toggleUnassociatedOnly(checked: boolean) {
+    this.unassociatedOnly.set(checked);
+    this.currentPage.set(1);
+    this.selectedPaths.set(new Set());
+    if (checked) {
+      this.ensureAssociationIndex();
+    }
+  }
+
+  refreshMedia() {
+    this.invalidateCurrentFolderCache();
+    this.loadFiles(undefined, true);
+  }
+
   // --- Folder Creation ---
 
   openCreateFolder() {
@@ -169,7 +206,8 @@ export class MediaComponent implements OnInit {
       await this.firebaseService.createFolder(newPath);
       this.toastService.success(`Folder '${name}' created`);
       this.showCreateFolderModal.set(false);
-      this.loadFiles(); // Refresh
+      this.invalidateCurrentFolderCache();
+      this.loadFiles(undefined, true); // Refresh
     } catch (e: any) {
       this.toastService.error('Failed to create folder: ' + e.message);
     } finally {
@@ -194,6 +232,8 @@ export class MediaComponent implements OnInit {
     this.isDeletingFolder.set(true);
     try {
       await this.firebaseService.deleteFolder(folder.path);
+      this.invalidateFolderCache(this.currentPath());
+      this.invalidateFolderCache(folder.path);
       this.folders.update((current) => current.filter((item) => item.path !== folder.path));
       this.toastService.success(`Deleted folder '${folder.name}' and its contents.`);
       this.closeFolderDeleteModal();
@@ -279,7 +319,8 @@ export class MediaComponent implements OnInit {
     this.isUploading.set(false);
     if (completed > 0) {
        this.toastService.success(`Uploaded ${completed} file(s)`);
-       this.loadFiles(); 
+       this.invalidateCurrentFolderCache();
+       this.loadFiles(undefined, true); 
     }
   }
 
@@ -357,6 +398,7 @@ export class MediaComponent implements OnInit {
       } catch (e) {}
 
       this.toastService.success('File deleted');
+      this.invalidateCurrentFolderCache();
       this.files.update(current => current.filter(f => f.path !== item.path));
     } catch (e: any) {
       if (e.code === 'storage/object-not-found') {
@@ -400,7 +442,8 @@ export class MediaComponent implements OnInit {
       await Promise.all(promises);
       this.toastService.success(`Deleted ${successCount} items.`);
       this.selectedPaths.set(new Set());
-      this.loadFiles();
+      this.invalidateCurrentFolderCache();
+      this.loadFiles(undefined, true);
     } catch (e: any) {
       this.toastService.error('Bulk delete error: ' + e.message);
     } finally {
@@ -475,7 +518,9 @@ export class MediaComponent implements OnInit {
       this.toastService.success(`Moved ${successCount} items.`);
       this.showMoveModal.set(false);
       this.selectedPaths.set(new Set());
-      this.loadFiles(); // Refresh current view (items should disappear)
+      this.invalidateFolderCache(this.currentPath());
+      this.invalidateFolderCache(destPath);
+      this.loadFiles(undefined, true); // Refresh current view (items should disappear)
     } catch (e: any) {
       this.toastService.error('Move failed: ' + e.message);
     } finally {
@@ -485,5 +530,112 @@ export class MediaComponent implements OnInit {
 
   private joinStoragePath(parent: string, child: string) {
     return [parent, child].filter(Boolean).join('/');
+  }
+
+  private invalidateCurrentFolderCache() {
+    this.invalidateFolderCache(this.currentPath());
+  }
+
+  private invalidateFolderCache(path: string) {
+    this.folderCache.delete(path);
+  }
+
+  private ensureAssociationIndex() {
+    if (this.associationsLoaded || this.isLoadingAssociations()) return;
+    this.associationsLoaded = true;
+    this.isLoadingAssociations.set(true);
+
+    const collectionNames = [
+      'businesses',
+      'restaurants',
+      'organizations',
+      'groceries',
+      'banners',
+      'events',
+      'news',
+      'offers',
+      'jobs',
+      'categories',
+      'taxonomy_business',
+      'hub_sections',
+      'push_queue',
+      'settings',
+      'email_templates',
+      'email_queue',
+      'countries'
+    ];
+    const refsByCollection: Record<string, string[]> = {};
+    const loadedCollections = new Set<string>();
+
+    const rebuild = () => {
+      const keys = new Set<string>();
+      Object.values(refsByCollection)
+        .flat()
+        .forEach((value) => this.addMediaReference(keys, value));
+      this.associatedMediaKeys.set(keys);
+      this.isLoadingAssociations.set(loadedCollections.size < collectionNames.length);
+    };
+
+    this.associationUnsubscribers = collectionNames.map((collectionName) =>
+      this.firebaseService.listenToPath<any>(collectionName, (items) => {
+        refsByCollection[collectionName] = items.flatMap((item) => this.collectMediaReferences(item));
+        loadedCollections.add(collectionName);
+        rebuild();
+      }, () => {
+        refsByCollection[collectionName] = [];
+        loadedCollections.add(collectionName);
+        rebuild();
+      })
+    );
+  }
+
+  private isAssociatedFile(file: MediaItem, associatedKeys: Set<string>) {
+    return associatedKeys.has(file.url) || associatedKeys.has(file.path);
+  }
+
+  private addMediaReference(keys: Set<string>, value: unknown) {
+    if (!value || typeof value !== 'string') return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    keys.add(trimmed);
+    const storagePath = this.extractStoragePath(trimmed);
+    if (storagePath) keys.add(storagePath);
+  }
+
+  private collectMediaReferences(value: unknown): string[] {
+    if (!value) return [];
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return this.looksLikeMediaReference(trimmed) ? [trimmed] : [];
+    }
+
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => this.collectMediaReferences(item));
+    }
+
+    if (typeof value === 'object') {
+      return Object.values(value).flatMap((item) => this.collectMediaReferences(item));
+    }
+
+    return [];
+  }
+
+  private looksLikeMediaReference(value: string) {
+    if (!value) return false;
+    if (value.includes('firebasestorage.googleapis.com') || value.includes('/o/')) return true;
+    return /^(uploads|businesses|banners|events|news|offers|jobs|categories|hub_icons|notifications)\//.test(value);
+  }
+
+  private extractStoragePath(url: string) {
+    const match = url.match(/\/o\/([^?]+)/);
+    if (!match?.[1]) return '';
+
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return match[1];
+    }
   }
 }

@@ -39,9 +39,24 @@ export class PushNotificationSenderComponent {
 
   get targetType() { return this.form.get('targetType')?.value; }
   get sendLaterEnabled() { return !!this.form.get('sendLater')?.value; }
+  get audienceTab() {
+    const targetType = this.form.get('targetType')?.value;
+    const targetValue = this.form.get('targetValue')?.value;
+    if (targetType === 'topic' && targetValue === 'general') return 'target';
+    if (targetType === 'topic') return 'topic';
+    return 'single';
+  }
 
   setTargetAll() {
     this.form.patchValue({ targetType: 'topic', targetValue: 'general' });
+  }
+
+  setTargetTopic() {
+    this.form.patchValue({ targetType: 'topic', targetValue: '' });
+  }
+
+  setTargetSingle() {
+    this.form.patchValue({ targetType: 'token', targetValue: '' });
   }
 
   onSendLaterToggle(checked: boolean) {

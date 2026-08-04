@@ -2,6 +2,7 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Store } from '@ngrx/store';
 import * as XLSX from 'xlsx';
 import { FirebaseService } from '../../services/firebase.service';
 import { AuthService } from '../../services/auth.service';
@@ -11,7 +12,19 @@ import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
 import { BusinessDetailComponent } from './business-detail/business-detail.component';
-import { BusinessStateService } from '../../services/business-state.service';
+import { BusinessAdminActions } from '../../store/business-admin.actions';
+import {
+  selectBusinessCategoryFilter,
+  selectBusinessCurrentPage,
+  selectBusinessIsFeaturedFilter,
+  selectBusinessIsPremiumFilter,
+  selectBusinessIsVerifiedFilter,
+  selectBusinessPriceFilter,
+  selectBusinessSearchQuery,
+  selectBusinessSortBy,
+  selectBusinessTypeFilter
+} from '../../store/business-admin.selectors';
+import { BusinessAdminState, BusinessSortOption } from '../../store/business-admin.state';
 
 @Component({
   selector: 'app-businesses',
@@ -23,28 +36,42 @@ export class BusinessesComponent implements OnInit {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
-  businessStateService = inject(BusinessStateService);
+  private store = inject(Store);
   route = inject(ActivatedRoute);
   
   businesses = signal<Business[]>([]);
-  searchQuery = this.businessStateService.searchQuery;
+  searchQuery = this.store.selectSignal(selectBusinessSearchQuery);
   categories = signal<any[]>([]);
-  categoryFilter = this.businessStateService.selectedCategory;
+  categoryFilter = this.store.selectSignal(selectBusinessCategoryFilter);
 
   // Status Filters
-  isFeaturedFilter = this.businessStateService.isFeaturedFilter;
-  isVerifiedFilter = this.businessStateService.isVerifiedFilter;
-  isPremiumFilter = this.businessStateService.isPremiumFilter;
+  isFeaturedFilter = this.store.selectSignal(selectBusinessIsFeaturedFilter);
+  isVerifiedFilter = this.store.selectSignal(selectBusinessIsVerifiedFilter);
+  isPremiumFilter = this.store.selectSignal(selectBusinessIsPremiumFilter);
 
-  typeFilter = this.businessStateService.typeFilter;
-  priceFilter = this.businessStateService.priceFilter;
-  sortBy = this.businessStateService.sortBy;
+  typeFilter = this.store.selectSignal(selectBusinessTypeFilter);
+  priceFilter = this.store.selectSignal(selectBusinessPriceFilter);
+  sortBy = this.store.selectSignal(selectBusinessSortBy);
 
   businessTypes = signal<string[]>(['restaurant', 'grocery', 'organizer']);
+  sortOptions: Array<{ value: BusinessSortOption; label: string }> = [
+    { value: 'title-asc', label: 'Business A-Z' },
+    { value: 'title-desc', label: 'Business Z-A' },
+    { value: 'alphabetical-sort-key', label: 'A-Z sort key' },
+    { value: 'category-order', label: 'Category order' },
+    { value: 'category-order-desc', label: 'Category order reversed' },
+    { value: 'category-sort-id', label: 'Category sort ID' },
+    { value: 'featured-sort-id', label: 'Featured sort ID' },
+    { value: 'category-asc', label: 'Category A-Z' },
+    { value: 'category-desc', label: 'Category Z-A' },
+    { value: 'order', label: 'Manual business order' },
+    { value: 'rating-desc', label: 'Rating high-low' },
+    { value: 'rating-asc', label: 'Rating low-high' }
+  ];
 
   // Pagination
   itemsPerPage = 10;
-  currentPage = this.businessStateService.currentPage;
+  currentPage = this.store.selectSignal(selectBusinessCurrentPage);
 
   // Location Data
   locations = signal<any[]>([]);
@@ -56,6 +83,16 @@ export class BusinessesComponent implements OnInit {
   // Reorder State
   isReordering = signal(false);
   draggedIndex: number | null = null;
+  reorderMode = computed<'category' | 'featured' | 'manual'>(() => {
+    if (this.isFeaturedFilter()) return 'featured';
+    if (this.categoryFilter() !== 'all') return 'category';
+    return 'manual';
+  });
+  reorderLabel = computed(() => {
+    if (this.reorderMode() === 'featured') return 'Featured order';
+    if (this.reorderMode() === 'category') return 'Category order';
+    return 'Manual order';
+  });
 
   filteredBusinesses = computed(() => {
     const query = this.searchQuery().toLowerCase();
@@ -65,7 +102,7 @@ export class BusinessesComponent implements OnInit {
 
     const locs = this.locations();
 
-    const sorted = [...this.businesses()].map(b => {
+    const displayBusinesses = [...this.businesses()].map(b => {
       const displayBiz = { ...b };
       if (!displayBiz.countryCode && displayBiz.cityCode) {
         const foundCountry = locs.find(c => c.cities.some((city: any) => city.code === displayBiz.cityCode));
@@ -74,16 +111,17 @@ export class BusinessesComponent implements OnInit {
         }
       }
       return displayBiz;
-    }).sort((a, b) => (a.order || 9999) - (b.order || 9999));
+    });
 
     if (this.isReordering()) {
-      return sorted.filter(b => {
+      return displayBusinesses.filter(b => {
         const matchesCategory = category === 'all' || (b.category && b.category.toLowerCase() === categoryName);
-        return matchesCategory;
-      });
+        const matchesFeatured = this.reorderMode() !== 'featured' || b.isFeatured === true;
+        return matchesCategory && matchesFeatured;
+      }).sort((a, b) => this.compareActiveReorderField(a, b));
     }
 
-    return sorted.filter(b => {
+    return displayBusinesses.filter(b => {
       const type = this.typeFilter();
       const price = this.priceFilter();
       const isFeatured = this.isFeaturedFilter();
@@ -102,7 +140,20 @@ export class BusinessesComponent implements OnInit {
     }).sort((a, b) => {
       const sort = this.sortBy();
       if (sort === 'order') {
-        return (a.order || 9999) - (b.order || 9999);
+        return this.compareBusinessManualOrder(a, b);
+      }
+      if (sort === 'alphabetical-sort-key') {
+        return this.compareAlphabeticalSortKey(a, b);
+      }
+      if (sort === 'category-sort-id') {
+        return this.compareCategorySortId(a, b);
+      }
+      if (sort === 'featured-sort-id') {
+        return this.compareFeaturedSortId(a, b);
+      }
+      if (sort === 'category-order' || sort === 'category-order-desc') {
+        const direction = sort === 'category-order-desc' ? -1 : 1;
+        return this.compareCategoryOrder(a, b) * direction || this.compareBusinessTitle(a, b);
       }
       const [column, direction] = sort.split('-');
       const multiplier = direction === 'desc' ? -1 : 1;
@@ -111,7 +162,7 @@ export class BusinessesComponent implements OnInit {
         if (column === 'phone') return business.contact?.phones?.[0] || (business.contact as any)?.phone || '';
         if (column === 'rating') return business.rating || 0;
         if (column === 'state') return business.isArchived ? 'Archived' : (business.isPublished ? 'Published' : 'Draft');
-        return business.title || '';
+        return this.getAlphabeticalSortKey(business);
       };
       const left = value(a);
       const right = value(b);
@@ -165,12 +216,6 @@ export class BusinessesComponent implements OnInit {
       : 'Archive Selected';
   });
 
-  constructor() {
-    if (this.businessStateService.selectedCategory() === null) {
-      this.businessStateService.selectedCategory.set('all');
-    }
-  }
-
   ngOnInit() {
     this.initializeQueryFilters();
     this.loadBusinesses();
@@ -193,25 +238,84 @@ export class BusinessesComponent implements OnInit {
       if (!hasQueryFilters) return;
 
       if (query !== null || categoryName !== null || featured !== null || verified !== null || premium !== null) {
-        this.searchQuery.set(query ?? '');
-        this.typeFilter.set('all');
-        this.priceFilter.set('all');
-        this.sortBy.set('title-asc');
-        this.businessStateService.isFeaturedFilter.set(featured === 'true');
-        this.businessStateService.isVerifiedFilter.set(verified === 'true');
-        this.businessStateService.isPremiumFilter.set(premium === 'true');
+        this.updateBusinessFilters({
+          searchQuery: query ?? '',
+          typeFilter: 'all',
+          priceFilter: 'all',
+          sortBy: 'title-asc',
+          isFeaturedFilter: featured === 'true',
+          isVerifiedFilter: verified === 'true',
+          isPremiumFilter: premium === 'true'
+        });
       }
 
       if (categoryId) {
-        this.businessStateService.selectedCategory.set(categoryId);
+        this.updateBusinessFilters({
+          selectedCategory: categoryId,
+          sortBy: 'category-sort-id'
+        });
       } else if (categoryName) {
         this.updateCategoryFilterByValue(categoryName);
       } else if (query !== null || featured !== null || verified !== null || premium !== null) {
-        this.businessStateService.selectedCategory.set('all');
+        this.updateBusinessFilters({ selectedCategory: 'all' });
       }
 
-      this.currentPage.set(Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
+      this.updateBusinessFilters({ currentPage: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1 });
     });
+  }
+
+  private updateBusinessFilters(filters: Partial<BusinessAdminState>) {
+    this.store.dispatch(BusinessAdminActions.updateFilters({ filters }));
+  }
+
+  private compareBusinessManualOrder(a: Business, b: Business) {
+    return (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
+      || this.compareBusinessTitle(a, b);
+  }
+
+  private compareActiveReorderField(a: Business, b: Business) {
+    if (this.reorderMode() === 'featured') {
+      return this.compareFeaturedSortId(a, b);
+    }
+    if (this.reorderMode() === 'category') {
+      return this.compareCategorySortId(a, b);
+    }
+    return this.compareBusinessManualOrder(a, b);
+  }
+
+  private compareAlphabeticalSortKey(a: Business, b: Business) {
+    return this.getAlphabeticalSortKey(a).localeCompare(this.getAlphabeticalSortKey(b), undefined, { numeric: true, sensitivity: 'base' })
+      || this.compareBusinessTitle(a, b);
+  }
+
+  private compareCategorySortId(a: Business, b: Business) {
+    return (a.categorySortId ?? a.order ?? Number.MAX_SAFE_INTEGER) - (b.categorySortId ?? b.order ?? Number.MAX_SAFE_INTEGER)
+      || this.compareBusinessTitle(a, b);
+  }
+
+  private compareFeaturedSortId(a: Business, b: Business) {
+    return (a.featuredSortId ?? Number.MAX_SAFE_INTEGER) - (b.featuredSortId ?? Number.MAX_SAFE_INTEGER)
+      || this.compareBusinessTitle(a, b);
+  }
+
+  private compareCategoryOrder(a: Business, b: Business) {
+    return this.getCategoryOrder(a) - this.getCategoryOrder(b);
+  }
+
+  private compareBusinessTitle(a: Business, b: Business) {
+    return (a.title || '').localeCompare(b.title || '', undefined, { numeric: true, sensitivity: 'base' });
+  }
+
+  private getAlphabeticalSortKey(business: Business) {
+    return String(business.alphabeticalSortKey || business.title || '').trim().toLocaleLowerCase();
+  }
+
+  private getCategoryOrder(business: Business) {
+    const normalizedCategory = business.category?.toLowerCase() || '';
+    const category = this.categories().find((item) =>
+      item.id === business.categoryId || item.name?.toLowerCase() === normalizedCategory
+    );
+    return category?.order ?? Number.MAX_SAFE_INTEGER;
   }
 
   private loadBusinesses() {
@@ -222,7 +326,10 @@ export class BusinessesComponent implements OnInit {
 
   private loadTaxonomies() {
     this.firebaseService.listenToPath<any>('taxonomy_business', (data) => {
-      const filteredData = data.filter((cat: any) => cat.name !== 'Popular' && cat.name !== 'Featured');
+      const filteredData = data
+        .filter((cat: any) => cat.name !== 'Popular' && cat.name !== 'Featured')
+        .sort((a: any, b: any) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
+          || String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
       this.categories.set(filteredData);
       const categoryName = this.route.snapshot.queryParamMap.get('category');
       if (categoryName) {
@@ -256,20 +363,40 @@ export class BusinessesComponent implements OnInit {
   }
 
   updateSearch(event: Event) {
-    this.searchQuery.set((event.target as HTMLInputElement).value);
-    this.currentPage.set(1);
+    this.updateBusinessFilters({
+      searchQuery: (event.target as HTMLInputElement).value,
+      currentPage: 1
+    });
+  }
+
+  updateCurrentPage(page: number) {
+    this.updateBusinessFilters({ currentPage: page });
   }
 
   updateCategoryFilter(event: Event) {
-    this.businessStateService.selectedCategory.set((event.target as HTMLSelectElement).value);
-    this.currentPage.set(1);
+    const selectedCategory = (event.target as HTMLSelectElement).value;
+    this.updateBusinessFilters({
+      selectedCategory,
+      sortBy: selectedCategory === 'all' ? 'title-asc' : 'category-sort-id',
+      currentPage: 1
+    });
+  }
+
+  updateSort(event: Event) {
+    this.updateBusinessFilters({
+      sortBy: (event.target as HTMLSelectElement).value as BusinessSortOption,
+      currentPage: 1
+    });
   }
 
   updateCategoryFilterByValue(categoryName: string) {
     const selectedCategory = this.categories().find(c => c.name.toLowerCase() === categoryName.toLowerCase());
     if (selectedCategory) {
-      this.businessStateService.selectedCategory.set(selectedCategory.id);
-      this.currentPage.set(1);
+      this.updateBusinessFilters({
+        selectedCategory: selectedCategory.id,
+        sortBy: 'category-sort-id',
+        currentPage: 1
+      });
     }
   }
 
@@ -282,15 +409,7 @@ export class BusinessesComponent implements OnInit {
   }
 
   clearFilters() {
-    this.searchQuery.set('');
-    this.businessStateService.selectedCategory.set('all');
-    this.typeFilter.set('all');
-    this.priceFilter.set('all');
-    this.sortBy.set('title-asc');
-    this.businessStateService.isFeaturedFilter.set(false);
-    this.businessStateService.isVerifiedFilter.set(false);
-    this.businessStateService.isPremiumFilter.set(false);
-    this.currentPage.set(1);
+    this.store.dispatch(BusinessAdminActions.clearFilters());
   }
 
   toggleBusinessSelection(id: string, checked: boolean) {
@@ -335,7 +454,8 @@ export class BusinessesComponent implements OnInit {
       'contactFacebook', 'contactTiktok', 'imageUrl', 'logoUrl', 'menuUrl',
       'gallery', 'services', 'openingHours', 'locations', 'deliveryInfo', 'isPublished',
       'isArchived', 'isPremium', 'isVerified', 'isFeatured', 'isDeliveryAvailable',
-      'actionType', 'actionTarget', 'order', 'createdDate', 'publishedDate', 'additionalData'
+      'actionType', 'actionTarget', 'alphabeticalSortKey', 'categorySortId', 'featuredSortId',
+      'order', 'createdDate', 'publishedDate', 'additionalData'
     ];
     const worksheet = XLSX.utils.json_to_sheet(
       rows.map((business) => this.toBusinessExportRow(business)),
@@ -465,8 +585,8 @@ export class BusinessesComponent implements OnInit {
       'location', 'countryCode', 'cityCode', 'googlePlaceId', 'rating', 'reviews',
       'contact', 'imageUrl', 'logoUrl', 'menuUrl', 'gallery', 'services', 'openingHours',
       'locations', 'deliveryInfo', 'isPublished', 'isArchived', 'isPremium', 'isVerified',
-      'isFeatured', 'isDeliveryAvailable', 'actionType', 'actionTarget', 'order',
-      'createdDate', 'publishedDate'
+      'isFeatured', 'isDeliveryAvailable', 'actionType', 'actionTarget', 'alphabeticalSortKey',
+      'categorySortId', 'featuredSortId', 'order', 'createdDate', 'publishedDate'
     ]);
     const additionalData = Object.fromEntries(
       Object.entries(data).filter(([key]) => !knownFields.has(key))
@@ -508,6 +628,9 @@ export class BusinessesComponent implements OnInit {
       isDeliveryAvailable: business.isDeliveryAvailable ?? false,
       actionType: business.actionType || '',
       actionTarget: business.actionTarget || '',
+      alphabeticalSortKey: business.alphabeticalSortKey || this.getAlphabeticalSortKey(business),
+      categorySortId: business.categorySortId ?? '',
+      featuredSortId: business.featuredSortId ?? '',
       order: business.order ?? '',
       createdDate: business.createdDate || '',
       publishedDate: business.publishedDate || '',
@@ -556,6 +679,9 @@ export class BusinessesComponent implements OnInit {
       isDeliveryAvailable: this.booleanCell(row['isDeliveryAvailable']),
       actionType: this.stringCell(row['actionType']),
       actionTarget: this.stringCell(row['actionTarget']),
+      alphabeticalSortKey: this.optionalStringCell(row['alphabeticalSortKey']) || this.stringCell(row['title']).toLocaleLowerCase(),
+      categorySortId: this.optionalNumberCell(row['categorySortId']),
+      featuredSortId: this.optionalNumberCell(row['featuredSortId']),
       order: this.optionalNumberCell(row['order']),
       createdDate: this.optionalStringCell(row['createdDate']),
       publishedDate: this.optionalStringCell(row['publishedDate'])
@@ -706,27 +832,39 @@ export class BusinessesComponent implements OnInit {
   }
 
   toggleFeaturedFilter(checked: boolean) {
-    this.businessStateService.isFeaturedFilter.set(checked);
-    this.currentPage.set(1);
+    this.updateBusinessFilters({
+      isFeaturedFilter: checked,
+      sortBy: checked ? 'featured-sort-id' : this.sortBy(),
+      currentPage: 1
+    });
   }
 
   toggleVerifiedFilter(checked: boolean) {
-    this.businessStateService.isVerifiedFilter.set(checked);
-    this.currentPage.set(1);
+    this.updateBusinessFilters({
+      isVerifiedFilter: checked,
+      currentPage: 1
+    });
   }
 
   togglePremiumFilter(checked: boolean) {
-    this.businessStateService.isPremiumFilter.set(checked);
-    this.currentPage.set(1);
+    this.updateBusinessFilters({
+      isPremiumFilter: checked,
+      currentPage: 1
+    });
   }
 
   sortByColumn(column: 'title' | 'category' | 'phone' | 'rating' | 'state') {
     const direction = this.isSortedBy(column) && this.sortDirection() === 'asc' ? 'desc' : 'asc';
-    this.sortBy.set(`${column}-${direction}`);
-    this.currentPage.set(1);
+    this.updateBusinessFilters({
+      sortBy: `${column}-${direction}` as BusinessSortOption,
+      currentPage: 1
+    });
   }
 
   isSortedBy(column: string): boolean {
+    if (column === 'category') {
+      return this.sortBy().startsWith('category-') && !this.sortBy().startsWith('category-order');
+    }
     return this.sortBy().startsWith(`${column}-`);
   }
 
@@ -761,10 +899,15 @@ export class BusinessesComponent implements OnInit {
     if (!this.authService.canManageContent()) return;
     this.isReordering.update(v => !v);
     if (this.isReordering()) {
-      this.sortBy.set('order');
+      const mode = this.reorderMode();
+      this.updateBusinessFilters({
+        sortBy: mode === 'featured' ? 'featured-sort-id' : mode === 'category' ? 'category-sort-id' : 'order'
+      });
     }
-    this.currentPage.set(1);
-    this.searchQuery.set('');
+    this.updateBusinessFilters({
+      currentPage: 1,
+      searchQuery: ''
+    });
   }
 
   onDragStart(event: DragEvent, index: number) {
@@ -803,16 +946,17 @@ export class BusinessesComponent implements OnInit {
     
     displayList.forEach((item, index) => {
       const newOrder = index + 1;
-      if (item.order !== newOrder) {
+      const orderField = this.getActiveOrderField();
+      if (this.getBusinessOrderValue(item, orderField) !== newOrder) {
         // Optimistic update
-        item.order = newOrder;
+        this.setBusinessOrderValue(item, orderField, newOrder);
         
         // Push update
-        updates.push(this.firebaseService.update('businesses', item.id, { order: newOrder }));
+        updates.push(this.firebaseService.update('businesses', item.id, { [orderField]: newOrder }));
         
         // Update local full list ref
         const match = fullList.find(o => o.id === item.id);
-        if (match) match.order = newOrder;
+        if (match) this.setBusinessOrderValue(match, orderField, newOrder);
       }
     });
     
@@ -826,6 +970,20 @@ export class BusinessesComponent implements OnInit {
       console.error(e);
       this.toastService.error('Failed to save order');
     }
+  }
+
+  private getActiveOrderField(): 'categorySortId' | 'featuredSortId' | 'order' {
+    if (this.reorderMode() === 'featured') return 'featuredSortId';
+    if (this.reorderMode() === 'category') return 'categorySortId';
+    return 'order';
+  }
+
+  private getBusinessOrderValue(business: Business, field: 'categorySortId' | 'featuredSortId' | 'order') {
+    return business[field];
+  }
+
+  private setBusinessOrderValue(business: Business, field: 'categorySortId' | 'featuredSortId' | 'order', value: number) {
+    business[field] = value;
   }
 
   async duplicate(item: Business) {

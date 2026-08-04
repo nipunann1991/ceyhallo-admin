@@ -21,7 +21,7 @@ export class UsersComponent implements OnInit {
   showTitle = input(true);
   readonly pageOptions = ADMIN_PAGE_OPTIONS;
   selectedAllowedPages = signal<string[]>([]);
-  activeTab = signal<'admins' | 'users'>('admins');
+  activeTab = signal<'admins' | 'users'>('users');
   newUserAllowedPages = signal<string[]>([]);
   
   users = signal<User[]>([]);
@@ -33,11 +33,14 @@ export class UsersComponent implements OnInit {
 
   filteredUsers = computed(() => {
     const query = this.searchQuery().toLowerCase();
-    return this.users().filter(u => 
-      u.name?.toLowerCase().includes(query) || 
-      u.email?.toLowerCase().includes(query) ||
-      u.role?.toLowerCase().includes(query)
-    );
+    return this.users()
+      .filter(u => 
+        u.name?.toLowerCase().includes(query) || 
+        u.email?.toLowerCase().includes(query) ||
+        this.getReferralCode(u).toLowerCase().includes(query) ||
+        u.role?.toLowerCase().includes(query)
+      )
+      .sort((a, b) => this.getJoinedTimestamp(b) - this.getJoinedTimestamp(a));
   });
 
   filteredAdminUsers = computed(() =>
@@ -81,6 +84,9 @@ export class UsersComponent implements OnInit {
 
   // Detail View
   selectedUser = signal<User | null>(null);
+  isEditingUserDetails = signal(false);
+  isSavingUserDetails = signal(false);
+  userDetailsForm: FormGroup;
 
   constructor(
     public authService: AuthService,
@@ -94,6 +100,14 @@ export class UsersComponent implements OnInit {
       role: ['user', Validators.required],
       status: ['active', Validators.required],
       region: ['']
+    });
+
+    this.userDetailsForm = this.fb.group({
+      name: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      phoneNumber: [''],
+      status: ['inactive', Validators.required],
+      address: ['']
     });
   }
 
@@ -177,10 +191,47 @@ export class UsersComponent implements OnInit {
 
   viewUser(user: User) {
     this.selectedUser.set(user);
+    this.isEditingUserDetails.set(false);
+    this.userDetailsForm.reset({
+      name: user.name || '',
+      email: user.email || '',
+      phoneNumber: user.phoneNumber || '',
+      status: user.status || 'inactive',
+      address: user.address || ''
+    });
   }
 
   closeViewModal() {
     this.selectedUser.set(null);
+    this.isEditingUserDetails.set(false);
+    this.userDetailsForm.reset();
+  }
+
+  startUserDetailsEdit() {
+    const user = this.selectedUser();
+    if (!this.authService.isAdmin() || !user) return;
+    this.userDetailsForm.reset({
+      name: user.name || '',
+      email: user.email || '',
+      phoneNumber: user.phoneNumber || '',
+      status: user.status || 'inactive',
+      address: user.address || ''
+    });
+    this.isEditingUserDetails.set(true);
+  }
+
+  cancelUserDetailsEdit() {
+    const user = this.selectedUser();
+    if (user) {
+      this.userDetailsForm.reset({
+        name: user.name || '',
+        email: user.email || '',
+        phoneNumber: user.phoneNumber || '',
+        status: user.status || 'inactive',
+        address: user.address || ''
+      });
+    }
+    this.isEditingUserDetails.set(false);
   }
 
   togglePageAccess(path: string, checked: boolean) {
@@ -211,6 +262,48 @@ export class UsersComponent implements OnInit {
     const value = (name || '').trim();
     if (!value) return 'U';
     return value.slice(0, 2).toUpperCase();
+  }
+
+  getReferralCode(user?: User | null) {
+    return user?.referredCode || '';
+  }
+
+  getJoinedTimestamp(user: User) {
+    const timestamp = user.createdAt ? Date.parse(user.createdAt) : 0;
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  }
+
+  async saveUserDetails() {
+    const user = this.selectedUser();
+    if (!this.authService.isAdmin() || !user || this.userDetailsForm.invalid) return;
+
+    this.isSavingUserDetails.set(true);
+    const formValue = this.userDetailsForm.getRawValue();
+    const dataToSave = {
+      name: formValue.name,
+      email: formValue.email,
+      phoneNumber: formValue.phoneNumber,
+      status: formValue.status,
+      address: formValue.address,
+      isVerified: formValue.status === 'active',
+      emailVerified: formValue.status === 'active'
+    };
+
+    try {
+      await this.firebaseService.update('users', user.id, dataToSave);
+      this.selectedUser.set({ ...user, ...dataToSave });
+      this.isEditingUserDetails.set(false);
+      this.toastService.success('User details updated successfully.');
+    } catch (e: any) {
+      console.error(e);
+      if (e.message?.includes('PERMISSION_DENIED') || e.code === 'PERMISSION_DENIED' || e.code === 'permission-denied') {
+        this.toastService.error('Permission denied updating user details.');
+      } else {
+        this.toastService.error('Failed to update user details: ' + (e.message || 'Unknown error'));
+      }
+    } finally {
+      this.isSavingUserDetails.set(false);
+    }
   }
 
   updateRole(role: User['role']) {

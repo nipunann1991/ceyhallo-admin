@@ -1,4 +1,4 @@
-import { HomeSectionAppCategory, HomeSectionDataSource, HomeSectionLinkType, HomeSectionType } from '../enums/home-section.enums';
+import { HomeSectionAppCategory, HomeSectionDataSource, HomeSectionLinkType, HomeSectionSortBy, HomeSectionType } from '../enums/home-section.enums';
 
 export interface FilterData {
   filterType: string;
@@ -21,4 +21,5 @@ export interface HomeSection {
   appCategory?: HomeSectionAppCategory;
   excludedCategories?: string[];
   limit?: number;
+  sortBy?: HomeSectionSortBy;
 }

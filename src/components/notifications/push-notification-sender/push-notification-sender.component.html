@@ -12,41 +12,47 @@
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
        <h3 class="text-base font-bold text-slate-800 mb-4">Audience</h3>
        
-       <div class="flex gap-4 mb-4">
-          <button type="button" (click)="setTargetAll()" class="flex-1 py-3 px-4 rounded-lg border text-left transition-all relative"
-            [class.border-blue-500]="targetType === 'topic' && form.get('targetValue')?.value === 'general'"
-            [class.bg-blue-50]="targetType === 'topic' && form.get('targetValue')?.value === 'general'"
-            [class.border-slate-200]="targetType !== 'topic' || form.get('targetValue')?.value !== 'general'">
-             <div class="flex items-center gap-2 font-semibold text-slate-800">
-                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                All Users
-             </div>
-             <p class="text-xs text-slate-500 mt-1">Sends to 'general' topic.</p>
-             <div class="absolute top-3 right-3" *ngIf="targetType === 'topic' && form.get('targetValue')?.value === 'general'">
-                <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-             </div>
-          </button>
-
-          <button type="button" (click)="form.patchValue({ targetType: 'topic', targetValue: '' })" class="flex-1 py-3 px-4 rounded-lg border text-left transition-all relative"
-             [class.border-blue-500]="targetType === 'topic' && form.get('targetValue')?.value !== 'general'"
-             [class.bg-blue-50]="targetType === 'topic' && form.get('targetValue')?.value !== 'general'">
-             <div class="flex items-center gap-2 font-semibold text-slate-800">
-                <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
-                Custom Topic
-             </div>
-             <p class="text-xs text-slate-500 mt-1">Specific interest group.</p>
-          </button>
-
-           <button type="button" (click)="form.patchValue({ targetType: 'token', targetValue: '' })" class="flex-1 py-3 px-4 rounded-lg border text-left transition-all relative"
-             [class.border-blue-500]="targetType === 'token'"
-             [class.bg-blue-50]="targetType === 'token'">
-             <div class="flex items-center gap-2 font-semibold text-slate-800">
-                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                Single Device
-             </div>
-             <p class="text-xs text-slate-500 mt-1">Test on specific interest device.</p>
-          </button>
+       <div class="mb-4 border-b border-slate-200">
+          <div class="flex items-center gap-2">
+             <button type="button" (click)="setTargetAll()" class="inline-flex items-center gap-2 rounded-t-lg border px-4 py-2.5 text-sm font-semibold transition-colors"
+               [class.bg-white]="audienceTab === 'target'"
+               [class.text-[#083594]]="audienceTab === 'target'"
+               [class.border-slate-200]="audienceTab === 'target'"
+               [class.border-b-white]="audienceTab === 'target'"
+               [class.text-slate-500]="audienceTab !== 'target'"
+               [class.border-transparent]="audienceTab !== 'target'">
+                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                Target
+             </button>
+             <button type="button" (click)="setTargetTopic()" class="inline-flex items-center gap-2 rounded-t-lg border px-4 py-2.5 text-sm font-semibold transition-colors"
+               [class.bg-white]="audienceTab === 'topic'"
+               [class.text-[#083594]]="audienceTab === 'topic'"
+               [class.border-slate-200]="audienceTab === 'topic'"
+               [class.border-b-white]="audienceTab === 'topic'"
+               [class.text-slate-500]="audienceTab !== 'topic'"
+               [class.border-transparent]="audienceTab !== 'topic'">
+                <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                Topic
+             </button>
+             <button type="button" (click)="setTargetSingle()" class="inline-flex items-center gap-2 rounded-t-lg border px-4 py-2.5 text-sm font-semibold transition-colors"
+               [class.bg-white]="audienceTab === 'single'"
+               [class.text-[#083594]]="audienceTab === 'single'"
+               [class.border-slate-200]="audienceTab === 'single'"
+               [class.border-b-white]="audienceTab === 'single'"
+               [class.text-slate-500]="audienceTab !== 'single'"
+               [class.border-transparent]="audienceTab !== 'single'">
+                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                Single Value
+             </button>
+          </div>
        </div>
+
+       @if (audienceTab === 'target') {
+          <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+             <div class="font-semibold text-slate-800">All Users</div>
+             <p class="mt-1 text-xs text-slate-500">Sends to the <code>general</code> topic.</p>
+          </div>
+       }
 
        @if (targetType === 'topic' && form.get('targetValue')?.value !== 'general') {
           <div class="animate-in fade-in slide-in-from-top-1">

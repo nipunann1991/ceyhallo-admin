@@ -53,5 +53,8 @@ export interface Business {
   actionType?: ActionType;
   actionTarget?: string;
   isArchived?: boolean;
+  alphabeticalSortKey?: string;
+  categorySortId?: number;
+  featuredSortId?: number;
   order?: number;
 }

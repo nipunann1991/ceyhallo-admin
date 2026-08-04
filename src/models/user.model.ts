@@ -9,6 +9,7 @@ export interface User {
   createdAt?: string;
   isVerified?: boolean;
   region?: string;
+  referredCode?: string;
   emailVerified?: boolean;
   phoneNumber?: string;
   dateOfBirth?: string;

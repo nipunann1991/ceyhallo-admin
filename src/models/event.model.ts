@@ -1,6 +1,11 @@
 
 import { EventActionType, EventOrganizerType } from '../enums/content.enums';
 
+export interface EventPaymentLink {
+  description: string;
+  link: string;
+}
+
 export interface AppEvent {
   id: string;
   title: string;
@@ -30,5 +35,6 @@ export interface AppEvent {
   // Action / Registration
   actionType?: EventActionType;
   actionTarget?: string;
+  paymentLinks?: EventPaymentLink[];
   isArchived?: boolean;
 }

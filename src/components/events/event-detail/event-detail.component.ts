@@ -36,8 +36,16 @@ export class EventDetailComponent {
   }
 
   getLabel(event: AppEvent): string {
+    if (event.actionType === 'payment_links') return 'Payment Links';
     if (event.actionType === 'whatsapp') return 'Chat on WhatsApp';
     if (event.actionType === 'call') return 'Call Now';
     return 'Register / Info';
+  }
+
+  getPaymentLinkUrl(link: string): string {
+    if (!link.startsWith('http') && !link.startsWith('//')) {
+      return 'https://' + link;
+    }
+    return link;
   }
 }

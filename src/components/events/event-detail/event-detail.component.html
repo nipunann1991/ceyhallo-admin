@@ -80,7 +80,20 @@
                 </div>
 
                 <!-- Ticket Action -->
-                <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm" *ngIf="event.actionType && event.actionType !== 'none' && event.actionTarget">
+                <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm" *ngIf="event.actionType === 'payment_links' && event.paymentLinks && event.paymentLinks.length > 0">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Payment Links</h3>
+                    <div class="space-y-3">
+                       <a *ngFor="let paymentLink of event.paymentLinks" [href]="getPaymentLinkUrl(paymentLink.link)" target="_blank" class="flex items-center justify-between gap-4 rounded-lg border border-slate-200 p-3 hover:border-orange-200 hover:bg-orange-50 transition-colors">
+                          <span class="min-w-0">
+                             <span class="block text-sm font-semibold text-slate-800 truncate">{{ paymentLink.description }}</span>
+                             <span class="block text-xs text-slate-400 truncate mt-0.5">{{ paymentLink.link }}</span>
+                          </span>
+                          <svg class="w-4 h-4 text-slate-400 shrink-0" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                       </a>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm" *ngIf="event.actionType && event.actionType !== 'none' && event.actionType !== 'payment_links' && event.actionTarget">
                     <h3 class="text-lg font-bold text-slate-800 mb-4">Registration & Action</h3>
                     <a [href]="getLink(event)" target="_blank" class="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-sm">
                        @if (event.actionType === 'whatsapp') {

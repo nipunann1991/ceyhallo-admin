@@ -1,14 +1,18 @@
-<div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+<div class="fixed inset-0 z-[1000] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
   <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
     <!-- Backdrop -->
-    <div class="fixed inset-0 bg-slate-900 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" (click)="close.emit()"></div>
+    <div class="fixed inset-0 z-[1000] bg-slate-900 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" (click)="close.emit()"></div>
     
     <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
     
     <!-- Modal Panel -->
     <div
-      class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:w-full"
-      [ngClass]="size() === 'wide' ? 'sm:max-w-5xl' : 'sm:max-w-2xl'">
+      class="relative z-[1001] inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:w-full"
+      [ngClass]="{
+        'sm:max-w-lg': size() === 'compact',
+        'sm:max-w-2xl': size() === 'default',
+        'sm:max-w-5xl': size() === 'wide'
+      }">
       <!-- Header & Body -->
       <div class="bg-white px-6 pt-6 pb-4">
         <div class="flex justify-between items-center mb-6">

@@ -25,6 +25,25 @@
 
   </div>
 
+  <div class="border-b border-slate-200">
+    <div class="flex items-center gap-2">
+      @for (option of targetOptions; track option.value) {
+        <button
+          type="button"
+          (click)="onTargetFilterChange(option.value)"
+          class="rounded-t-xl px-4 py-2.5 text-sm font-medium transition-colors"
+          [class.bg-white]="targetFilter() === option.value"
+          [class.text-[#083594]]="targetFilter() === option.value"
+          [class.border]="targetFilter() === option.value"
+          [class.border-slate-200]="targetFilter() === option.value"
+          [class.border-b-white]="targetFilter() === option.value"
+          [class.text-slate-500]="targetFilter() !== option.value">
+          {{ option.label }}
+        </button>
+      }
+    </div>
+  </div>
+
   <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-left text-sm text-slate-600">
@@ -34,6 +53,8 @@
             <th class="px-6 py-4">Message</th>
             <th class="px-6 py-4 w-[30%]">Body</th>
             <th class="px-6 py-4">Target</th>
+            <th class="px-6 py-4">Target Value</th>
+            <th class="px-6 py-4">Route ID</th>
             <th class="px-6 py-4">Status</th>
             <th class="px-6 py-4">Sent At</th>
             <th class="px-6 py-4 text-right">Actions</th>
@@ -67,13 +88,23 @@
                    <span class="inline-flex items-center gap-1.5 font-medium text-slate-700">
                      @if(note.targetType === 'topic') {
                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                       Topic: {{ note.targetValue }}
+                       Topic
                      } @else {
                         <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                         Single Device
                      }
                    </span>
                  </div>
+              </td>
+              <td class="px-6 py-6 align-top">
+                <div class="max-w-[180px] truncate font-mono text-xs text-slate-500" [title]="note.targetValue || ''">
+                  {{ note.targetValue || '-' }}
+                </div>
+              </td>
+              <td class="px-6 py-6 align-top">
+                <div class="max-w-[180px] truncate font-mono text-xs text-slate-500" [title]="getRouteId(note)">
+                  {{ getRouteId(note) || '-' }}
+                </div>
               </td>
               <td class="px-6 py-6">
                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
@@ -98,6 +129,16 @@
               </td>
               <td class="px-6 py-6 text-right">
                 <div class="flex items-center justify-end">
+                  <button type="button"
+                    class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    (click)="openViewNotification(note)"
+                    aria-label="View notification"
+                    title="View">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </button>
                   <button type="button"
                     class="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     [disabled]="actionInProgress() === note.id"
@@ -126,7 +167,7 @@
             </tr>
           } @empty {
           <tr>
-            <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+            <td colspan="9" class="px-6 py-12 text-center text-slate-400">
                  <p>No notifications sent yet.</p>
               </td>
             </tr>
@@ -143,15 +184,172 @@
     </app-pagination-controls>
   </div>
 
-  @if (showDuplicateConfirm()) {
-    <app-confirm-modal
-      title="Duplicate Notification"
-      message="Are you sure you want to duplicate this item?"
-      [confirmLabel]="'Duplicate'"
-      [variant]="'primary'"
-      (confirm)="confirmDuplicate()"
-      (cancel)="closeDuplicateConfirm()">
-    </app-confirm-modal>
+  <app-sliding-panel [isOpen]="!!selectedNotification()" [title]="'Notification Details'" (close)="closeViewNotification()">
+    @if (selectedNotification(); as note) {
+      <div class="space-y-4">
+        <div class="flex items-start gap-3 border-b border-slate-100 pb-4">
+          <div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+            @if (note.imageUrl) {
+              <img [src]="note.imageUrl" class="w-full h-full object-cover" alt="">
+            } @else {
+              <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+            }
+          </div>
+          <div class="min-w-0">
+            <h3 class="text-lg font-bold text-slate-900 leading-6">{{ note.title }}</h3>
+            <p class="mt-1 text-sm leading-5 text-slate-600 whitespace-pre-line">{{ note.body }}</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Target Type</label>
+            <div class="text-slate-700 text-sm font-medium">{{ note.targetType === 'topic' ? 'Topic' : 'Single Device' }}</div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Target Value</label>
+            <div class="font-mono text-slate-600 text-xs bg-slate-50 p-1.5 rounded border border-slate-100 break-all select-all">{{ note.targetValue || '-' }}</div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Route ID</label>
+            <div class="font-mono text-slate-600 text-xs bg-slate-50 p-1.5 rounded border border-slate-100 break-all select-all">{{ getRouteId(note) || '-' }}</div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Status</label>
+            <div class="text-slate-700 text-sm font-medium capitalize">{{ note.status }}</div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Created At</label>
+            <div class="text-slate-700 text-sm">{{ note.createdAt | date:'medium' }}</div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Scheduled At</label>
+            <div class="text-slate-700 text-sm">{{ note.scheduledAt ? (note.scheduledAt | date:'medium') : '-' }}</div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Sent At</label>
+            <div class="text-slate-700 text-sm">{{ note.sentAt ? (note.sentAt | date:'medium') : '-' }}</div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Image URL</label>
+            <div class="font-mono text-slate-600 text-xs bg-slate-50 p-1.5 rounded border border-slate-100 break-all select-all">{{ note.imageUrl || '-' }}</div>
+          </div>
+        </div>
+
+        @if (note.error) {
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Error</label>
+            <div class="font-mono text-red-700 text-xs bg-red-50 p-2 rounded border border-red-100 break-all">{{ note.error }}</div>
+          </div>
+        }
+
+        <div>
+          <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Custom Data</label>
+          <pre class="max-h-32 overflow-auto font-mono text-slate-600 text-xs bg-slate-50 p-3 rounded border border-slate-100 whitespace-pre-wrap">{{ getDataJson(note) }}</pre>
+        </div>
+        <div class="flex justify-end border-t border-slate-100 pt-4">
+          <button (click)="closeViewNotification()" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 sm:text-sm">
+            Close
+          </button>
+        </div>
+      </div>
+    }
+  </app-sliding-panel>
+
+  @if (showDuplicateConfirm() && notificationToDuplicate(); as note) {
+    <app-modal title="Duplicate and Send Notification" (close)="closeDuplicateConfirm()">
+      <div body class="space-y-5">
+        <div class="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Do you want to duplicate and send this push notification now?
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Title</label>
+            <input
+              type="text"
+              class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594] focus:border-[#083594] p-2.5 border text-sm"
+              [ngModel]="duplicateTitle()"
+              (ngModelChange)="duplicateTitle.set($event)">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Body</label>
+            <textarea
+              rows="3"
+              class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594] focus:border-[#083594] p-2.5 border text-sm resize-none"
+              [ngModel]="duplicateBody()"
+              (ngModelChange)="duplicateBody.set($event)"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Image URL</label>
+            <input
+              type="text"
+              class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594] focus:border-[#083594] p-2.5 border font-mono text-xs"
+              [ngModel]="duplicateImageUrl()"
+              (ngModelChange)="duplicateImageUrl.set($event)"
+              placeholder="https://...">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Target Type</label>
+            <select
+              class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594] focus:border-[#083594] p-2.5 border bg-white text-sm"
+              [ngModel]="duplicateTargetType()"
+              (ngModelChange)="duplicateTargetType.set($event)">
+              @for (option of targetOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Target Value</label>
+            <input
+              type="text"
+              class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594] focus:border-[#083594] p-2.5 border font-mono text-xs"
+              [ngModel]="duplicateTargetValue()"
+              (ngModelChange)="duplicateTargetValue.set($event)"
+              [placeholder]="duplicateTargetType() === 'token' ? 'Paste FCM token here' : 'e.g. general'">
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Route ID</label>
+            <div class="font-mono text-slate-600 text-xs bg-slate-50 p-1.5 rounded border border-slate-100 break-all select-all">{{ getRouteId(note) || '-' }}</div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">New Status</label>
+            <div class="text-slate-700 text-sm font-medium capitalize">Pending</div>
+          </div>
+          <div>
+            <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Original Status</label>
+            <div class="text-slate-700 text-sm font-medium capitalize">{{ note.status }}</div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Custom Data JSON</label>
+          <textarea
+            rows="5"
+            class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-[#083594] focus:border-[#083594] p-2.5 border font-mono text-xs resize-none"
+            [ngModel]="duplicateDataJson()"
+            (ngModelChange)="duplicateDataJson.set($event)"
+            placeholder='{"routeId": "/example"}'></textarea>
+        </div>
+      </div>
+      <div footer class="flex gap-3 w-full sm:w-auto">
+        <button
+          (click)="confirmDuplicate()"
+          [disabled]="actionInProgress() === note.id || !duplicateTitle().trim() || !duplicateBody().trim() || !duplicateTargetValue().trim()"
+          class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-[#083594] hover:bg-[#062a71] text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#083594] sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ actionInProgress() === note.id ? 'Sending...' : 'Duplicate and Send Now' }}
+        </button>
+        <button (click)="closeDuplicateConfirm()" [disabled]="actionInProgress() === note.id" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 sm:text-sm disabled:opacity-50">
+          Cancel
+        </button>
+      </div>
+    </app-modal>
   }
 
   @if (showDeleteConfirm()) {

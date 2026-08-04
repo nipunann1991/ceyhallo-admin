@@ -15,6 +15,7 @@ export enum EventOrganizerType {
 
 export enum EventActionType {
   External = 'external',
+  PaymentLinks = 'payment_links',
   WhatsApp = 'whatsapp',
   Call = 'call',
   None = 'none'
@@ -41,4 +42,3 @@ export enum HubSectionDataSource {
   None = 'none',
   Businesses = 'businesses'
 }
-

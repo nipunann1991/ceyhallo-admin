@@ -69,9 +69,22 @@ export class EventEditorComponent implements OnInit {
       // Action
       actionType: ['none'],
       actionTarget: [''],
+      paymentLinks: this.fb.array([]),
 
       gallery: this.fb.array([])
     });
+
+    this.form.get('actionType')?.valueChanges.subscribe(actionType => {
+      if (actionType === 'payment_links' && this.paymentLinksArray.length === 0) {
+        this.addPaymentLink();
+      }
+      if (actionType === 'payment_links') {
+        this.paymentLinksArray.enable({ emitEvent: false });
+      } else {
+        this.paymentLinksArray.disable({ emitEvent: false });
+      }
+    });
+    this.paymentLinksArray.disable({ emitEvent: false });
 
     this.form.get('isExpired')?.valueChanges.subscribe(expired => {
       if (expired) {
@@ -95,6 +108,7 @@ export class EventEditorComponent implements OnInit {
   }
 
   get galleryArray() { return this.form.get('gallery') as FormArray; }
+  get paymentLinksArray() { return this.form.get('paymentLinks') as FormArray; }
 
   ngOnInit() {
     this.loadDropdownData();
@@ -179,6 +193,16 @@ export class EventEditorComponent implements OnInit {
             actionTarget: doc.actionTarget || ''
         });
 
+        this.paymentLinksArray.clear();
+        if (doc.paymentLinks && Array.isArray(doc.paymentLinks)) {
+          doc.paymentLinks.forEach((paymentLink: any) => {
+            this.addPaymentLink(paymentLink.description || '', paymentLink.link || '');
+          });
+        }
+        if (this.form.get('actionType')?.value === 'payment_links' && this.paymentLinksArray.length === 0) {
+          this.addPaymentLink();
+        }
+
         this.galleryArray.clear();
         if (doc.gallery && Array.isArray(doc.gallery)) {
           doc.gallery.forEach((url: string) => this.addGalleryItem(url));
@@ -209,6 +233,21 @@ export class EventEditorComponent implements OnInit {
 
   removeGalleryItem(index: number) {
     this.galleryArray.removeAt(index);
+  }
+
+  addPaymentLink(description = '', link = '') {
+    const group = this.fb.group({
+      description: [description, Validators.required],
+      link: [link, Validators.required]
+    });
+    if (this.form.get('actionType')?.value !== 'payment_links') {
+      group.disable({ emitEvent: false });
+    }
+    this.paymentLinksArray.push(group);
+  }
+
+  removePaymentLink(index: number) {
+    this.paymentLinksArray.removeAt(index);
   }
 
   toggleUrlInput() {
@@ -269,9 +308,19 @@ export class EventEditorComponent implements OnInit {
     }
 
     const raw = this.form.getRawValue();
+    const isPaymentLinksAction = raw.actionType === 'payment_links';
+    const paymentLinks = isPaymentLinksAction
+      ? raw.paymentLinks.map((item: any) => ({
+          description: item.description?.trim() || '',
+          link: item.link?.trim() || ''
+        }))
+      : [];
+
     const dataToSave: any = { 
         ...raw,
         gallery: raw.gallery,
+        actionTarget: isPaymentLinksAction ? '' : raw.actionTarget,
+        paymentLinks,
         // Ensure strings if null
         organizerId: raw.organizerId || '',
         organizerType: 'business',

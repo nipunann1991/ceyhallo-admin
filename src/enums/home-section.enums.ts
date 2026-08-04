@@ -9,6 +9,7 @@ export enum HomeSectionType {
 export enum HomeSectionDataSource {
   Banners = 'banners',
   Categories = 'categories',
+  Restaurants = 'restaurants',
   Businesses = 'businesses',
   Jobs = 'jobs',
   Events = 'events',
@@ -33,4 +34,12 @@ export enum HomeSectionFilterType {
   Featured = 'isFeatured',
   Category = 'category',
   BusinessCategory = 'businessCategory'
+}
+
+export enum HomeSectionSortBy {
+  CategorySortId = 'categorySortId',
+  FeaturedSortId = 'featuredSortId',
+  Asc = 'asc',
+  Desc = 'dsc',
+  Random = 'random'
 }

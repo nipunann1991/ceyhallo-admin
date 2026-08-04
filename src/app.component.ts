@@ -44,6 +44,9 @@ export class AppComponent implements OnInit, OnDestroy {
       if (this.isMobile()) {
         this.isSidebarOpen.set(false);
       }
+      if (this.authService.isLoading() || !this.authService.currentUser()) {
+        return;
+      }
       this.enforceRouteAccess();
     });
   }
@@ -57,7 +60,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.checkScreenSize();
   }
 
-  checkScreenSize() {
+  checkScreenSize(): void{
     const wasMobile = this.isMobile();
     const isNowMobile = window.innerWidth < 768; // md breakpoint
     this.isMobile.set(isNowMobile);
@@ -69,16 +72,21 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleSidebar() {
+  toggleSidebar(): void{
     this.isSidebarOpen.update(v => !v);
   }
 
-  private enforceRouteAccess() {
+  private enforceRouteAccess(): void {
     const currentUrl = this.router.url.startsWith('/#') ? this.router.url.slice(2) : this.router.url;
     const currentPath = currentUrl.split('?')[0] || '/dashboard';
 
-    if (currentPath !== '/login' && !this.authService.canAccessPath(currentPath)) {
+    if (currentPath === '/no-access' && this.authService.hasAccessiblePages()) {
       void this.router.navigate([this.authService.getFirstAccessiblePath()]);
+      return;
+    }
+
+    if (currentPath !== '/login' && !this.authService.canAccessPath(currentPath)) {
+      void this.authService.logout();
     }
   }
 }

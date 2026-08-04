@@ -8,7 +8,9 @@ import { ModalComponent } from '../../ui/modal.component';
 import { ConfirmModalComponent } from '../../ui/confirm-modal.component';
 import { TaxonomyItem } from '../../../models/taxonomy.model';
 import { FilterData, HomeSection } from '../../../models/home-section.model';
-import { HomeSectionAppCategory, HomeSectionDataSource, HomeSectionFilterType, HomeSectionLinkType, HomeSectionType } from '../../../enums/home-section.enums';
+import { HomeSectionAppCategory, HomeSectionDataSource, HomeSectionFilterType, HomeSectionLinkType, HomeSectionSortBy, HomeSectionType } from '../../../enums/home-section.enums';
+
+type ConfigTab = 'display' | 'content' | 'filters' | 'link';
 
 @Component({
   selector: 'app-home-sections',
@@ -30,6 +32,7 @@ export class HomeSectionsComponent implements OnInit {
 
   // Configuration Modal
   showConfigModal = signal(false);
+  activeConfigTab = signal<ConfigTab>('display');
   configForm: FormGroup;
   editingIndex: number | null = null;
 
@@ -39,6 +42,19 @@ export class HomeSectionsComponent implements OnInit {
 
   // Data for Dropdowns
   businessCategories = signal<TaxonomyItem[]>([]);
+  sortOptions: Array<{ value: HomeSectionSortBy; label: string }> = [
+    { value: HomeSectionSortBy.FeaturedSortId, label: 'Featured sort ID' },
+    { value: HomeSectionSortBy.CategorySortId, label: 'Category sort ID' },
+    { value: HomeSectionSortBy.Asc, label: 'Ascending' },
+    { value: HomeSectionSortBy.Desc, label: 'Descending' },
+    { value: HomeSectionSortBy.Random, label: 'Random' }
+  ];
+  configTabs: Array<{ id: ConfigTab; label: string }> = [
+    { id: 'display', label: 'Display' },
+    { id: 'content', label: 'Content' },
+    { id: 'filters', label: 'Filters' },
+    { id: 'link', label: 'Link' }
+  ];
 
   constructor() {
     this.configForm = this.fb.group({
@@ -56,7 +72,8 @@ export class HomeSectionsComponent implements OnInit {
       linkType: [HomeSectionLinkType.Custom],
       appCategory: [HomeSectionAppCategory.Businesses],
       excludedCategories: [[]],
-      limit: [10, [Validators.required, Validators.min(1), Validators.max(50)]]
+      limit: [10, [Validators.required, Validators.min(1), Validators.max(50)]],
+      sortBy: [HomeSectionSortBy.CategorySortId, Validators.required]
     });
 
     // Reset filter value if data source changes
@@ -66,6 +83,7 @@ export class HomeSectionsComponent implements OnInit {
          filterValue_businessCategory: [],
          filterValue_text: ''
        });
+       this.applyDefaultSortByFromForm();
     });
 
     this.configForm.get('linkType')?.valueChanges.subscribe(linkType => {
@@ -157,6 +175,7 @@ export class HomeSectionsComponent implements OnInit {
          s.linkUrl = s.linkUrl || '';
          s.linkType = s.linkType || HomeSectionLinkType.Custom;
          s.appCategory = s.appCategory || HomeSectionAppCategory.Businesses;
+         s.sortBy = this.normalizeSortBy(s.sortBy) || this.getDefaultSortBy(s);
          return s as HomeSection;
        }
 
@@ -205,6 +224,7 @@ export class HomeSectionsComponent implements OnInit {
           linkType: s.linkType || HomeSectionLinkType.Custom,
           appCategory: s.appCategory || HomeSectionAppCategory.Businesses,
           limit: s.limit || 10,
+          sortBy: this.normalizeSortBy(s.sortBy) || this.getDefaultSortBy(s),
           dataSource: s.dataSource,
           type: s.type,
           template: s.template
@@ -246,14 +266,41 @@ export class HomeSectionsComponent implements OnInit {
           newSec.template = this.getTemplateForDataSource(newSec.dataSource);
        }
 
+       if (!s.sortBy) {
+          newSec.sortBy = this.getDefaultSortBy(newSec);
+       }
+
        return newSec as HomeSection;
     });
+  }
+
+  getDefaultSortBy(section: Partial<HomeSection>): HomeSectionSortBy {
+    const hasFeaturedFilter = section.filterData?.some(fd => fd.filterType === HomeSectionFilterType.Featured && fd.filterValue === true);
+    const isBusinessBacked = section.dataSource === HomeSectionDataSource.Businesses || section.dataSource === HomeSectionDataSource.Restaurants;
+    if (isBusinessBacked && hasFeaturedFilter) {
+      return HomeSectionSortBy.FeaturedSortId;
+    }
+    if (isBusinessBacked) {
+      return HomeSectionSortBy.CategorySortId;
+    }
+    return HomeSectionSortBy.Desc;
+  }
+
+  normalizeSortBy(sortBy?: string): HomeSectionSortBy | undefined {
+    if (sortBy === 'desc') return HomeSectionSortBy.Desc;
+    return this.sortOptions.some(option => option.value === sortBy) ? sortBy as HomeSectionSortBy : undefined;
+  }
+
+  getSortDisplay(sortBy?: HomeSectionSortBy): string {
+    const option = this.sortOptions.find(item => item.value === sortBy);
+    return option?.label || this.sortOptions.find(item => item.value === HomeSectionSortBy.Desc)?.label || 'Descending';
   }
 
   // --- Actions ---
 
   addSection() {
     this.editingIndex = null;
+    this.activeConfigTab.set('display');
     this.configForm.reset({
       title: 'New Section',
       subTitle: '',
@@ -268,13 +315,15 @@ export class HomeSectionsComponent implements OnInit {
       linkType: HomeSectionLinkType.Custom,
       appCategory: HomeSectionAppCategory.Businesses,
       excludedCategories: [],
-      limit: 10
+      limit: 10,
+      sortBy: HomeSectionSortBy.CategorySortId
     });
     this.showConfigModal.set(true);
   }
 
   editSection(index: number) {
     this.editingIndex = index;
+    this.activeConfigTab.set('display');
     const section = this.sections()[index];
     
     // Decompose filterData into form controls
@@ -314,7 +363,8 @@ export class HomeSectionsComponent implements OnInit {
       linkType: section.linkType || HomeSectionLinkType.Custom,
       appCategory: section.appCategory || HomeSectionAppCategory.Businesses,
       excludedCategories: section.excludedCategories || [],
-      limit: section.limit || 10
+      limit: section.limit || 10,
+      sortBy: this.normalizeSortBy(section.sortBy) || this.getDefaultSortBy(section)
     });
     this.showConfigModal.set(true);
   }
@@ -322,7 +372,7 @@ export class HomeSectionsComponent implements OnInit {
   saveConfig() {
     if (this.configForm.invalid) return;
     
-    const val = this.configForm.value;
+    const val = this.configForm.getRawValue();
     const filterTypes = (val.filterType || []) as string[];
     
     // Construct FilterData
@@ -371,7 +421,12 @@ export class HomeSectionsComponent implements OnInit {
       linkType: val.linkType,
       appCategory: val.appCategory,
       excludedCategories: val.excludedCategories || [],
-      limit: val.limit
+      limit: val.limit,
+      sortBy: this.normalizeSortBy(val.sortBy) || this.getDefaultSortBy({
+        dataSource: val.dataSource,
+        filterData,
+        template: templateValue
+      })
     };
 
     console.log('Section Saved:', newSection);
@@ -430,6 +485,7 @@ export class HomeSectionsComponent implements OnInit {
       currentTypes = currentTypes.filter(t => t !== type);
     }
     this.configForm.get('filterType')?.setValue(currentTypes);
+    this.applyDefaultSortByFromForm();
   }
 
   isFilterTypeSelected(type: string): boolean {
@@ -466,6 +522,24 @@ export class HomeSectionsComponent implements OnInit {
     });
     
     return values.join(', ');
+  }
+
+  private applyDefaultSortByFromForm() {
+    const val = this.configForm.getRawValue();
+    this.configForm.get('sortBy')?.setValue(this.getDefaultSortBy({
+      dataSource: val.dataSource,
+      filterData: this.buildFilterDataFromFormValue(val)
+    }));
+  }
+
+  private buildFilterDataFromFormValue(val: any): FilterData[] {
+    const filterTypes = (val.filterType || []) as string[];
+
+    if (filterTypes.includes(HomeSectionFilterType.Featured)) {
+      return [{ filterType: HomeSectionFilterType.Featured, filterValue: true }];
+    }
+
+    return [];
   }
 
   onCategoryChange(event: Event, categoryName: string, type: HomeSectionFilterType.Category | HomeSectionFilterType.BusinessCategory) {
@@ -633,7 +707,8 @@ export class HomeSectionsComponent implements OnInit {
         linkType: s.linkType || HomeSectionLinkType.Custom,
         appCategory: s.appCategory || HomeSectionAppCategory.Businesses,
         excludedCategories: s.excludedCategories || [],
-        limit: s.limit || 10
+        limit: s.limit || 10,
+        sortBy: this.normalizeSortBy(s.sortBy) || this.getDefaultSortBy(s)
       }));
 
       console.log('--- SAVING SECTIONS TO DB ---', JSON.stringify(sectionsToSave, null, 2));

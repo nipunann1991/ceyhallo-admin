@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
@@ -12,20 +12,16 @@ import { AuthService } from '../../services/auth.service';
 export class LoginComponent {
   authService = inject(AuthService);
   fb: FormBuilder = inject(FormBuilder);
+  errorMessage = this.authService.error;
+  isSubmitting = this.authService.isLoading;
   
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]]
   });
 
-  errorMessage = signal<string | null>(null);
-  isSubmitting = signal(false);
-
   async onSubmit() {
     if (this.form.invalid) return;
-
-    this.isSubmitting.set(true);
-    this.errorMessage.set(null);
 
     const { email, password } = this.form.value;
 
@@ -33,18 +29,8 @@ export class LoginComponent {
 
     try {
       await this.authService.login(email, password);
-    } catch (err: any) {
-      // Standard error handling
-      const code = err.code;
-      if (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password') {
-        this.errorMessage.set('Invalid email or password.');
-      } else if (code === 'auth/too-many-requests') {
-        this.errorMessage.set('Too many failed attempts. Please try again later.');
-      } else {
-        this.errorMessage.set('Login failed: ' + (err.message || 'Unknown error'));
-      }
-    } finally {
-      this.isSubmitting.set(false);
+    } catch {
+      // AuthService stores the user-facing error in NGRX.
     }
   }
 }

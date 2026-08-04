@@ -6,10 +6,10 @@
     </div>
     @if (authService.canManageContent()) {
       <div class="flex items-center gap-2">
-        @if (categoryFilter() !== 'all') {
+        @if (categoryFilter() !== 'all' || isFeaturedFilter()) {
           <button (click)="toggleReorderMode()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm" [class.bg-indigo-100]="isReordering()" [class.text-indigo-700]="isReordering()">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            {{ isReordering() ? 'Done Reordering' : 'Reorder' }}
+            {{ isReordering() ? 'Done ' + reorderLabel() : 'Reorder ' + reorderLabel() }}
           </button>
         }
         <a routerLink="/businesses/new" class="order-2 bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm">
@@ -58,6 +58,21 @@
           <option value="all">All Categories</option>
           @for (category of categories(); track category.id) {
             <option [value]="category.id">{{ category.name }}</option>
+          }
+        </select>
+        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700">
+          <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </div>
+      </div>
+      <div class="relative">
+        <select
+          [value]="sortBy()"
+          (change)="updateSort($event)"
+          class="block w-full sm:w-56 pl-3 pr-10 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#083594]-500 focus:border-transparent text-sm appearance-none bg-white"
+          aria-label="Sort businesses"
+        >
+          @for (option of sortOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
           }
         </select>
         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-700">
@@ -343,7 +358,7 @@
       [currentPage]="currentPage()"
       [totalItems]="filteredBusinesses().length"
       [pageSize]="itemsPerPage"
-      (pageChange)="currentPage.set($event)">
+      (pageChange)="updateCurrentPage($event)">
     </app-pagination-controls>
   </div>
 </div>
