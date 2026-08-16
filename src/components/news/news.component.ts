@@ -10,6 +10,7 @@ import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
 import { NewsDetailComponent } from './news-detail/news-detail.component';
+import { TableSortController } from '../ui/table-sort.controller';
 
 @Component({
   selector: 'app-news',
@@ -17,7 +18,7 @@ import { NewsDetailComponent } from './news-detail/news-detail.component';
   imports: [CommonModule, RouterLink, ConfirmModalComponent, PaginationControlsComponent, SlidingPanelComponent, NewsDetailComponent],
   templateUrl: './news.component.html'
 })
-export class NewsComponent implements OnInit {
+export class NewsComponent extends TableSortController implements OnInit {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
@@ -27,7 +28,7 @@ export class NewsComponent implements OnInit {
   searchQuery = signal('');
 
   // Pagination
-  itemsPerPage = 10;
+  itemsPerPage = signal(10);
   currentPage = signal(1);
 
   // Reorder State
@@ -37,6 +38,7 @@ export class NewsComponent implements OnInit {
   // Selection
   selectedNews = signal<News | null>(null);
   stateFilter = signal<'all' | 'published' | 'draft' | 'archived'>('all');
+  hasActiveFilters = computed(() => this.stateFilter() !== 'all');
 
   filteredNews = computed(() => {
     const query = this.searchQuery().toLowerCase();
@@ -50,7 +52,7 @@ export class NewsComponent implements OnInit {
         .sort((a, b) => (a.featuredOrder || 9999) - (b.featuredOrder || 9999));
     }
 
-    return data.filter(n => {
+    const rows = data.filter(n => {
       const matchesQuery = n.title?.toLowerCase().includes(query) || 
                           n.excerpt?.toLowerCase().includes(query) ||
                           n.author?.toLowerCase().includes(query) ||
@@ -59,6 +61,13 @@ export class NewsComponent implements OnInit {
       const matchesState = stateFilter === 'all' || status === stateFilter;
       return matchesQuery && matchesState;
     });
+    return this.sortTableRows(rows, (news, column) => ({
+      title: news.title,
+      category: news.category,
+      author: news.author,
+      date: news.publishedDate,
+      state: news.isArchived ? 'archived' : (news.isPublished ? 'published' : 'draft')
+    })[column]);
   });
 
   paginatedNews = computed(() => {
@@ -66,8 +75,8 @@ export class NewsComponent implements OnInit {
     if (this.isReordering()) {
       return data; // Show all when reordering
     }
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
   showConfirmModal = signal(false);
@@ -93,7 +102,7 @@ export class NewsComponent implements OnInit {
     : 'Are you sure you want to delete this article? This action cannot be undone.');
   confirmDeleteLabel = computed(() => this.deleteMode() === 'bulk' ? 'Delete Selected' : 'Delete');
 
-  constructor() {}
+  constructor() { super(); }
 
   ngOnInit() {
     this.route.queryParamMap.subscribe((params) => {

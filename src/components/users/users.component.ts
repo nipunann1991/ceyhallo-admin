@@ -10,6 +10,7 @@ import { ModalComponent } from '../ui/modal.component';
 import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { ADMIN_PAGE_OPTIONS, ALL_ADMIN_PAGE_PATHS } from '../../constants/admin-pages';
+import { TableSortController } from '../ui/table-sort.controller';
 
 @Component({
   selector: 'app-users',
@@ -17,7 +18,7 @@ import { ADMIN_PAGE_OPTIONS, ALL_ADMIN_PAGE_PATHS } from '../../constants/admin-
   imports: [CommonModule, ReactiveFormsModule, ModalComponent, ConfirmModalComponent, PaginationControlsComponent],
   templateUrl: './users.component.html'
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent extends TableSortController implements OnInit {
   showTitle = input(true);
   readonly pageOptions = ADMIN_PAGE_OPTIONS;
   selectedAllowedPages = signal<string[]>([]);
@@ -28,12 +29,12 @@ export class UsersComponent implements OnInit {
   searchQuery = signal('');
 
   // Pagination
-  itemsPerPage = 10;
+  itemsPerPage = signal(10);
   currentPage = signal(1);
 
   filteredUsers = computed(() => {
     const query = this.searchQuery().toLowerCase();
-    return this.users()
+    const rows = this.users()
       .filter(u => 
         u.name?.toLowerCase().includes(query) || 
         u.email?.toLowerCase().includes(query) ||
@@ -41,6 +42,15 @@ export class UsersComponent implements OnInit {
         u.role?.toLowerCase().includes(query)
       )
       .sort((a, b) => this.getJoinedTimestamp(b) - this.getJoinedTimestamp(a));
+    return this.sortTableRows(rows, (user, column) => ({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      region: user.region,
+      referral: this.getReferralCode(user),
+      status: user.status,
+      joined: this.getJoinedTimestamp(user)
+    })[column]);
   });
 
   filteredAdminUsers = computed(() =>
@@ -53,14 +63,14 @@ export class UsersComponent implements OnInit {
 
   paginatedUsers = computed(() => {
     const data = this.filteredNormalUsers();
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
   paginatedAdminUsers = computed(() => {
     const data = this.filteredAdminUsers();
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
   paginatedDirectoryUsers = computed(() =>
@@ -94,6 +104,7 @@ export class UsersComponent implements OnInit {
     private firebaseService: FirebaseService,
     private fb: FormBuilder
   ) {
+    super();
     this.form = this.fb.group({
       name: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],

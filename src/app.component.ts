@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy, effect } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, effect, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { AuthService } from './services/auth.service';
@@ -23,6 +23,25 @@ export class AppComponent implements OnInit, OnDestroy {
   isMobile = signal(false);
   
   private routerSub!: Subscription;
+  private readonly onActionMenuToggle = (event: Event) => {
+    const dropdown = event.target as HTMLDetailsElement;
+    if (!dropdown.matches('details.table-action-menu')) return;
+    if (dropdown.open) requestAnimationFrame(() => this.positionActionMenu(dropdown));
+  };
+  private readonly repositionActionMenus = () => {
+    document.querySelectorAll<HTMLDetailsElement>('details.table-action-menu[open]')
+      .forEach(dropdown => this.positionActionMenu(dropdown));
+  };
+
+  @HostListener('document:click', ['$event'])
+  closeOpenDropdowns(event: MouseEvent) {
+    const target = event.target as Node;
+    const targetElement = target instanceof Element ? target : target.parentElement;
+    const clickedActionItem = targetElement?.closest('.table-action-popover a, .table-action-popover button');
+    document.querySelectorAll<HTMLDetailsElement>('details[open]').forEach((dropdown) => {
+      if (clickedActionItem || !dropdown.contains(target)) dropdown.removeAttribute('open');
+    });
+  }
 
   constructor() {
     effect(() => {
@@ -36,6 +55,9 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.checkScreenSize();
     window.addEventListener('resize', this.onResize.bind(this));
+    document.addEventListener('toggle', this.onActionMenuToggle, true);
+    document.addEventListener('scroll', this.repositionActionMenus, true);
+    window.addEventListener('resize', this.repositionActionMenus);
 
     // Close sidebar on mobile when navigating
     this.routerSub = this.router.events.pipe(
@@ -53,6 +75,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     window.removeEventListener('resize', this.onResize.bind(this));
+    document.removeEventListener('toggle', this.onActionMenuToggle, true);
+    document.removeEventListener('scroll', this.repositionActionMenus, true);
+    window.removeEventListener('resize', this.repositionActionMenus);
     if (this.routerSub) this.routerSub.unsubscribe();
   }
 
@@ -74,6 +99,34 @@ export class AppComponent implements OnInit, OnDestroy {
 
   toggleSidebar(): void{
     this.isSidebarOpen.update(v => !v);
+  }
+
+  private positionActionMenu(dropdown: HTMLDetailsElement): void {
+    const trigger = dropdown.querySelector<HTMLElement>(':scope > summary');
+    const menu = dropdown.querySelector<HTMLElement>(':scope > .table-action-popover');
+    if (!trigger || !menu || !dropdown.open) return;
+
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuWidth = menu.offsetWidth || 176;
+    const menuHeight = menu.offsetHeight;
+    const viewportPadding = 8;
+    const gap = 4;
+    const left = Math.max(
+      viewportPadding,
+      Math.min(triggerRect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding)
+    );
+    const roomBelow = window.innerHeight - triggerRect.bottom - viewportPadding;
+    const openAbove = menuHeight > roomBelow && triggerRect.top - menuHeight - gap >= viewportPadding;
+    const top = openAbove ? triggerRect.top - menuHeight - gap : triggerRect.bottom + gap;
+
+    Object.assign(menu.style, {
+      position: 'fixed',
+      left: `${left}px`,
+      right: 'auto',
+      top: `${Math.max(viewportPadding, top)}px`,
+      marginTop: '0',
+      zIndex: '9999'
+    });
   }
 
   private enforceRouteAccess(): void {

@@ -10,6 +10,7 @@ import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
 import { EventDetailComponent } from './event-detail/event-detail.component';
+import { TableSortController } from '../ui/table-sort.controller';
 
 @Component({
   selector: 'app-events',
@@ -17,7 +18,7 @@ import { EventDetailComponent } from './event-detail/event-detail.component';
   imports: [CommonModule, RouterLink, ConfirmModalComponent, PaginationControlsComponent, SlidingPanelComponent, EventDetailComponent],
   templateUrl: './events.component.html'
 })
-export class EventsComponent implements OnInit {
+export class EventsComponent extends TableSortController implements OnInit {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
@@ -26,7 +27,7 @@ export class EventsComponent implements OnInit {
   searchQuery = signal('');
 
   // Pagination
-  itemsPerPage = 10;
+  itemsPerPage = signal(10);
   currentPage = signal(1);
 
   // Reorder State
@@ -68,13 +69,19 @@ export class EventsComponent implements OnInit {
         .sort((a, b) => (a.eventBannerOrder || 9999) - (b.eventBannerOrder || 9999));
     }
 
-    return data.filter(e => {
+    const rows = data.filter(e => {
       const matchesQuery = e.title?.toLowerCase().includes(query) || 
                           e.description?.toLowerCase().includes(query) ||
                           e.location?.toLowerCase().includes(query);
       const matchesArchive = archived ? e.isArchived === true : !e.isArchived;
       return matchesQuery && matchesArchive;
     });
+    return this.sortTableRows(rows, (event, column) => ({
+      title: event.title,
+      date: event.fullDate,
+      location: event.location,
+      state: event.isArchived ? 'archived' : (event.isPublished ? 'published' : 'draft')
+    })[column]);
   });
 
   paginatedEvents = computed(() => {
@@ -82,8 +89,8 @@ export class EventsComponent implements OnInit {
     if (this.isReordering()) {
       return data;
     }
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
   showConfirmModal = signal(false);
@@ -92,7 +99,7 @@ export class EventsComponent implements OnInit {
   showArchiveConfirmModal = signal(false);
   itemToArchive = signal<AppEvent | null>(null);
 
-  constructor() {}
+  constructor() { super(); }
 
   ngOnInit() {
     this.firebaseService.listenToPath<AppEvent>('events', (data) => {

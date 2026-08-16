@@ -1,6 +1,6 @@
 <div class="max-w-3xl">
   <div class="mb-6">
-    <h3 class="text-lg font-bold text-slate-700">App Configuration</h3>
+    <h3 class="text-xl font-bold tracking-[-.02em] text-slate-900">App Configuration</h3>
     <p class="text-sm text-slate-500">Manage global application settings and access control.</p>
   </div>
 
@@ -18,7 +18,7 @@
     <form [formGroup]="form" (ngSubmit)="save()" class="space-y-8">
       
       <!-- General Settings -->
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
          <div class="bg-slate-50 px-6 py-3 border-b border-slate-200">
             <h4 class="font-semibold text-slate-700">General Settings</h4>
          </div>
@@ -78,7 +78,7 @@
       </div>
 
       <!-- Maintenance Mode -->
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
          <div class="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
             <h4 class="font-semibold text-slate-700">System Status</h4>
          </div>
@@ -114,7 +114,7 @@
 
       <!-- Actions -->
       <div class="flex justify-end pt-4">
-          <button type="submit" [disabled]="isSaving()" class="bg-[#083594] hover:bg-[#062a71] text-white px-8 py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2">
+          <button type="submit" [disabled]="isSaving()" class="flex items-center justify-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#062a71] disabled:cursor-not-allowed disabled:opacity-50">
               @if (isSaving()) {
                   <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -155,7 +155,7 @@
                   Please enter your password to {{ maintenanceMode() ? 'disable' : 'enable' }} Maintenance Mode.
                 </p>
                 <form [formGroup]="verifyForm" (ngSubmit)="confirmMaintenanceSwitch()" class="mt-4">
-                   <input type="password" formControlName="password" class="w-full border-slate-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 p-2.5 border" placeholder="Enter password" autofocus>
+                   <input type="password" formControlName="password" class="w-full border-slate-300 rounded-lg focus:ring-red-500 focus:border-red-500 p-2.5 border" placeholder="Enter password" autofocus>
                    @if (verifyError()) {
                       <p class="text-xs text-red-600 mt-2">{{ verifyError() }}</p>
                    }
@@ -165,13 +165,13 @@
           </div>
         </div>
         <div class="bg-slate-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
-          <button (click)="confirmMaintenanceSwitch()" [disabled]="isVerifying() || verifyForm.invalid" type="button" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm disabled:opacity-50">
+          <button (click)="confirmMaintenanceSwitch()" [disabled]="isVerifying() || verifyForm.invalid" type="button" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-transparent px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm disabled:opacity-50">
             @if (isVerifying()) {
                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             }
             {{ isVerifying() ? 'Verifying...' : 'Confirm' }}
           </button>
-          <button (click)="closeMaintenanceModal()" type="button" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 sm:text-sm">
+          <button (click)="closeMaintenanceModal()" type="button" class="w-full sm:w-auto inline-flex justify-center rounded-lg border border-slate-300 px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 sm:text-sm">
             Cancel
           </button>
         </div>

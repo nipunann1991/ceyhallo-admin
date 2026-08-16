@@ -1,12 +1,12 @@
-<div class="space-y-6">
+<div class="mx-auto max-w-[1680px] space-y-4 text-[#172033]">
   @if (showTitle()) {
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
       <div>
-        <h2 class="text-2xl font-bold text-slate-800">Users</h2>
-        <p class="text-slate-500 text-sm">Manage system access and roles.</p>
+        <h2 class="text-2xl font-bold tracking-[-.025em] text-slate-900">Users</h2>
+        <p class="mt-1 text-sm text-slate-500">Manage system access, account status, and roles.</p>
       </div>
       @if (authService.isAdmin()) {
-        <button (click)="openModal()" class="bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm">
+        <button (click)="openModal()" class="flex items-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#062a71] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#083594]">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
           Add User
         </button>
@@ -16,7 +16,7 @@
     <!-- Simplified header for embedded view -->
     <div class="flex justify-end">
        @if (authService.isAdmin()) {
-        <button (click)="openModal()" class="bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm">
+        <button (click)="openModal()" class="flex items-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#062a71]">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
           Add User
         </button>
@@ -24,79 +24,73 @@
     </div>
   }
 
-  <!-- Filters -->
-  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4">
-    <div class="relative flex-1">
-      <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input 
-        type="text" 
-        placeholder="Search by name, email, referral code or role..." 
-        [value]="searchQuery()"
-        (input)="updateSearch($event)"
-        class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm" 
-      />
-    </div>
-  </div>
-
-  <div class="border-b border-slate-200">
-    <div class="flex items-center gap-2">
+  @if (activeTab() === 'admins' || activeTab() === 'users') {
+  <div class="relative z-10 rounded-t-xl border border-slate-200 bg-white p-3">
+    <div class="mb-3 flex items-center gap-5 border-b border-slate-100">
       <button
+        type="button"
         (click)="setActiveTab('users')"
-        class="rounded-t-xl px-4 py-2.5 text-sm font-medium transition-colors"
-        [class.bg-white]="activeTab() === 'users'"
+        class="border-b-2 border-transparent px-0 py-2 text-sm font-semibold transition-colors"
         [class.text-[#083594]]="activeTab() === 'users'"
-        [class.border]="activeTab() === 'users'"
-        [class.border-slate-200]="activeTab() === 'users'"
-        [class.border-b-white]="activeTab() === 'users'"
+        [class.border-[#083594]]="activeTab() === 'users'"
         [class.text-slate-500]="activeTab() !== 'users'">
         Normal Users
       </button>
       <button
+        type="button"
         (click)="setActiveTab('admins')"
-        class="rounded-t-xl px-4 py-2.5 text-sm font-medium transition-colors"
-        [class.bg-white]="activeTab() === 'admins'"
+        class="border-b-2 border-transparent px-0 py-2 text-sm font-semibold transition-colors"
         [class.text-[#083594]]="activeTab() === 'admins'"
-        [class.border]="activeTab() === 'admins'"
-        [class.border-slate-200]="activeTab() === 'admins'"
-        [class.border-b-white]="activeTab() === 'admins'"
+        [class.border-[#083594]]="activeTab() === 'admins'"
         [class.text-slate-500]="activeTab() !== 'admins'">
         Admin Users
       </button>
     </div>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div class="relative w-full max-w-xl">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input
+          type="text"
+          placeholder="Search by name, email, referral code or role..."
+          [value]="searchQuery()"
+          (input)="updateSearch($event)"
+          class="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-4 text-[.9rem] text-slate-700 placeholder:text-slate-400 focus:border-[#083594] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#083594]/10"
+        />
+      </div>
+    </div>
   </div>
 
-  @if (activeTab() === 'admins' || activeTab() === 'users') {
-  <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+  <div class="!mt-0 overflow-hidden rounded-b-xl rounded-t-none border border-t-0 border-slate-200 bg-white">
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-sm text-slate-600">
-        <thead class="bg-slate-50 text-[0.82rem] leading-[1.2rem] uppercase font-semibold text-slate-500 border-b border-slate-200">
+      <table class="w-full min-w-[1050px] text-left text-[.925rem] text-slate-600">
+        <thead class="border-b border-slate-200 bg-slate-50/70 text-[.82rem] font-bold uppercase leading-5 tracking-[.055em] text-slate-500">
           <tr>
-            <th class="px-6 py-4 w-12 text-center">#</th>
-            <th class="px-6 py-4">Name</th>
-            <th class="px-6 py-4">Email</th>
-            <th class="px-6 py-4">Role</th>
-            <th class="px-6 py-4">Region</th>
-            <th class="px-6 py-4">Referral Code</th>
-            <th class="px-6 py-4">Status</th>
-            <th class="px-6 py-4">Joined</th>
+            <th class="w-12 px-4 py-3.5 text-center">#</th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('name')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('name')">Name <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('name') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('name')">expand_more</span></button></th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('email')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('email')">Email <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('email') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('email')">expand_more</span></button></th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('role')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('role')">Role <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('role') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('role')">expand_more</span></button></th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('region')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('region')">Region <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('region') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('region')">expand_more</span></button></th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('referral')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('referral')">Referral code <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('referral') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('referral')">expand_more</span></button></th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('status')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('status')">Status <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('status') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('status')">expand_more</span></button></th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('joined')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('joined')">Joined <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('joined') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('joined')">expand_more</span></button></th>
             @if (authService.isAdmin()) {
-              <th class="px-6 py-4 text-right">Actions</th>
+              <th class="px-4 py-3.5 text-right"><span class="sr-only">Actions</span></th>
             }
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           @for (user of paginatedDirectoryUsers(); track user.id; let i = $index) {
-            <tr class="hover:bg-slate-50 transition-colors">
-              <td class="px-6 py-6 text-center text-slate-400 text-xs font-mono">
-                {{ (currentPage() - 1) * itemsPerPage + i + 1 }}
+            <tr class="transition-colors hover:bg-blue-50/30">
+              <td class="px-4 py-3.5 text-center font-mono text-xs text-slate-400">
+                {{ (currentPage() - 1) * itemsPerPage() + i + 1 }}
               </td>
-              <td class="px-6 py-6">
+              <td class="px-4 py-3.5">
                 <div class="flex items-center gap-3 cursor-pointer group" (click)="viewUser(user)">
-                  <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 text-[0.82rem] leading-[1.2rem] font-bold uppercase shrink-0">
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef3fc] text-[.8rem] font-bold uppercase text-[#083594]">
                     {{ getUserInitials(user.name) }}
                   </div>
                   <div class="flex items-center gap-1">
-                    <span class="font-medium text-slate-900 text-base group-hover:text-orange-600 transition-colors">{{ user.name }}</span>
+                    <span class="font-semibold text-slate-800 transition-colors group-hover:text-[#083594]">{{ user.name }}</span>
                     @if (user.isVerified) {
                       <span class="inline-flex items-center text-blue-600" title="Verified">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -105,9 +99,9 @@
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-6 text-slate-500 text-sm">{{ user.email }}</td>
-              <td class="px-6 py-6">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[0.82rem] leading-[1.2rem] font-medium uppercase tracking-wide border"
+              <td class="px-4 py-3.5 text-[.78rem] text-slate-500">{{ user.email }}</td>
+              <td class="px-4 py-3.5">
+                <span class="inline-flex items-center rounded-md border px-2 py-1 text-[.65rem] font-bold uppercase tracking-[.05em]"
                   [class.bg-purple-50]="user.role === 'admin'"
                   [class.text-purple-700]="user.role === 'admin'"
                   [class.border-purple-200]="user.role === 'admin'"
@@ -120,42 +114,36 @@
                   {{ user.role }}
                 </span>
               </td>
-              <td class="px-6 py-6 text-slate-500 font-mono text-[0.82rem] leading-[1.2rem]">{{ user.region || 'N/A' }}</td>
-              <td class="px-6 py-6 text-slate-500 font-mono text-[0.82rem] leading-[1.2rem]">{{ getReferralCode(user) || '-' }}</td>
-              <td class="px-6 py-6">
-                 <span class="inline-flex items-center px-2 py-1 rounded-full text-[0.82rem] leading-[1.2rem] font-medium capitalize"
+              <td class="px-4 py-3.5 font-mono text-[.8rem] text-slate-500">{{ user.region || 'N/A' }}</td>
+              <td class="px-4 py-3.5 font-mono text-[.8rem] text-slate-500">{{ getReferralCode(user) || '-' }}</td>
+              <td class="px-4 py-3.5">
+                 <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[.68rem] font-semibold capitalize"
                   [class.bg-green-100]="user.status === 'active'"
                   [class.text-green-700]="user.status === 'active'"
                   [class.bg-yellow-100]="user.status === 'inactive'"
                   [class.text-yellow-800]="user.status === 'inactive'"
                   [class.bg-red-100]="user.status === 'blocked'"
                   [class.text-red-800]="user.status === 'blocked'">
-                  <span class="w-1.5 h-1.5 rounded-full mr-1.5" 
-                    [class.bg-green-500]="user.status === 'active'" 
+                  <span class="w-1.5 h-1.5 rounded-full mr-1.5"
+                    [class.bg-green-500]="user.status === 'active'"
                     [class.bg-yellow-500]="user.status === 'inactive'"
                     [class.bg-red-500]="user.status === 'blocked'">
                   </span>
                   {{ user.status }}
                 </span>
               </td>
-              <td class="px-6 py-6 text-slate-400 text-[0.82rem] leading-[1.2rem]">{{ user.createdAt ? (user.createdAt | slice:0:10) : 'N/A' }}</td>
+              <td class="px-4 py-3.5 text-[.8rem] text-slate-400">{{ user.createdAt ? (user.createdAt | slice:0:10) : 'N/A' }}</td>
               @if (authService.isAdmin()) {
-                <td class="px-6 py-6 text-right">
-                   <div class="flex items-center justify-end gap-2">
-                    <button (click)="viewUser(user)" class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Details">
-                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </button>
+                <td class="px-4 py-3.5 text-right">
+                   <details class="table-action-menu relative inline-block text-left"><summary class="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700" title="User actions" aria-label="User actions"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></summary><div class="table-action-popover absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg">
+                    <button (click)="viewUser(user)" class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 hover:text-[#083594]"><span class="material-icons !text-[1rem]">visibility</span>View details</button>
                     @if (user.role !== 'user') {
-                      <button (click)="edit(user)" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                      </button>
+                      <button (click)="edit(user)" class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 hover:text-[#083594]"><span class="material-icons !text-[1rem]">edit</span>Edit</button>
                     }
                     @if (user.role !== 'admin') {
-                      <button (click)="delete(user)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                      </button>
+                      <button (click)="delete(user)" class="flex w-full items-center gap-2.5 border-t border-slate-100 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"><span class="material-icons !text-[1rem]">delete_outline</span>Delete</button>
                     }
-                  </div>
+                  </div></details>
                 </td>
               }
             </tr>
@@ -166,7 +154,7 @@
                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
                    <p>No {{ activeTab() === 'admins' ? 'admin users' : 'normal users' }} found.</p>
                    @if (authService.isAdmin()) {
-                     <button (click)="openModal()" class="text-orange-600 font-medium text-sm hover:underline">Add one now</button>
+                     <button (click)="openModal()" class="text-sm font-semibold text-[#083594] hover:underline">Add one now</button>
                    }
                 </div>
               </td>
@@ -175,11 +163,13 @@
         </tbody>
       </table>
     </div>
-    
-    <app-pagination-controls 
+
+    <app-pagination-controls
       [currentPage]="currentPage()"
       [totalItems]="directoryUsersCount()"
-      [pageSize]="itemsPerPage"
+      [pageSize]="itemsPerPage()"
+      [showPageSizeSelector]="true"
+      (pageSizeChange)="itemsPerPage.set($event)"
       (pageChange)="currentPage.set($event)">
     </app-pagination-controls>
   </div>
@@ -188,8 +178,8 @@
 
 <!-- Confirmation Modal -->
 @if (showConfirmModal()) {
-  <app-confirm-modal 
-    title="Delete User" 
+  <app-confirm-modal
+    title="Delete User"
     message="Are you sure you want to delete this user? This action cannot be undone."
     (confirm)="confirmDelete()"
     (cancel)="closeConfirmModal()">
@@ -234,7 +224,7 @@
 
        <!-- Info Grid -->
        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-          
+
           <!-- Contact Info Group -->
           <div class="space-y-4">
              <h4 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-1">Contact Information</h4>
@@ -256,7 +246,7 @@
                   <div class="text-slate-700 text-sm font-medium break-all">{{ selectedUser()?.email || 'Not provided' }}</div>
                 }
              </div>
-             
+
              <div>
                 <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Phone Number</label>
                 @if (isEditingUserDetails()) {
@@ -265,7 +255,7 @@
                   <div class="text-slate-700 text-sm font-medium">{{ selectedUser()?.phoneNumber || 'Not provided' }}</div>
                 }
              </div>
-             
+
              <div>
                 <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">Address</label>
                 @if (isEditingUserDetails()) {
@@ -279,7 +269,7 @@
           <!-- Account Info Group -->
           <div class="space-y-4">
              <h4 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-1">Account Details</h4>
-             
+
              <div>
                 <label class="block text-slate-400 text-xs uppercase tracking-wide font-semibold mb-1">User ID</label>
                 <div class="font-mono text-slate-600 text-xs bg-slate-50 p-1.5 rounded border border-slate-100 select-all">{{ selectedUser()?.id }}</div>
@@ -376,11 +366,11 @@
 
 <!-- Add/Edit Modal -->
 @if (showModal()) {
-  <app-modal 
-    [title]="isEditing() ? 'Edit User' : 'Add New User'" 
+  <app-modal
+    [title]="isEditing() ? 'Edit User' : 'Add New User'"
     size="wide"
     (close)="closeModal()">
-    
+
     <div body class="space-y-4">
       @if (errorMessage()) {
         <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-md">

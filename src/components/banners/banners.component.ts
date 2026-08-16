@@ -9,6 +9,7 @@ import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
 import { BannerDetailComponent } from './banner-detail/banner-detail.component';
+import { TableSortController } from '../ui/table-sort.controller';
 
 @Component({
   selector: 'app-banners',
@@ -16,7 +17,7 @@ import { BannerDetailComponent } from './banner-detail/banner-detail.component';
   imports: [CommonModule, RouterLink, ConfirmModalComponent, PaginationControlsComponent, SlidingPanelComponent, BannerDetailComponent],
   templateUrl: './banners.component.html'
 })
-export class BannersComponent implements OnInit {
+export class BannersComponent extends TableSortController implements OnInit {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
@@ -25,7 +26,7 @@ export class BannersComponent implements OnInit {
   searchQuery = signal('');
 
   // Pagination
-  itemsPerPage = 10;
+  itemsPerPage = signal(10);
   currentPage = signal(1);
 
   // Reorder State
@@ -47,12 +48,19 @@ export class BannersComponent implements OnInit {
       return sorted.filter(b => b.isActive && !b.isArchived);
     }
 
-    return sorted.filter(b => {
+    const rows = sorted.filter(b => {
       const matchesQuery = b.title?.toLowerCase().includes(query) || 
                           b.description?.toLowerCase().includes(query);
       const matchesArchive = archived ? b.isArchived === true : !b.isArchived;
       return matchesQuery && matchesArchive;
     });
+    return this.sortTableRows(rows, (banner, column) => ({
+      title: banner.title,
+      category: banner.tag,
+      publisher: banner.publishedBy,
+      date: banner.publishedDate,
+      state: banner.isArchived ? 'archived' : (banner.isActive ? 'active' : 'inactive')
+    })[column]);
   });
 
   paginatedBanners = computed(() => {
@@ -60,8 +68,8 @@ export class BannersComponent implements OnInit {
     if (this.isReordering()) {
       return data; 
     }
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
   showConfirmModal = signal(false);
@@ -70,7 +78,7 @@ export class BannersComponent implements OnInit {
   showArchiveConfirmModal = signal(false);
   itemToArchive = signal<Banner | null>(null);
 
-  constructor() {}
+  constructor() { super(); }
 
   ngOnInit() {
     this.firebaseService.listenToPath<Banner>('banners', (data) => {

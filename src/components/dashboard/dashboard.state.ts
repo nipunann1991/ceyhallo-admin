@@ -13,7 +13,7 @@ export interface DashboardKpi {
 
 @Injectable({ providedIn: 'root' })
 export class DashboardState {
-  readonly businessPalette = ['#083594', '#b0e0ca', '#f9e286', '#ffa86c', '#f274b2', '#9ea0ed', '#7dc8ea', '#78b6c5', '#b99ce2'];
+  readonly businessPalette = ['#083594', '#3862b8', '#facc15', '#7896d2', '#062b78', '#eab308', '#1f4aa3', '#b7c7e8', '#fde68a'];
 
   readonly users = signal<any[]>([]);
   readonly restaurants = signal<any[]>([]);

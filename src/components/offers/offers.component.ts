@@ -9,6 +9,7 @@ import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
 import { OfferDetailComponent } from './offer-detail/offer-detail.component';
+import { TableSortController } from '../ui/table-sort.controller';
 
 @Component({
   selector: 'app-offers',
@@ -16,7 +17,7 @@ import { OfferDetailComponent } from './offer-detail/offer-detail.component';
   imports: [CommonModule, RouterLink, ConfirmModalComponent, PaginationControlsComponent, SlidingPanelComponent, OfferDetailComponent],
   templateUrl: './offers.component.html'
 })
-export class OffersComponent implements OnInit {
+export class OffersComponent extends TableSortController implements OnInit {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
@@ -27,7 +28,7 @@ export class OffersComponent implements OnInit {
   sortMode = signal<'order-asc' | 'order-desc' | 'title-asc' | 'title-desc'>('order-asc');
 
   // Pagination
-  itemsPerPage = 10;
+  itemsPerPage = signal(10);
   currentPage = signal(1);
 
   // Reorder State
@@ -77,7 +78,7 @@ export class OffersComponent implements OnInit {
       return sorted.filter(o => o.isActive && !o.isArchived && this.matchesCategory(o, selectedCategory));
     }
 
-    return sorted.filter(item => {
+    const rows = sorted.filter(item => {
       const matchesQuery = item.title?.toLowerCase().includes(query) || 
                           item.description?.toLowerCase().includes(query) ||
                           item.targetName?.toLowerCase().includes(query);
@@ -85,6 +86,13 @@ export class OffersComponent implements OnInit {
       const matchesCategory = this.matchesCategory(item, selectedCategory);
       return matchesQuery && matchesArchive && matchesCategory;
     });
+    return this.sortTableRows(rows, (offer, column) => ({
+      title: offer.title,
+      category: offer.generalCategory,
+      target: `${offer.targetName || ''} ${offer.linkType || ''}`,
+      visibility: `${offer.isHomeBanner ? 'home' : ''} ${offer.isSectionBanner ? 'section' : ''}`,
+      state: offer.isArchived ? 'archived' : (offer.isActive ? 'active' : 'inactive')
+    })[column]);
   });
 
   paginatedOffers = computed(() => {
@@ -92,11 +100,11 @@ export class OffersComponent implements OnInit {
     if (this.isReordering()) {
       return data;
     }
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
-  constructor() {}
+  constructor() { super(); }
 
   ngOnInit() {
     this.firebaseService.listenToPath<Offer>('offers', (data) => {

@@ -1,11 +1,11 @@
-<div class="space-y-6">
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+<div class="mx-auto max-w-[1680px] space-y-4 text-[#172033]">
+  <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
     <div>
-      <h2 class="text-2xl font-bold text-slate-800">Emails</h2>
-      <p class="text-slate-500 text-sm">Manage templates and review completed email jobs.</p>
+      <h2 class="text-2xl font-bold tracking-[-.025em] text-slate-900">Emails <span class="text-[1rem] font-medium text-slate-400">({{ activeTab() === 'templates' ? filteredTemplates().length : completedQueueItems().length }})</span></h2>
+      <p class="mt-1 text-sm text-slate-500">Manage templates and review completed email jobs.</p>
     </div>
     @if (activeTab() === 'templates') {
-      <a routerLink="/emails/new" class="bg-[#083594] hover:bg-[#062a71] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm">
+      <a routerLink="/emails/new" class="flex items-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#062a71]">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l9 7-9 7-9-7 9-7z"/><path d="M12 22V12"/></svg>
         New Template
       </a>
@@ -36,62 +36,51 @@
   </div>
 
   @if (activeTab() === 'templates') {
-  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-    <div class="relative flex-1">
-      <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input 
-        type="text" 
-        placeholder="Search templates by name or subject..." 
-        [value]="searchQuery()"
-        (input)="updateSearch($event)"
-        class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm" 
-      />
+  <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div class="border-b border-slate-200 p-3">
+      <div class="relative w-full max-w-xl">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Search templates by name or subject..." [value]="searchQuery()" (input)="updateSearch($event)" class="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-4 text-[.9rem] text-slate-700 placeholder:text-slate-400 focus:border-[#083594] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#083594]/10">
+      </div>
     </div>
-  </div>
-
-  <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-sm text-slate-600">
-        <thead class="bg-slate-50 text-[0.82rem] leading-[1.2rem] uppercase font-semibold text-slate-500 border-b border-slate-200">
+      <table class="w-full min-w-[1050px] text-left text-[.925rem] text-slate-600">
+        <thead class="border-b border-slate-200 bg-slate-50/70 text-[.82rem] font-bold uppercase leading-5 tracking-[.055em] text-slate-500">
           <tr>
-            <th class="px-6 py-4 w-12 text-center">#</th>
-            <th class="px-6 py-4">Template Name</th>
-            <th class="px-6 py-4">Subject</th>
-            <th class="px-6 py-4">Last Updated</th>
+            <th class="px-4 py-3.5 w-12 text-center">#</th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('name')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('name')">Template Name <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('name') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('name')">expand_more</span></button></th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('subject')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('subject')">Subject <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('subject') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('subject')">expand_more</span></button></th>
+            <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('updated')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('updated')">Last Updated <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('updated') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('updated')">expand_more</span></button></th>
             @if (authService.isAdmin()) {
-              <th class="px-6 py-4 text-right">Actions</th>
+              <th class="px-4 py-3.5 text-right"><span class="sr-only">Actions</span></th>
             }
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           @for (template of paginatedTemplates(); track template.id; let i = $index) {
-            <tr class="hover:bg-slate-50 transition-colors">
-              <td class="px-6 py-6 text-center text-slate-400 text-xs font-mono">
-                {{ (currentPage() - 1) * itemsPerPage + i + 1 }}
+            <tr class="transition-colors hover:bg-blue-50/30">
+              <td class="px-4 py-3.5 text-center text-slate-400 text-xs font-mono">
+                {{ (currentPage() - 1) * itemsPerPage() + i + 1 }}
               </td>
-              <td class="px-6 py-6">
+              <td class="px-4 py-3.5">
                  <div class="flex items-center gap-3">
                     <div class="p-2 rounded-lg bg-slate-100 text-slate-500">
                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
                     </div>
                     <div>
-                       <h3 class="font-bold text-slate-900">{{ template.name }}</h3>
+                       <h3 class="font-semibold leading-[1.35] text-slate-800">{{ template.name }}</h3>
                        <p class="text-xs text-slate-400 font-mono">{{ template.id }}</p>
                     </div>
                  </div>
               </td>
-              <td class="px-6 py-6 text-slate-500">{{ template.subject }}</td>
-              <td class="px-6 py-6 text-slate-500">{{ template.updatedAt | date:'medium' }}</td>
+              <td class="px-4 py-3.5 text-slate-500">{{ template.subject }}</td>
+              <td class="px-4 py-3.5 text-slate-500">{{ template.updatedAt | date:'medium' }}</td>
               @if (authService.isAdmin()) {
-                <td class="px-6 py-6 text-right">
-                  <div class="flex items-center justify-end gap-2">
-                    <a [routerLink]="['/emails/edit', template.id]" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                    </a>
-                    <button (click)="delete(template.id)" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    </button>
-                  </div>
+                <td class="px-4 py-3.5 text-right">
+                  <details class="table-action-menu relative inline-block text-left"><summary class="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700" title="Template actions" aria-label="Template actions"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></summary><div class="table-action-popover absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg">
+                    <a [routerLink]="['/emails/edit', template.id]" class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-[#083594]"><span class="material-icons !text-[1rem]">edit</span>Edit</a>
+                    <button (click)="delete(template.id)" class="flex w-full items-center gap-2.5 border-t border-slate-100 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"><span class="material-icons !text-[1rem]">delete_outline</span>Delete</button>
+                  </div></details>
                 </td>
               }
             </tr>
@@ -105,11 +94,13 @@
         </tbody>
       </table>
     </div>
-    
-    <app-pagination-controls 
+
+    <app-pagination-controls
       [currentPage]="currentPage()"
       [totalItems]="filteredTemplates().length"
-      [pageSize]="itemsPerPage"
+      [pageSize]="itemsPerPage()"
+      [showPageSizeSelector]="true"
+      (pageSizeChange)="itemsPerPage.set($event)"
       (pageChange)="currentPage.set($event)">
     </app-pagination-controls>
   </div>
@@ -119,36 +110,36 @@
   <div class="space-y-3">
     <div>
       <h2 class="text-xl font-bold text-slate-800">Email Queue</h2>
-      <p class="text-slate-500 text-sm">Completed email jobs ordered newest first.</p>
+      <p class="mt-1 text-sm text-slate-500">Completed email jobs ordered newest first.</p>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm text-slate-600">
-          <thead class="bg-slate-50 text-[0.82rem] leading-[1.2rem] uppercase font-semibold text-slate-500 border-b border-slate-200">
+        <table class="w-full min-w-[1050px] text-left text-[.925rem] text-slate-600">
+          <thead class="border-b border-slate-200 bg-slate-50/70 text-[.82rem] font-bold uppercase leading-5 tracking-[.055em] text-slate-500">
             <tr>
-              <th class="px-6 py-4 w-12 text-center">#</th>
-              <th class="px-6 py-4">Recipient</th>
-              <th class="px-6 py-4">Template</th>
-              <th class="px-6 py-4">Status</th>
-              <th class="px-6 py-4">Created</th>
-              <th class="px-6 py-4">Completed</th>
-              <th class="px-6 py-4 w-[28%]">Error</th>
+              <th class="px-4 py-3.5 w-12 text-center">#</th>
+              <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('recipient')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('recipient')">Recipient <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('recipient') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('recipient')">expand_more</span></button></th>
+              <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('template')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('template')">Template <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('template') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('template')">expand_more</span></button></th>
+              <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('status')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('status')">Status <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('status') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('status')">expand_more</span></button></th>
+              <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('created')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('created')">Created <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('created') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('created')">expand_more</span></button></th>
+              <th class="px-4 py-3.5"><button type="button" (click)="sortByColumn('completed')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('completed')">Completed <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('completed') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('completed')">expand_more</span></button></th>
+              <th class="px-4 py-3.5 w-[28%]"><button type="button" (click)="sortByColumn('error')" class="inline-flex items-center gap-1.5 transition-colors hover:text-slate-800" [class.text-[#083594]]="isSortedBy('error')">Error <span class="material-icons !text-sm" [class.rotate-180]="isSortedBy('error') && sortDirection() === 'desc'" [class.opacity-40]="!isSortedBy('error')">expand_more</span></button></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             @for (item of paginatedQueueItems(); track item.id; let i = $index) {
-              <tr class="hover:bg-slate-50 transition-colors">
-                <td class="px-6 py-6 text-center text-slate-400 text-xs font-mono">
-                  {{ (queueCurrentPage() - 1) * queueItemsPerPage + i + 1 }}
+              <tr class="transition-colors hover:bg-blue-50/30">
+                <td class="px-4 py-3.5 text-center text-slate-400 text-xs font-mono">
+                  {{ (queueCurrentPage() - 1) * queueItemsPerPage() + i + 1 }}
                 </td>
-                <td class="px-6 py-6">
+                <td class="px-4 py-3.5">
                   <div>
                     <p class="font-medium text-slate-900">{{ getQueueRecipient(item) }}</p>
                     <p class="text-xs text-slate-400 font-mono">{{ item.id }}</p>
                   </div>
                 </td>
-                <td class="px-6 py-6">
+                <td class="px-4 py-3.5">
                   <div class="flex flex-col gap-1">
                     <span class="font-medium text-slate-700">{{ getQueueTemplate(item) }}</span>
                     @if (item.subject && item.target?.template) {
@@ -156,8 +147,8 @@
                     }
                   </div>
                 </td>
-                <td class="px-6 py-6">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                <td class="px-4 py-3.5">
+                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[.68rem] font-semibold"
                     [class.bg-green-100]="item.status === 'sent'"
                     [class.text-green-800]="item.status === 'sent'"
                     [class.bg-red-100]="item.status === 'failed'"
@@ -165,9 +156,9 @@
                     {{ item.status === 'sent' ? 'Success' : 'Failed' }}
                   </span>
                 </td>
-                <td class="px-6 py-6 text-slate-500">{{ item.createdAt | date:'short' }}</td>
-                <td class="px-6 py-6 text-slate-500">{{ getQueueDate(item) | date:'short' }}</td>
-                <td class="px-6 py-6">
+                <td class="px-4 py-3.5 text-slate-500">{{ item.createdAt | date:'short' }}</td>
+                <td class="px-4 py-3.5 text-slate-500">{{ getQueueDate(item) | date:'short' }}</td>
+                <td class="px-4 py-3.5">
                   @if (item.error) {
                     <p class="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100 font-mono break-all line-clamp-3" [title]="item.error">{{ item.error }}</p>
                   } @else {
@@ -189,7 +180,9 @@
       <app-pagination-controls
         [currentPage]="queueCurrentPage()"
         [totalItems]="completedQueueItems().length"
-        [pageSize]="queueItemsPerPage"
+        [pageSize]="queueItemsPerPage()"
+        [showPageSizeSelector]="true"
+        (pageSizeChange)="queueItemsPerPage.set($event)"
         (pageChange)="queueCurrentPage.set($event)">
       </app-pagination-controls>
     </div>
@@ -199,8 +192,8 @@
 
 <!-- Confirmation Modal -->
 @if (showConfirmModal()) {
-  <app-confirm-modal 
-    title="Delete Template" 
+  <app-confirm-modal
+    title="Delete Template"
     message="Are you sure you want to delete this email template?"
     (confirm)="confirmDelete()"
     (cancel)="closeConfirmModal()">

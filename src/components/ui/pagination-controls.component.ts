@@ -6,7 +6,22 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-b-xl">
+    <div class="flex flex-col gap-3 rounded-b-xl border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      @if (showPageSizeSelector()) {
+        <label class="flex items-center gap-2 text-sm text-slate-500">
+          Show
+          <select
+            [value]="pageSize()"
+            (change)="changePageSize($event)"
+            class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-700 outline-none transition-colors focus:border-[#083594] focus:ring-2 focus:ring-[#083594]/10"
+            aria-label="Records per page">
+            @for (option of pageSizeOptions; track option) {
+              <option [value]="option">{{ option }}</option>
+            }
+          </select>
+          records
+        </label>
+      }
       <div class="flex flex-1 justify-between sm:hidden">
         <button 
           [disabled]="currentPage() === 1"
@@ -21,7 +36,7 @@ import { CommonModule } from '@angular/common';
           Next
         </button>
       </div>
-      <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+      <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-end sm:gap-4">
         <div>
           <p class="text-sm text-slate-700">
             Showing
@@ -89,7 +104,10 @@ export class PaginationControlsComponent {
   totalItems = input.required<number>();
   pageSize = input.required<number>();
   showPageGrid = input(false);
+  showPageSizeSelector = input(false);
   pageChange = output<number>();
+  pageSizeChange = output<number>();
+  readonly pageSizeOptions = [10, 25, 50, 100];
 
   totalPages = computed(() => Math.ceil(this.totalItems() / this.pageSize()) || 1);
   pageNumbers = computed<Array<number | '...'>>(() => {
@@ -131,6 +149,14 @@ export class PaginationControlsComponent {
   changePage(page: number) {
     if (page >= 1 && page <= this.totalPages()) {
       this.pageChange.emit(page);
+    }
+  }
+
+  changePageSize(event: Event) {
+    const pageSize = Number((event.target as HTMLSelectElement).value);
+    if (this.pageSizeOptions.includes(pageSize)) {
+      this.pageSizeChange.emit(pageSize);
+      this.pageChange.emit(1);
     }
   }
 }

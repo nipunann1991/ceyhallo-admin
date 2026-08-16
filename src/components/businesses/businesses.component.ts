@@ -1,5 +1,5 @@
 
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
@@ -38,6 +38,14 @@ export class BusinessesComponent implements OnInit {
   toastService = inject(ToastService);
   private store = inject(Store);
   route = inject(ActivatedRoute);
+
+  @HostListener('document:click', ['$event'])
+  closeDropdownsOnOutsideClick(event: MouseEvent) {
+    const target = event.target as Node;
+    document.querySelectorAll<HTMLDetailsElement>('app-businesses details[open]').forEach((dropdown) => {
+      if (!dropdown.contains(target)) dropdown.removeAttribute('open');
+    });
+  }
   
   businesses = signal<Business[]>([]);
   searchQuery = this.store.selectSignal(selectBusinessSearchQuery);
@@ -52,6 +60,13 @@ export class BusinessesComponent implements OnInit {
   typeFilter = this.store.selectSignal(selectBusinessTypeFilter);
   priceFilter = this.store.selectSignal(selectBusinessPriceFilter);
   sortBy = this.store.selectSignal(selectBusinessSortBy);
+  hasActiveFilters = computed(() =>
+    this.categoryFilter() !== 'all' ||
+    this.sortBy() !== 'title-asc' ||
+    this.isFeaturedFilter() ||
+    this.isVerifiedFilter() ||
+    this.isPremiumFilter()
+  );
 
   businessTypes = signal<string[]>(['restaurant', 'grocery', 'organizer']);
   sortOptions: Array<{ value: BusinessSortOption; label: string }> = [
@@ -70,7 +85,7 @@ export class BusinessesComponent implements OnInit {
   ];
 
   // Pagination
-  itemsPerPage = 10;
+  itemsPerPage = signal(10);
   currentPage = this.store.selectSignal(selectBusinessCurrentPage);
 
   // Location Data
@@ -176,8 +191,8 @@ export class BusinessesComponent implements OnInit {
     if (this.isReordering()) {
       return data;
     }
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
   selectedBusinesses = computed(() => {
@@ -367,6 +382,16 @@ export class BusinessesComponent implements OnInit {
       searchQuery: (event.target as HTMLInputElement).value,
       currentPage: 1
     });
+  }
+
+  getBusinessCity(business: Business) {
+    const cityCode = business.cityCode || business.locations?.find(location => location.isPrimary)?.cityCode;
+    if (!cityCode) return 'City not set';
+    for (const country of this.locations()) {
+      const city = country.cities?.find((item: { code: string; name: string }) => item.code === cityCode);
+      if (city) return city.name;
+    }
+    return cityCode;
   }
 
   updateCurrentPage(page: number) {

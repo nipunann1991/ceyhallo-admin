@@ -60,7 +60,7 @@ export function drawRevenueChart(el: HTMLElement) {
 
   svg.append('path')
     .datum(data)
-    .attr('fill', '#083594')
+    .attr('fill', '#3862b8')
     .attr('fill-opacity', 0.1)
     .attr('d', area);
 
@@ -143,6 +143,10 @@ export function drawWeeklyActivityChart(el: HTMLElement, data: WeeklyPoint[]) {
     .attr('width', x.bandwidth())
     .attr('height', d => y(0) - y(d.value));
 
+  svg.selectAll('rect')
+    .attr('rx', 5)
+    .attr('ry', 5);
+
   svg.append('g')
     .selectAll('text')
     .data(chartData)
@@ -160,23 +164,21 @@ export function drawBusinessDistributionChart(el: HTMLElement, distribution: Bus
   d3.select(el).selectAll('*').remove();
 
   const width = el.offsetWidth || 800;
-  const height = 290;
-  const radius = Math.min(width, height) / 2 - 18;
+  const height = 230;
+  const radius = Math.min(width, height) / 2 - 20;
   const color = d3.scaleOrdinal<string>()
     .domain(distribution.map(d => d.category))
     .range(distribution.map(d => d.color));
 
   const pie = d3.pie<{ category: string; value: number }>()
     .value(d => d.value)
-    .sort(null);
+    .sort(null)
+    .padAngle(0.025);
 
   const arc = d3.arc<d3.PieArcDatum<{ category: string; value: number }>>()
-    .innerRadius(radius * 0.75)
-    .outerRadius(radius);
-
-  const labelArc = d3.arc<d3.PieArcDatum<{ category: string; value: number }>>()
-    .innerRadius(radius * 0.74)
-    .outerRadius(radius * 0.74);
+    .innerRadius(radius * 0.68)
+    .outerRadius(radius)
+    .cornerRadius(6);
 
   const svg = d3.select(el)
     .append('svg')
@@ -187,6 +189,12 @@ export function drawBusinessDistributionChart(el: HTMLElement, distribution: Bus
     .append('g')
     .attr('transform', `translate(${width / 2},${height / 2})`);
 
+  svg.append('circle')
+    .attr('r', radius)
+    .attr('fill', 'none')
+    .attr('stroke', '#f1f4f8')
+    .attr('stroke-width', radius * 0.32);
+
   const arcs = svg.selectAll('.arc')
     .data(pie(distribution))
     .join('g')
@@ -196,16 +204,30 @@ export function drawBusinessDistributionChart(el: HTMLElement, distribution: Bus
     .attr('d', arc as any)
     .attr('fill', d => color(d.data.category) as string)
     .attr('stroke', '#fff')
-    .attr('stroke-width', 2);
+    .attr('stroke-width', 1)
+    .style('transition', 'opacity 180ms ease')
+    .on('mouseenter', function () { d3.select(this).attr('opacity', 0.78); })
+    .on('mouseleave', function () { d3.select(this).attr('opacity', 1); });
 
   const total = distribution.reduce((sum, item) => sum + item.value, 0);
 
-  arcs.append('text')
-    .attr('transform', d => `translate(${labelArc.centroid(d)})`)
+  svg.append('text')
     .attr('text-anchor', 'middle')
-    .attr('dominant-baseline', 'middle')
-    .style('font-size', '11px')
-    .style('font-weight', '600')
-    .style('fill', '#64748b')
-    .text(d => (d.data.value / total) >= 0.1 ? `${d.data.value}` : '');
+    .attr('y', -3)
+    .style('font-size', '27px')
+    .style('font-weight', '700')
+    .style('letter-spacing', '-0.04em')
+    .style('fill', '#172033')
+    .text(total);
+
+  svg.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('y', 17)
+    .style('font-size', '9px')
+    .style('font-weight', '700')
+    .style('letter-spacing', '0.12em')
+    .style('fill', '#7a8599')
+    .text('BUSINESSES');
+
+  arcs.append('title').text(d => `${d.data.category}: ${d.data.value}`);
 }

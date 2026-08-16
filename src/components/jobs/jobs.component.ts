@@ -9,6 +9,7 @@ import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
 import { SlidingPanelComponent } from '../ui/sliding-panel.component';
 import { JobDetailComponent } from './job-detail/job-detail.component';
+import { TableSortController } from '../ui/table-sort.controller';
 
 @Component({
   selector: 'app-jobs',
@@ -16,7 +17,7 @@ import { JobDetailComponent } from './job-detail/job-detail.component';
   imports: [CommonModule, RouterLink, ConfirmModalComponent, PaginationControlsComponent, SlidingPanelComponent, JobDetailComponent],
   templateUrl: './jobs.component.html'
 })
-export class JobsComponent implements OnInit {
+export class JobsComponent extends TableSortController implements OnInit {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
@@ -25,7 +26,7 @@ export class JobsComponent implements OnInit {
   searchQuery = signal('');
 
   // Pagination
-  itemsPerPage = 10;
+  itemsPerPage = signal(10);
   currentPage = signal(1);
 
   // Reorder State
@@ -65,13 +66,19 @@ export class JobsComponent implements OnInit {
         .sort((a, b) => (a.featuredOrder || 9999) - (b.featuredOrder || 9999));
     }
 
-    return data.filter(j => {
+    const rows = data.filter(j => {
       const matchesQuery = j.title?.toLowerCase().includes(query) || 
                           j.company?.toLowerCase().includes(query) ||
                           j.location?.toLowerCase().includes(query);
       const matchesArchive = archived ? j.isArchived === true : !j.isArchived;
       return matchesQuery && matchesArchive;
     });
+    return this.sortTableRows(rows, (job, column) => ({
+      title: job.title,
+      details: `${job.company || ''} ${job.jobType || ''}`,
+      location: job.location,
+      state: job.isArchived ? 'archived' : (job.isPublished ? 'published' : 'draft')
+    })[column]);
   });
 
   paginatedJobs = computed(() => {
@@ -79,8 +86,8 @@ export class JobsComponent implements OnInit {
     if (this.isReordering()) {
       return data;
     }
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
   showConfirmModal = signal(false);
@@ -89,7 +96,7 @@ export class JobsComponent implements OnInit {
   showArchiveConfirmModal = signal(false);
   itemToArchive = signal<Job | null>(null);
 
-  constructor() {}
+  constructor() { super(); }
 
   ngOnInit() {
     this.firebaseService.listenToPath<Job>('jobs', (data) => {

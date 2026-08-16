@@ -7,6 +7,7 @@ import { ToastService } from '../../services/toast.service';
 import { EmailQueueItem, EmailTemplate } from '../../models/email-template.model';
 import { ConfirmModalComponent } from '../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../ui/pagination-controls.component';
+import { TableSortController } from '../ui/table-sort.controller';
 
 @Component({
   selector: 'app-emails',
@@ -14,7 +15,7 @@ import { PaginationControlsComponent } from '../ui/pagination-controls.component
   imports: [CommonModule, RouterLink, ConfirmModalComponent, PaginationControlsComponent],
   templateUrl: './emails.component.html',
 })
-export class EmailsComponent implements OnInit {
+export class EmailsComponent extends TableSortController implements OnInit {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
@@ -25,39 +26,50 @@ export class EmailsComponent implements OnInit {
   activeTab = signal<'templates' | 'queue'>('templates');
 
   // Pagination
-  itemsPerPage = 10;
-  queueItemsPerPage = 10;
+  itemsPerPage = signal(10);
+  queueItemsPerPage = signal(10);
   currentPage = signal(1);
   queueCurrentPage = signal(1);
 
   filteredTemplates = computed(() => {
     const query = this.searchQuery().toLowerCase();
     const sorted = this.templates().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    if (!query) return sorted;
-
-    return sorted.filter(
+    const rows = !query ? sorted : sorted.filter(
       (t) =>
         t.name?.toLowerCase().includes(query) ||
         t.subject?.toLowerCase().includes(query)
     );
+    return this.sortTableRows(rows, (template, column) => ({
+      name: template.name,
+      subject: template.subject,
+      updated: template.updatedAt
+    })[column]);
   });
 
   paginatedTemplates = computed(() => {
     const data = this.filteredTemplates();
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
-  completedQueueItems = computed(() =>
-    this.queueItems()
+  completedQueueItems = computed(() => {
+    const rows = this.queueItems()
       .filter((item) => item.status === 'sent' || item.status === 'failed')
-      .sort((a, b) => this.toMillis(b.createdAt) - this.toMillis(a.createdAt))
-  );
+      .sort((a, b) => this.toMillis(b.createdAt) - this.toMillis(a.createdAt));
+    return this.sortTableRows(rows, (item, column) => ({
+      recipient: this.getQueueRecipient(item),
+      template: this.getQueueTemplate(item),
+      status: item.status,
+      created: item.createdAt,
+      completed: this.getQueueDate(item),
+      error: item.error
+    })[column]);
+  });
 
   paginatedQueueItems = computed(() => {
     const data = this.completedQueueItems();
-    const start = (this.queueCurrentPage() - 1) * this.queueItemsPerPage;
-    return data.slice(start, start + this.queueItemsPerPage);
+    const start = (this.queueCurrentPage() - 1) * this.queueItemsPerPage();
+    return data.slice(start, start + this.queueItemsPerPage());
   });
 
   showConfirmModal = signal(false);

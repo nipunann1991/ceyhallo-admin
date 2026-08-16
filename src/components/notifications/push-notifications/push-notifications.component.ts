@@ -11,6 +11,7 @@ import { ModalComponent } from '../../ui/modal.component';
 import { SlidingPanelComponent } from '../../ui/sliding-panel.component';
 import { ToastService } from '../../../services/toast.service';
 import { Subscription } from 'rxjs';
+import { TableSortController } from '../../ui/table-sort.controller';
 
 @Component({
   selector: 'app-push-notifications',
@@ -18,7 +19,7 @@ import { Subscription } from 'rxjs';
   imports: [CommonModule, FormsModule, RouterLink, PaginationControlsComponent, ConfirmModalComponent, ModalComponent, SlidingPanelComponent],
   templateUrl: './push-notifications.component.html'
 })
-export class PushNotificationsComponent implements OnInit, OnDestroy {
+export class PushNotificationsComponent extends TableSortController implements OnInit, OnDestroy {
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
   router = inject(Router);
@@ -36,6 +37,7 @@ export class PushNotificationsComponent implements OnInit, OnDestroy {
   duplicateTargetValue = signal('');
   duplicateDataJson = signal('');
   statusFilter = signal<'all' | PushNotificationStatus>('all');
+  searchQuery = signal('');
   targetFilter = signal<PushNotificationTargetType>(PushNotificationTargetType.Topic);
   statusOptions: Array<{ label: string; value: 'all' | PushNotificationStatus }> = [
     { label: 'All Statuses', value: 'all' },
@@ -54,24 +56,41 @@ export class PushNotificationsComponent implements OnInit, OnDestroy {
   private routeSub?: Subscription;
 
   // Pagination
-  itemsPerPage = 10;
+  itemsPerPage = signal(10);
   currentPage = signal(1);
 
   filteredNotifications = computed(() => {
     const status = this.statusFilter();
     const target = this.targetFilter();
+    const query = this.searchQuery().trim().toLowerCase();
     const data = this.notifications();
-    return data.filter(note => {
+    const rows = data.filter(note => {
       const matchesStatus = status === 'all' || note.status === status;
       const matchesTarget = note.targetType === target;
-      return matchesStatus && matchesTarget;
+      const matchesQuery = !query || [note.title, note.body, note.targetValue, this.getRouteId(note)]
+        .some(value => String(value || '').toLowerCase().includes(query));
+      return matchesStatus && matchesTarget && matchesQuery;
     });
+    return this.sortTableRows(rows, (note, column) => ({
+      title: note.title,
+      body: note.body,
+      target: note.targetType,
+      targetValue: note.targetValue,
+      route: this.getRouteId(note),
+      status: note.status,
+      date: note.createdAt
+    })[column]);
   });
+
+  updateSearch(event: Event) {
+    this.searchQuery.set((event.target as HTMLInputElement).value);
+    this.currentPage.set(1);
+  }
 
   paginatedNotifications = computed(() => {
     const data = this.filteredNotifications();
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    const start = (this.currentPage() - 1) * this.itemsPerPage();
+    return data.slice(start, start + this.itemsPerPage());
   });
 
   ngOnInit() {

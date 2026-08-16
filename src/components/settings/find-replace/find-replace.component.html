@@ -1,10 +1,10 @@
-<div class="space-y-6">
+<div class="space-y-5">
   <div>
     <h3 class="text-xl font-bold text-slate-800">Find &amp; Replace</h3>
     <p class="mt-1 text-sm text-slate-500">Search known Firebase collections, review every matching field, then replace the text in one bulk update.</p>
   </div>
 
-  <div class="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+  <div class="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
     <div class="grid gap-4 lg:grid-cols-2">
       <label class="block">
         <span class="mb-1 block text-sm font-medium text-slate-700">Find text</span>
@@ -32,7 +32,7 @@
         type="button"
         (click)="findMatches()"
         [disabled]="!canSearch()"
-        class="inline-flex items-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#062a71] disabled:cursor-not-allowed disabled:opacity-50">
+        class="flex items-center justify-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#062a71] disabled:cursor-not-allowed disabled:opacity-50">
         @if (isSearching()) {
           <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
           Searching...
@@ -64,7 +64,7 @@
     </div>
   }
 
-  <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+  <div class="rounded-xl border border-slate-200 bg-white">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
       <div>
         <h4 class="text-sm font-bold text-slate-800">Results</h4>

@@ -1,14 +1,14 @@
 <div>
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+  <div class="mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
     <div>
-       <h3 class="text-lg font-bold text-slate-700">{{ title() }}</h3>
+       <h3 class="text-xl font-bold tracking-[-.02em] text-slate-900">{{ title() }}</h3>
        <p class="text-sm text-slate-500">{{ description() }}</p>
     </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <!-- Add Form -->
-    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
+    <div class="bg-white p-6 rounded-xl border border-slate-200 h-fit">
         <h4 class="font-bold text-slate-800 mb-4">Add New Category</h4>
         <div class="flex gap-2">
             <input 
@@ -17,12 +17,12 @@
               (ngModelChange)="newItemName.set($event)" 
               (keyup.enter)="add()"
               placeholder="e.g. Technology, Healthcare..." 
-              class="flex-1 border-slate-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 p-2.5 border text-sm"
+              class="flex-1 border-slate-300 rounded-lg focus:ring-[#083594] focus:border-[#083594] p-2.5 border text-sm"
             >
             <button 
               (click)="add()" 
               [disabled]="!newItemName().trim() || isAdding() || !authService.isAdmin()"
-              class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2">
+              class="flex items-center justify-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#062a71] disabled:cursor-not-allowed disabled:opacity-50">
               @if (isAdding()) {
                  <span class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
               }
@@ -32,7 +32,7 @@
     </div>
 
     <!-- List -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div class="bg-slate-50 px-6 py-3 border-b border-slate-200">
             <h4 class="font-bold text-slate-700 text-sm uppercase tracking-wide">Existing Categories ({{ items().length }})</h4>
         </div>
@@ -42,7 +42,7 @@
                     <span class="text-slate-700 font-medium">{{ item.name }}</span>
                     <div class="flex items-center gap-4">
                       <label class="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
-                        <input type="checkbox" [checked]="item.isExcluded" (change)="toggleExcluded(item, $event)" class="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500">
+                        <input type="checkbox" [checked]="item.isExcluded" (change)="toggleExcluded(item, $event)" class="w-4 h-4 text-[#083594] rounded border-slate-300 focus:ring-[#083594]">
                         Exclude
                       </label>
 
