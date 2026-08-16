@@ -16,6 +16,17 @@ interface MediaFolder {
   path: string;
 }
 
+interface MediaFileReference {
+  id: string;
+  name: string;
+  path: string;
+}
+
+interface MediaFolderCache {
+  fileRefs: MediaFileReference[];
+  folders: MediaFolder[];
+}
+
 @Component({
   selector: 'app-media',
   standalone: true,
@@ -30,6 +41,7 @@ export class MediaComponent implements OnInit, OnDestroy {
   // State
   currentPath = signal('uploads');
   files = signal<MediaItem[]>([]);
+  fileRefs = signal<MediaFileReference[]>([]);
   folders = signal<MediaFolder[]>([]);
   
   searchQuery = signal('');
@@ -39,6 +51,7 @@ export class MediaComponent implements OnInit, OnDestroy {
   isUploading = signal(false);
   uploadProgress = signal(0);
   isLoading = signal(false);
+  isLoadingPage = signal(false);
   isDragging = signal(false); // New drag state
 
   // Selection & Bulk Actions
@@ -47,7 +60,7 @@ export class MediaComponent implements OnInit, OnDestroy {
   isBulkDeleting = signal(false);
 
   // Pagination
-  itemsPerPage = 24; // Increased for smaller icons
+  itemsPerPage = 36;
   currentPage = signal(1);
 
   // Delete State (Single)
@@ -68,7 +81,8 @@ export class MediaComponent implements OnInit, OnDestroy {
   moveTargetFolder = signal<MediaFolder | null>(null); // Null = current root of picker
   movePickerPath = signal('uploads'); // Independent navigation for picker
   movePickerFolders = signal<MediaFolder[]>([]); // Folders shown in picker
-  private folderCache = new Map<string, { items: MediaItem[]; folders: MediaFolder[] }>();
+  private folderCache = new Map<string, MediaFolderCache>();
+  private loadedFileCache = new Map<string, MediaItem>();
   private associationUnsubscribers: Array<() => void> = [];
   private associationsLoaded = false;
 
@@ -83,19 +97,18 @@ export class MediaComponent implements OnInit, OnDestroy {
     });
   });
 
-  filteredFiles = computed(() => {
+  filteredFileRefs = computed(() => {
     const query = this.searchQuery().toLowerCase();
+    const refs = this.fileRefs();
+    if (!query) return refs;
+    return refs.filter(f => f.name.toLowerCase().includes(query));
+  });
+
+  filteredFiles = computed(() => {
     const associatedKeys = this.associatedMediaKeys();
     const showUnassociatedOnly = this.unassociatedOnly();
-    const sorted = [...this.files()]
-      .filter((file) => {
-        if (!showUnassociatedOnly) return true;
-        return file.type.startsWith('image/') && !this.isAssociatedFile(file, associatedKeys);
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    
-    if (!query) return sorted;
-    return sorted.filter(f => f.name.toLowerCase().includes(query));
+    if (!showUnassociatedOnly) return this.files();
+    return this.files().filter((file) => file.type.startsWith('image/') && !this.isAssociatedFile(file, associatedKeys));
   });
 
   filteredFolders = computed(() => {
@@ -105,9 +118,11 @@ export class MediaComponent implements OnInit, OnDestroy {
   });
 
   paginatedFiles = computed(() => {
-    const data = this.filteredFiles();
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    return data.slice(start, start + this.itemsPerPage);
+    return this.filteredFiles();
+  });
+
+  paginationTotalItems = computed(() => {
+    return this.filteredFileRefs().length;
   });
 
   isAllSelected = computed(() => {
@@ -132,11 +147,11 @@ export class MediaComponent implements OnInit, OnDestroy {
       const cached = this.folderCache.get(targetPath);
       const result = cached && !forceRefresh
         ? cached
-        : await this.firebaseService.listFiles(targetPath);
+        : await this.firebaseService.listFileReferences(targetPath);
       if (!cached || forceRefresh) {
         this.folderCache.set(targetPath, result);
       }
-      this.files.set(result.items);
+      this.fileRefs.set(result.fileRefs);
       this.folders.set(result.folders);
       
       if (path !== undefined) {
@@ -144,6 +159,8 @@ export class MediaComponent implements OnInit, OnDestroy {
         this.currentPage.set(1);
         this.selectedPaths.set(new Set()); // Reset selection on nav
       }
+
+      await this.loadFilesForPage(this.currentPage());
     } catch (e: any) {
       if (e?.code !== 'permission-denied') {
          console.error('Media load error:', e);
@@ -151,6 +168,40 @@ export class MediaComponent implements OnInit, OnDestroy {
       }
     } finally {
       this.isLoading.set(false);
+    }
+  }
+
+  async onPageChange(page: number) {
+    this.currentPage.set(page);
+    this.selectedPaths.set(new Set());
+    await this.loadFilesForPage(page);
+  }
+
+  private async loadFilesForPage(page: number) {
+    const start = (page - 1) * this.itemsPerPage;
+    const refs = this.filteredFileRefs().slice(start, start + this.itemsPerPage);
+    const pathsToLoad = refs
+      .map((ref) => ref.path)
+      .filter((path) => !this.loadedFileCache.has(path));
+
+    this.isLoadingPage.set(true);
+    this.files.set([]);
+    try {
+      if (pathsToLoad.length > 0) {
+        const items = await this.firebaseService.getFilesByPaths(pathsToLoad);
+        items.forEach((item) => this.loadedFileCache.set(item.path, item));
+      }
+
+      this.files.set(refs
+        .map((ref) => this.loadedFileCache.get(ref.path))
+        .filter((item): item is MediaItem => Boolean(item)));
+    } catch (e: any) {
+      if (e?.code !== 'permission-denied') {
+        console.error('Media page load error:', e);
+        this.toastService.error('Failed to load media page');
+      }
+    } finally {
+      this.isLoadingPage.set(false);
     }
   }
 
@@ -172,6 +223,7 @@ export class MediaComponent implements OnInit, OnDestroy {
     this.searchQuery.set((event.target as HTMLInputElement).value);
     this.currentPage.set(1);
     this.selectedPaths.set(new Set()); 
+    this.loadFilesForPage(1);
   }
 
   async toggleUnassociatedOnly(checked: boolean) {
@@ -399,10 +451,14 @@ export class MediaComponent implements OnInit, OnDestroy {
 
       this.toastService.success('File deleted');
       this.invalidateCurrentFolderCache();
+      this.fileRefs.update(current => current.filter(f => f.path !== item.path));
       this.files.update(current => current.filter(f => f.path !== item.path));
+      this.loadedFileCache.delete(item.path);
     } catch (e: any) {
       if (e.code === 'storage/object-not-found') {
+         this.fileRefs.update(current => current.filter(f => f.path !== item.path));
          this.files.update(current => current.filter(f => f.path !== item.path));
+         this.loadedFileCache.delete(item.path);
          this.toastService.success('File removed (was already deleted)');
       } else {
          this.toastService.error('Delete failed: ' + e.message);
@@ -443,6 +499,7 @@ export class MediaComponent implements OnInit, OnDestroy {
       this.toastService.success(`Deleted ${successCount} items.`);
       this.selectedPaths.set(new Set());
       this.invalidateCurrentFolderCache();
+      paths.forEach((path) => this.loadedFileCache.delete(path));
       this.loadFiles(undefined, true);
     } catch (e: any) {
       this.toastService.error('Bulk delete error: ' + e.message);
@@ -463,7 +520,7 @@ export class MediaComponent implements OnInit, OnDestroy {
 
   async loadPickerFolders(path: string) {
     try {
-      const result = await this.firebaseService.listFiles(path);
+      const result = await this.firebaseService.listFileReferences(path);
       this.movePickerFolders.set(result.folders);
     } catch (e) {
       console.error('Picker load error', e);
@@ -538,6 +595,7 @@ export class MediaComponent implements OnInit, OnDestroy {
 
   private invalidateFolderCache(path: string) {
     this.folderCache.delete(path);
+    this.loadedFileCache.clear();
   }
 
   private ensureAssociationIndex() {

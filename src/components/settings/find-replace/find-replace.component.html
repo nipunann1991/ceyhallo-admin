@@ -1,0 +1,112 @@
+<div class="space-y-6">
+  <div>
+    <h3 class="text-xl font-bold text-slate-800">Find &amp; Replace</h3>
+    <p class="mt-1 text-sm text-slate-500">Search known Firebase collections, review every matching field, then replace the text in one bulk update.</p>
+  </div>
+
+  <div class="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="grid gap-4 lg:grid-cols-2">
+      <label class="block">
+        <span class="mb-1 block text-sm font-medium text-slate-700">Find text</span>
+        <textarea
+          rows="3"
+          [ngModel]="searchText()"
+          (ngModelChange)="searchText.set($event)"
+          class="w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-[#083594] focus:outline-none focus:ring-2 focus:ring-[#083594]/20"
+          placeholder="Text to find"></textarea>
+      </label>
+
+      <label class="block">
+        <span class="mb-1 block text-sm font-medium text-slate-700">Replace with</span>
+        <textarea
+          rows="3"
+          [ngModel]="replacementText()"
+          (ngModelChange)="replacementText.set($event)"
+          class="w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-[#083594] focus:outline-none focus:ring-2 focus:ring-[#083594]/20"
+          placeholder="Replacement text"></textarea>
+      </label>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        (click)="findMatches()"
+        [disabled]="!canSearch()"
+        class="inline-flex items-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#062a71] disabled:cursor-not-allowed disabled:opacity-50">
+        @if (isSearching()) {
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+          Searching...
+        } @else {
+          <span class="material-icons text-base">search</span>
+          Find matches
+        }
+      </button>
+
+      <button
+        type="button"
+        (click)="requestReplace()"
+        [disabled]="!canReplace()"
+        class="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50">
+        @if (isReplacing()) {
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-red-700 border-t-transparent"></span>
+          Replacing...
+        } @else {
+          <span class="material-icons text-base">find_replace</span>
+          Replace all
+        }
+      </button>
+    </div>
+  </div>
+
+  @if (lastReplaceResult(); as result) {
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+      Replaced {{ result.occurrences }} occurrence(s) across {{ result.updatedFields }} field(s) in {{ result.updatedDocuments }} document(s).
+    </div>
+  }
+
+  <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+      <div>
+        <h4 class="text-sm font-bold text-slate-800">Results</h4>
+        <p class="mt-1 text-xs text-slate-500">{{ matches().length }} matched field(s), {{ totalOccurrences() }} occurrence(s), {{ matchedDocuments() }} document(s)</p>
+      </div>
+    </div>
+
+    @if (matches().length === 0) {
+      <div class="px-5 py-12 text-center text-sm text-slate-400">No results to show.</div>
+    } @else {
+      <div class="max-h-[520px] overflow-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="sticky top-0 bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3">Document</th>
+              <th class="px-4 py-3">Field</th>
+              <th class="px-4 py-3">Hits</th>
+              <th class="px-4 py-3">Preview</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (match of matches(); track match.collectionPath + '/' + match.docId + '/' + match.fieldPath) {
+              <tr class="align-top hover:bg-slate-50">
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-700">{{ match.collectionPath }}/{{ match.docId }}</td>
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600">{{ match.fieldPath }}</td>
+                <td class="px-4 py-3 text-slate-700">{{ match.occurrences }}</td>
+                <td class="min-w-[280px] px-4 py-3 text-xs text-slate-600">{{ match.preview }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+@if (showReplaceConfirm()) {
+  <app-confirm-modal
+    title="Replace Matching Text"
+    [message]="'Replace ' + totalOccurrences() + ' occurrence(s) across ' + matchedDocuments() + ' document(s)? This updates Firebase data and cannot be undone automatically.'"
+    confirmLabel="Replace All"
+    (confirm)="confirmReplace()"
+    (cancel)="showReplaceConfirm.set(false)">
+  </app-confirm-modal>
+}

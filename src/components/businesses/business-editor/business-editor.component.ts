@@ -10,6 +10,7 @@ import { ToastService } from '../../../services/toast.service';
 import { RichTextEditorComponent } from '../../ui/rich-text-editor.component';
 import { ModalComponent } from '../../ui/modal.component';
 import { ConfirmModalComponent } from '../../ui/confirm-modal.component';
+import { PaginationControlsComponent } from '../../ui/pagination-controls.component';
 import { Business, BusinessLocation } from '../../../models/business.model';
 import { BusinessContact, DeliveryInfo, OpeningHour } from '../../../models/common.model';
 import { MediaItem } from '../../../models/media.model';
@@ -24,10 +25,16 @@ interface GoogleReviewStats {
   name?: string;
 }
 
+interface MediaFileReference {
+  id: string;
+  name: string;
+  path: string;
+}
+
 @Component({
   selector: 'app-business-editor',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, RichTextEditorComponent, ModalComponent, ConfirmModalComponent, SlidingPanelComponent, BusinessDetailComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, RichTextEditorComponent, ModalComponent, ConfirmModalComponent, PaginationControlsComponent, SlidingPanelComponent, BusinessDetailComponent],
   templateUrl: './business-editor.component.html'
 })
 export class BusinessEditorComponent implements OnInit {
@@ -51,15 +58,21 @@ export class BusinessEditorComponent implements OnInit {
   mediaLibraryTarget = signal<'gallery' | 'logo' | 'featured'>('gallery');
   mediaLibraryPath = signal('uploads');
   mediaLibraryFiles = signal<MediaItem[]>([]);
+  mediaLibraryFileRefs = signal<MediaFileReference[]>([]);
   mediaLibraryFolders = signal<Array<{ name: string; path: string }>>([]);
+  mediaLibraryCurrentPage = signal(1);
   selectedMediaPaths = signal<string[]>([]);
   mediaLibraryLoading = signal(false);
+  mediaLibraryPageLoading = signal(false);
   mediaLibraryUploading = signal(false);
   mediaItemToDelete = signal<MediaItem | null>(null);
   showMediaDeleteConfirm = signal(false);
   previewBusiness = signal<Business | null>(null);
-  private uploadedMediaUrls = new Set<string>();
+  readonly mediaLibraryPageSize = 36;
+  private uploadedMediaPaths = new Set<string>();
+  private mediaLibraryLoadedFileCache = new Map<string, MediaItem>();
   mediaLibraryImages = computed(() => this.mediaLibraryFiles().filter((file) => file.type.startsWith('image/')));
+  mediaLibraryTotalItems = computed(() => this.mediaLibraryFileRefs().length);
 
   constructor(
     private authService: AuthService,
@@ -530,24 +543,52 @@ export class BusinessEditorComponent implements OnInit {
     this.mediaLibraryTarget.set(target);
     this.showMediaLibrary.set(true);
     this.selectedMediaPaths.set([]);
-    this.uploadedMediaUrls.clear();
+    this.uploadedMediaPaths.clear();
     await this.loadMediaLibrary('uploads');
   }
 
   async loadMediaLibrary(path = this.mediaLibraryPath()) {
     this.mediaLibraryLoading.set(true);
     try {
-      const result = await this.firebaseService.listFiles(path);
+      const result = await this.firebaseService.listFileReferences(path);
       this.mediaLibraryPath.set(path);
-      this.mediaLibraryFiles.set(result.items);
+      this.mediaLibraryFileRefs.set(result.fileRefs);
       this.mediaLibraryFolders.set(result.folders);
-      this.selectedMediaPaths.set(result.items
-        .filter((file) => this.uploadedMediaUrls.has(file.url))
+      this.mediaLibraryCurrentPage.set(1);
+      this.selectedMediaPaths.set(result.fileRefs
+        .filter((file) => this.uploadedMediaPaths.has(file.path))
         .map((file) => file.path));
+      await this.loadMediaLibraryPage(1);
     } catch (error) {
       this.toastService.error('Failed to load the media library.');
     } finally {
       this.mediaLibraryLoading.set(false);
+    }
+  }
+
+  async loadMediaLibraryPage(page: number) {
+    this.mediaLibraryCurrentPage.set(page);
+    this.mediaLibraryFiles.set([]);
+    this.mediaLibraryPageLoading.set(true);
+    try {
+      const start = (page - 1) * this.mediaLibraryPageSize;
+      const refs = this.mediaLibraryFileRefs().slice(start, start + this.mediaLibraryPageSize);
+      const pathsToLoad = refs
+        .map((file) => file.path)
+        .filter((path) => !this.mediaLibraryLoadedFileCache.has(path));
+
+      if (pathsToLoad.length > 0) {
+        const files = await this.firebaseService.getFilesByPaths(pathsToLoad);
+        files.forEach((file) => this.mediaLibraryLoadedFileCache.set(file.path, file));
+      }
+
+      this.mediaLibraryFiles.set(refs
+        .map((file) => this.mediaLibraryLoadedFileCache.get(file.path))
+        .filter((file): file is MediaItem => Boolean(file)));
+    } catch (error) {
+      this.toastService.error('Failed to load media page.');
+    } finally {
+      this.mediaLibraryPageLoading.set(false);
     }
   }
 
@@ -575,7 +616,9 @@ export class BusinessEditorComponent implements OnInit {
 
   addSelectedMediaToGallery() {
     const selectedPaths = new Set(this.selectedMediaPaths());
-    const selectedFiles = this.mediaLibraryFiles().filter((file) => selectedPaths.has(file.path));
+    const selectedFiles = Array.from(selectedPaths)
+      .map((path) => this.mediaLibraryLoadedFileCache.get(path))
+      .filter((file): file is MediaItem => Boolean(file));
     const target = this.mediaLibraryTarget();
 
     if (target === 'logo' || target === 'featured') {
@@ -612,8 +655,10 @@ export class BusinessEditorComponent implements OnInit {
 
     try {
       await this.firebaseService.deleteFile(file.path);
+      this.mediaLibraryFileRefs.update((files) => files.filter((item) => item.path !== file.path));
       this.mediaLibraryFiles.update((files) => files.filter((item) => item.path !== file.path));
       this.selectedMediaPaths.update((paths) => paths.filter((path) => path !== file.path));
+      this.mediaLibraryLoadedFileCache.delete(file.path);
       for (let index = this.galleryArray.length - 1; index >= 0; index -= 1) {
         if (this.galleryArray.at(index).value === file.url) this.galleryArray.removeAt(index);
       }
@@ -633,20 +678,21 @@ export class BusinessEditorComponent implements OnInit {
     const targetPath = this.mediaLibraryPath() || 'uploads';
     this.mediaLibraryUploading.set(true);
     try {
-      const uploadedUrls: string[] = [];
+      const uploadedPaths: string[] = [];
       for (const rawFile of files) {
         const file = await optimizeImage(rawFile);
         const path = `${targetPath}/${Date.now()}_${file.name.replace(/\W+/g, '_')}`;
-        const url = await this.firebaseService.uploadFile(path, file);
-        uploadedUrls.push(url);
-        this.uploadedMediaUrls.add(url);
+        await this.firebaseService.uploadFile(path, file);
+        uploadedPaths.push(path);
+        this.uploadedMediaPaths.add(path);
       }
+      this.mediaLibraryLoadedFileCache.clear();
       await this.loadMediaLibrary(targetPath);
       if (this.mediaLibraryTarget() !== 'gallery') {
-        const newestUploaded = this.mediaLibraryFiles().find((file) => uploadedUrls.includes(file.url));
-        this.selectedMediaPaths.set(newestUploaded ? [newestUploaded.path] : []);
+        const newestUploaded = uploadedPaths.at(-1);
+        this.selectedMediaPaths.set(newestUploaded ? [newestUploaded] : []);
       }
-      this.toastService.success(`${uploadedUrls.length} image${uploadedUrls.length === 1 ? '' : 's'} uploaded.`);
+      this.toastService.success(`${uploadedPaths.length} image${uploadedPaths.length === 1 ? '' : 's'} uploaded.`);
     } catch (error) {
       this.toastService.error('Media upload failed.');
     } finally {

@@ -673,6 +673,11 @@
             </div>
           }
 
+          @if (mediaLibraryPageLoading()) {
+            <div class="flex h-64 items-center justify-center text-sm text-slate-500">
+              <span class="h-6 w-6 animate-spin rounded-full border-2 border-[#083594] border-t-transparent"></span>
+            </div>
+          } @else {
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             @for (file of mediaLibraryImages(); track file.path) {
               <div role="button" tabindex="0" (click)="toggleMediaSelection(file.path)" (keydown.enter)="toggleMediaSelection(file.path)" (keydown.space)="$event.preventDefault(); toggleMediaSelection(file.path)" class="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border bg-slate-100 text-left transition" [class.border-[#083594]]="isMediaSelected(file.path)" [class.ring-2]="isMediaSelected(file.path)" [class.ring-[#083594]/30]="isMediaSelected(file.path)" [class.border-slate-200]="!isMediaSelected(file.path)">
@@ -691,6 +696,19 @@
               <div class="col-span-full border border-dashed border-slate-300 px-4 py-12 text-center text-sm text-slate-500">No images in this folder.</div>
             }
           </div>
+          }
+
+          @if (mediaLibraryTotalItems() > mediaLibraryPageSize) {
+            <div class="mt-4">
+              <app-pagination-controls
+                [currentPage]="mediaLibraryCurrentPage()"
+                [totalItems]="mediaLibraryTotalItems()"
+                [pageSize]="mediaLibraryPageSize"
+                [showPageGrid]="true"
+                (pageChange)="loadMediaLibraryPage($event)">
+              </app-pagination-controls>
+            </div>
+          }
         </div>
       }
     </div>

@@ -24,22 +24,60 @@ import {
   uploadBytes, 
   getDownloadURL, 
   deleteObject,
+  list,
   listAll,
   getMetadata
 } from 'firebase/storage';
 import { createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail, signOut, updateProfile, Auth } from 'firebase/auth';
 import { getFunctions, httpsCallable, Functions } from 'firebase/functions';
 
+export interface TextSearchMatch {
+  collectionPath: string;
+  docId: string;
+  fieldPath: string;
+  occurrences: number;
+  preview: string;
+}
+
+export interface TextReplaceResult {
+  matchedDocuments: number;
+  updatedDocuments: number;
+  updatedFields: number;
+  occurrences: number;
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyA9t9nkALn-Y8XobFFCX4YtpE3N8qSPO2Y",
   authDomain: "ceyhallo-89e40.firebaseapp.com",
   databaseURL: "https://ceyhallo-89e40-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "ceyhallo-89e40",
-  storageBucket: "ceyhallo-89e40.firebasestorage.app",
+  storageBucket: "ceyhallo-eu",
   messagingSenderId: "253346274750",
   appId: "1:253346274750:web:f511016dfe4946392b2def",
   measurementId: "G-CJK43PN7F7"
 };
+
+const defaultTextReplaceCollections = [
+  'businesses',
+  'restaurants',
+  'organizations',
+  'groceries',
+  'banners',
+  'events',
+  'news',
+  'offers',
+  'jobs',
+  'categories',
+  'taxonomy_business',
+  'hub_sections',
+  'push_queue',
+  'settings',
+  'email_templates',
+  'email_queue',
+  'countries',
+  'legal',
+  'users'
+];
 
 @Injectable({
   providedIn: 'root'
@@ -234,6 +272,67 @@ export class FirebaseService {
     }
   }
 
+  async findTextInKnownCollections(searchText: string, collectionPaths = defaultTextReplaceCollections): Promise<TextSearchMatch[]> {
+    const needle = searchText.trim();
+    if (!needle) return [];
+
+    const matches: TextSearchMatch[] = [];
+
+    for (const collectionPath of collectionPaths) {
+      try {
+        const snapshot = await getDocs(collection(this.firestore, collectionPath));
+        snapshot.docs.forEach((document) => {
+          matches.push(...this.findTextInValue(document.data(), needle, collectionPath, document.id));
+        });
+      } catch (error) {
+        console.warn(`Skipping text search for '${collectionPath}':`, error);
+      }
+    }
+
+    return matches;
+  }
+
+  async replaceTextInKnownCollections(searchText: string, replacementText: string, collectionPaths = defaultTextReplaceCollections): Promise<TextReplaceResult> {
+    const needle = searchText.trim();
+    if (!needle) {
+      return { matchedDocuments: 0, updatedDocuments: 0, updatedFields: 0, occurrences: 0 };
+    }
+
+    let matchedDocuments = 0;
+    let updatedDocuments = 0;
+    let updatedFields = 0;
+    let occurrences = 0;
+    const pendingWrites: Array<{ path: string; id: string; data: any }> = [];
+
+    for (const collectionPath of collectionPaths) {
+      try {
+        const snapshot = await getDocs(collection(this.firestore, collectionPath));
+        snapshot.docs.forEach((document) => {
+          const result = this.replaceTextInValue(document.data(), needle, replacementText);
+          if (result.occurrences > 0) {
+            matchedDocuments += 1;
+            updatedFields += result.fields;
+            occurrences += result.occurrences;
+            pendingWrites.push({ path: collectionPath, id: document.id, data: result.value });
+          }
+        });
+      } catch (error) {
+        console.warn(`Skipping text replace for '${collectionPath}':`, error);
+      }
+    }
+
+    for (let start = 0; start < pendingWrites.length; start += 500) {
+      const batch = writeBatch(this.firestore);
+      pendingWrites.slice(start, start + 500).forEach((write) => {
+        batch.set(doc(this.firestore, write.path, write.id), write.data);
+      });
+      await batch.commit();
+      updatedDocuments += pendingWrites.slice(start, start + 500).length;
+    }
+
+    return { matchedDocuments, updatedDocuments, updatedFields, occurrences };
+  }
+
   // --- Storage ---
 
   async uploadFile(path: string, file: Blob | File, customMetadata?: any): Promise<string> {
@@ -304,6 +403,111 @@ export class FirebaseService {
     }
   }
 
+  async listFilesPage(path: string, pageToken?: string, maxResults = 48): Promise<{ items: any[], folders: any[], nextPageToken?: string }> {
+    try {
+      const listRef = storageRef(this.storage, path);
+      const res = await list(listRef, { maxResults, pageToken });
+
+      const folders = res.prefixes.map(p => ({
+        name: p.name,
+        path: p.fullPath
+      }));
+
+      const promises = res.items.map(async (itemRef) => {
+        try {
+          if (itemRef.name === '.keep') return null;
+
+          const [url, meta] = await Promise.all([
+            getDownloadURL(itemRef),
+            getMetadata(itemRef)
+          ]);
+
+          return {
+            id: itemRef.fullPath,
+            name: itemRef.name,
+            url,
+            path: itemRef.fullPath,
+            type: meta.contentType || 'application/octet-stream',
+            size: meta.size,
+            createdAt: meta.timeCreated,
+            uploadedBy: meta.customMetadata?.uploadedBy || 'Unknown'
+          };
+        } catch (err) {
+          console.warn('Skipping file due to load error:', itemRef.name, err);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(promises);
+      const items = results
+        .filter((item): item is NonNullable<typeof item> => item !== null)
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+
+      return { items, folders, nextPageToken: res.nextPageToken };
+    } catch (error) {
+      console.error('List files page error:', error);
+      throw error;
+    }
+  }
+
+  async listFileReferences(path: string): Promise<{ fileRefs: Array<{ id: string; name: string; path: string }>, folders: any[] }> {
+    try {
+      const listRef = storageRef(this.storage, path);
+      const res = await listAll(listRef);
+
+      const folders = res.prefixes
+        .map(p => ({
+          name: p.name,
+          path: p.fullPath
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      const fileRefs = res.items
+        .filter((itemRef) => itemRef.name !== '.keep')
+        .map((itemRef) => ({
+          id: itemRef.fullPath,
+          name: itemRef.name,
+          path: itemRef.fullPath
+        }))
+        .sort((a, b) => b.name.localeCompare(a.name));
+
+      return { fileRefs, folders };
+    } catch (error) {
+      console.error('List file references error:', error);
+      throw error;
+    }
+  }
+
+  async getFilesByPaths(paths: string[]): Promise<any[]> {
+    const promises = paths.map(async (path) => {
+      const itemRef = storageRef(this.storage, path);
+
+      try {
+        const [url, meta] = await Promise.all([
+          getDownloadURL(itemRef),
+          getMetadata(itemRef)
+        ]);
+
+        return {
+          id: itemRef.fullPath,
+          name: itemRef.name,
+          url,
+          path: itemRef.fullPath,
+          type: meta.contentType || 'application/octet-stream',
+          size: meta.size,
+          createdAt: meta.timeCreated,
+          uploadedBy: meta.customMetadata?.uploadedBy || 'Unknown'
+        };
+      } catch (err) {
+        console.warn('Skipping file due to load error:', path, err);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(promises);
+    return results.filter((item): item is NonNullable<typeof item> => item !== null);
+  }
+
   async deleteFile(path: string): Promise<void> {
     try {
       const sRef = storageRef(this.storage, path);
@@ -362,5 +566,91 @@ export class FirebaseService {
     const callable = httpsCallable(this.functions, functionName);
     const result = await callable(data);
     return result.data;
+  }
+
+  private findTextInValue(value: unknown, needle: string, collectionPath: string, docId: string, fieldPath = ''): TextSearchMatch[] {
+    if (typeof value === 'string') {
+      const occurrences = this.countOccurrences(value, needle);
+      return occurrences > 0
+        ? [{
+          collectionPath,
+          docId,
+          fieldPath: fieldPath || '(document)',
+          occurrences,
+          preview: this.buildSearchPreview(value, needle)
+        }]
+        : [];
+    }
+
+    if (Array.isArray(value)) {
+      return value.flatMap((item, index) => this.findTextInValue(item, needle, collectionPath, docId, `${fieldPath}[${index}]`));
+    }
+
+    if (this.isPlainObject(value)) {
+      return Object.entries(value).flatMap(([key, item]) => {
+        const nextPath = fieldPath ? `${fieldPath}.${key}` : key;
+        return this.findTextInValue(item, needle, collectionPath, docId, nextPath);
+      });
+    }
+
+    return [];
+  }
+
+  private replaceTextInValue(value: unknown, needle: string, replacement: string): { value: unknown; occurrences: number; fields: number } {
+    if (typeof value === 'string') {
+      const occurrences = this.countOccurrences(value, needle);
+      return {
+        value: occurrences > 0 ? value.split(needle).join(replacement) : value,
+        occurrences,
+        fields: occurrences > 0 ? 1 : 0
+      };
+    }
+
+    if (Array.isArray(value)) {
+      let occurrences = 0;
+      let fields = 0;
+      const nextValue = value.map((item) => {
+        const result = this.replaceTextInValue(item, needle, replacement);
+        occurrences += result.occurrences;
+        fields += result.fields;
+        return result.value;
+      });
+      return { value: nextValue, occurrences, fields };
+    }
+
+    if (this.isPlainObject(value)) {
+      let occurrences = 0;
+      let fields = 0;
+      const nextValue = Object.fromEntries(
+        Object.entries(value).map(([key, item]) => {
+          const result = this.replaceTextInValue(item, needle, replacement);
+          occurrences += result.occurrences;
+          fields += result.fields;
+          return [key, result.value];
+        })
+      );
+      return { value: nextValue, occurrences, fields };
+    }
+
+    return { value, occurrences: 0, fields: 0 };
+  }
+
+  private countOccurrences(value: string, needle: string) {
+    if (!needle) return 0;
+    return value.split(needle).length - 1;
+  }
+
+  private buildSearchPreview(value: string, needle: string) {
+    const index = value.indexOf(needle);
+    if (index === -1) return value.slice(0, 120);
+    const start = Math.max(0, index - 48);
+    const end = Math.min(value.length, index + needle.length + 48);
+    return `${start > 0 ? '...' : ''}${value.slice(start, end)}${end < value.length ? '...' : ''}`;
+  }
+
+  private isPlainObject(value: unknown): value is Record<string, unknown> {
+    if (!value || Object.prototype.toString.call(value) !== '[object Object]') return false;
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
   }
 }
