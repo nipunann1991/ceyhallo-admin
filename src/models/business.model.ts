@@ -16,6 +16,14 @@ export interface BusinessLocation {
   openingHours?: OpeningHour[];
 }
 
+export interface MenuCatalogItem {
+  name: string;
+  category?: string;
+  description?: string;
+  price?: string;
+  imageUrl?: string;
+}
+
 export interface Business {
   id: string;
   title: string;
@@ -29,6 +37,8 @@ export interface Business {
   imageUrl: string;
   logoUrl?: string; // Added logo
   menuUrl?: string; // Added Catalog/Flyer
+  menuItems?: MenuCatalogItem[];
+  referralCode?: string;
   googlePlaceId?: string;
   rating: number;
   reviews: number;

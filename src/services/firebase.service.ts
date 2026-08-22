@@ -12,6 +12,7 @@ import {
   getDocs,
   updateDoc, 
   deleteDoc, 
+  deleteField,
   writeBatch,
   onSnapshot,
   query, 
@@ -147,6 +148,14 @@ export class FirebaseService {
     }
   }
 
+  async getCollection<T>(path: string): Promise<T[]> {
+    const snapshot = await getDocs(collection(this.firestore, path));
+    return snapshot.docs.map((snapshotDoc) => ({
+      id: snapshotDoc.id,
+      ...snapshotDoc.data()
+    })) as T[];
+  }
+
   async create(path: string, data: any) {
     const colRef = collection(this.firestore, path);
     const docRef = await addDoc(colRef, data);
@@ -248,6 +257,10 @@ export class FirebaseService {
   async update(path: string, id: string, data: any) {
     const docRef = doc(this.firestore, path, id);
     await updateDoc(docRef, data);
+  }
+
+  fieldDeletion() {
+    return deleteField();
   }
 
   async delete(path: string, id: string) {

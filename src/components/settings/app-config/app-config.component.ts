@@ -32,6 +32,17 @@ export class AppConfigComponent implements OnInit {
   ) {
     this.form = this.fb.group({
       showSocialLogin: [true],
+      showFacebookLogin: [true],
+      showGoogleLogin: [true],
+      showAppleLogin: [true],
+      showSocialMediaLinks: [true],
+      socialMediaTitle: ['', Validators.maxLength(100)],
+      socialMediaSubtitle: ['', Validators.maxLength(250)],
+      facebookUrl: ['', Validators.pattern(/^https?:\/\/.+/i)],
+      instagramUrl: ['', Validators.pattern(/^https?:\/\/.+/i)],
+      tiktokUrl: ['', Validators.pattern(/^https?:\/\/.+/i)],
+      youtubeUrl: ['', Validators.pattern(/^https?:\/\/.+/i)],
+      whatsappUrl: ['', Validators.pattern(/^https?:\/\/.+/i)],
       showRateApp: [true],
       showBusinessListing: [true],
       showAiBot: [true] // Added AI Bot toggle
@@ -52,8 +63,21 @@ export class AppConfigComponent implements OnInit {
       const doc = await this.firebaseService.getDocument('settings', 'app_config');
       
       if (doc) {
+        const socialLogin = doc.socialLogin || {};
+        const socialMediaLinks = doc.socialMediaLinks || {};
         this.form.patchValue({
-          showSocialLogin: doc.showSocialLogin !== undefined ? doc.showSocialLogin : true,
+          showSocialLogin: doc.showSocialLogin ?? socialLogin.visible ?? true,
+          showFacebookLogin: socialLogin.facebook ?? doc.showFacebookLogin ?? true,
+          showGoogleLogin: socialLogin.google ?? doc.showGoogleLogin ?? true,
+          showAppleLogin: socialLogin.apple ?? doc.showAppleLogin ?? true,
+          showSocialMediaLinks: socialMediaLinks.visible ?? doc.showSocialMediaLinks ?? true,
+          socialMediaTitle: socialMediaLinks.title ?? doc.socialMediaTitle ?? '',
+          socialMediaSubtitle: socialMediaLinks.subtitle ?? doc.socialMediaSubtitle ?? '',
+          facebookUrl: socialMediaLinks.facebookUrl ?? doc.facebookUrl ?? '',
+          instagramUrl: socialMediaLinks.instagramUrl ?? doc.instagramUrl ?? '',
+          tiktokUrl: socialMediaLinks.tiktokUrl ?? doc.tiktokUrl ?? '',
+          youtubeUrl: socialMediaLinks.youtubeUrl ?? doc.youtubeUrl ?? '',
+          whatsappUrl: socialMediaLinks.whatsappUrl ?? doc.whatsappUrl ?? '',
           showRateApp: doc.showRateApp !== undefined ? doc.showRateApp : true,
           showBusinessListing: doc.showBusinessListing !== undefined ? doc.showBusinessListing : true,
           showAiBot: doc.showAiBot !== undefined ? doc.showAiBot : true
@@ -135,10 +159,43 @@ export class AppConfigComponent implements OnInit {
       return;
     }
 
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.toastService.error('Please check the social media details and try again.');
+      return;
+    }
+
     this.isSaving.set(true);
     try {
       const dataToSave = {
-        showSocialLogin: this.form.get('showSocialLogin')?.value,
+        showSocialLogin: !!this.form.get('showSocialLogin')?.value,
+        socialLogin: {
+          facebook: !!this.form.get('showFacebookLogin')?.value,
+          google: !!this.form.get('showGoogleLogin')?.value,
+          apple: !!this.form.get('showAppleLogin')?.value
+        },
+        socialMediaLinks: {
+          visible: !!this.form.get('showSocialMediaLinks')?.value,
+          title: this.form.get('socialMediaTitle')?.value?.trim() || '',
+          subtitle: this.form.get('socialMediaSubtitle')?.value?.trim() || '',
+          facebookUrl: this.form.get('facebookUrl')?.value?.trim() || '',
+          instagramUrl: this.form.get('instagramUrl')?.value?.trim() || '',
+          tiktokUrl: this.form.get('tiktokUrl')?.value?.trim() || '',
+          youtubeUrl: this.form.get('youtubeUrl')?.value?.trim() || '',
+          whatsappUrl: this.form.get('whatsappUrl')?.value?.trim() || ''
+        },
+        // Remove the legacy flat fields after migrating their values into sections.
+        showFacebookLogin: this.firebaseService.fieldDeletion(),
+        showGoogleLogin: this.firebaseService.fieldDeletion(),
+        showAppleLogin: this.firebaseService.fieldDeletion(),
+        showSocialMediaLinks: this.firebaseService.fieldDeletion(),
+        socialMediaTitle: this.firebaseService.fieldDeletion(),
+        socialMediaSubtitle: this.firebaseService.fieldDeletion(),
+        facebookUrl: this.firebaseService.fieldDeletion(),
+        instagramUrl: this.firebaseService.fieldDeletion(),
+        tiktokUrl: this.firebaseService.fieldDeletion(),
+        youtubeUrl: this.firebaseService.fieldDeletion(),
+        whatsappUrl: this.firebaseService.fieldDeletion(),
         showRateApp: this.form.get('showRateApp')?.value,
         showBusinessListing: this.form.get('showBusinessListing')?.value,
         showAiBot: this.form.get('showAiBot')?.value,

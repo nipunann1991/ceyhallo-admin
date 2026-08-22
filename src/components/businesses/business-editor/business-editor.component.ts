@@ -11,13 +11,15 @@ import { RichTextEditorComponent } from '../../ui/rich-text-editor.component';
 import { ModalComponent } from '../../ui/modal.component';
 import { ConfirmModalComponent } from '../../ui/confirm-modal.component';
 import { PaginationControlsComponent } from '../../ui/pagination-controls.component';
-import { Business, BusinessLocation } from '../../../models/business.model';
+import { Business, BusinessLocation, MenuCatalogItem } from '../../../models/business.model';
 import { BusinessContact, DeliveryInfo, OpeningHour } from '../../../models/common.model';
 import { MediaItem } from '../../../models/media.model';
 import { TaxonomyItem } from '../../../models/taxonomy.model';
 import { optimizeImage } from '../../../utils/image-optimizer';
+import * as XLSX from 'xlsx';
 import { SlidingPanelComponent } from '../../ui/sliding-panel.component';
 import { BusinessDetailComponent } from '../business-detail/business-detail.component';
+import { ReferralCodeService } from '../../../services/referral-code.service';
 
 interface GoogleReviewStats {
   rating: number;
@@ -41,7 +43,11 @@ export class BusinessEditorComponent implements OnInit {
   form: FormGroup;
   isEditing = signal(false);
   isUploading = signal(false);
-  activeEditorTab = signal<'details' | 'locations' | 'gallery' | 'contact'>('details');
+  isImportingMenu = signal(false);
+  showMenuItemModal = signal(false);
+  editingMenuItemIndex = signal<number | null>(null);
+  menuItemForm: FormGroup;
+  activeEditorTab = signal<'details' | 'locations' | 'gallery' | 'menu' | 'contact'>('details');
   currentId: string | null = null;
   
   locations = signal<any[]>([]);
@@ -78,6 +84,7 @@ export class BusinessEditorComponent implements OnInit {
     private authService: AuthService,
     private firebaseService: FirebaseService,
     private toastService: ToastService,
+    private referralCodeService: ReferralCodeService,
     private sanitizer: DomSanitizer,
     private route: ActivatedRoute,
     private router: Router,
@@ -93,6 +100,7 @@ export class BusinessEditorComponent implements OnInit {
       imageUrl: [''],
       logoUrl: [''], 
       menuUrl: [''], // Added catalog/menu URL
+      menuItems: this.fb.array([]),
       isPublished: [true], 
       isPremium: [false],
       isVerified: [false],
@@ -119,6 +127,8 @@ export class BusinessEditorComponent implements OnInit {
       businessLocations: this.fb.array([])
     });
 
+    this.menuItemForm = this.createMenuItemGroup();
+
     // Auto-unpublish when archived
     this.form.get('isArchived')?.valueChanges.subscribe(isArchived => {
       if (isArchived) {
@@ -130,6 +140,137 @@ export class BusinessEditorComponent implements OnInit {
   get deliveryInfoArray() { return this.form.get('deliveryInfo') as FormArray; }
   get businessLocationsArray() { return this.form.get('businessLocations') as FormArray; }
   get galleryArray() { return this.form.get('gallery') as FormArray; }
+  get menuItemsArray() { return this.form.get('menuItems') as FormArray; }
+
+  private createMenuItemGroup(item?: Partial<MenuCatalogItem>) {
+    return this.fb.group({
+      name: [item?.name || '', Validators.required],
+      category: [item?.category || ''],
+      description: [item?.description || ''],
+      price: [item?.price || ''],
+      imageUrl: [item?.imageUrl || '', Validators.pattern(/^https?:\/\/.+/i)]
+    });
+  }
+
+  addMenuItem(item?: Partial<MenuCatalogItem>) {
+    this.menuItemsArray.push(this.createMenuItemGroup(item));
+  }
+
+  removeMenuItem(index: number) {
+    this.menuItemsArray.removeAt(index);
+  }
+
+  menuItemGroups() {
+    const groups = new Map<string, Array<{ index: number; item: MenuCatalogItem }>>();
+    (this.menuItemsArray.getRawValue() as MenuCatalogItem[]).forEach((item, index) => {
+      const category = String(item.category || '').trim() || 'Other';
+      const entries = groups.get(category) || [];
+      entries.push({ index, item });
+      groups.set(category, entries);
+    });
+    return Array.from(groups, ([category, items]) => ({ category, items }));
+  }
+
+  openAddMenuItem() {
+    this.editingMenuItemIndex.set(null);
+    this.menuItemForm.reset({ name: '', category: '', description: '', price: '', imageUrl: '' });
+    this.showMenuItemModal.set(true);
+  }
+
+  openEditMenuItem(index: number) {
+    const item = this.menuItemsArray.at(index)?.getRawValue();
+    if (!item) return;
+    this.editingMenuItemIndex.set(index);
+    this.menuItemForm.reset(item);
+    this.showMenuItemModal.set(true);
+  }
+
+  closeMenuItemModal() {
+    this.showMenuItemModal.set(false);
+    this.editingMenuItemIndex.set(null);
+  }
+
+  saveMenuItem() {
+    if (this.menuItemForm.invalid) {
+      this.menuItemForm.markAllAsTouched();
+      return;
+    }
+    const item = this.menuItemForm.getRawValue();
+    const index = this.editingMenuItemIndex();
+    if (index === null) this.addMenuItem(item);
+    else this.menuItemsArray.at(index).patchValue(item);
+    this.closeMenuItemModal();
+  }
+
+  deleteEditingMenuItem() {
+    const index = this.editingMenuItemIndex();
+    if (index !== null) this.removeMenuItem(index);
+    this.closeMenuItemModal();
+  }
+
+  async importMenuFromExcel(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.isImportingMenu.set(true);
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      if (!firstSheetName) throw new Error('The workbook does not contain a worksheet.');
+
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[firstSheetName], {
+        defval: '',
+        raw: true
+      });
+      if (rows.length === 0) throw new Error('The worksheet does not contain any menu items.');
+
+      let importedCount = 0;
+      let skippedCount = 0;
+      rows.slice(0, 1000).forEach((row) => {
+        const normalized = Object.entries(row).reduce<Record<string, unknown>>((result, [key, value]) => {
+          result[key.toLowerCase().replace(/[^a-z0-9]/g, '')] = value;
+          return result;
+        }, {});
+        const name = this.firstMenuImportValue(normalized, ['item', 'itemname', 'name', 'product', 'productname']);
+        if (!name) {
+          skippedCount += 1;
+          return;
+        }
+
+        const rawPrice = this.firstMenuImportValue(normalized, ['priceaed', 'price', 'amount', 'cost']);
+        const hasAedHeader = Object.keys(normalized).includes('priceaed');
+        const price = rawPrice && hasAedHeader && !/^aed\b/i.test(rawPrice) ? `AED ${rawPrice}` : rawPrice;
+        this.addMenuItem({
+          name,
+          category: this.firstMenuImportValue(normalized, ['category', 'section', 'group']),
+          description: this.firstMenuImportValue(normalized, ['description', 'details', 'notes']),
+          price,
+          imageUrl: this.firstMenuImportValue(normalized, ['imageurl', 'image', 'photo', 'photourl'])
+        });
+        importedCount += 1;
+      });
+
+      if (importedCount === 0) {
+        throw new Error('No rows with an Item or Name column were found.');
+      }
+      const skippedMessage = skippedCount ? ` ${skippedCount} blank row${skippedCount === 1 ? ' was' : 's were'} skipped.` : '';
+      this.toastService.success(`${importedCount} menu item${importedCount === 1 ? '' : 's'} imported.${skippedMessage}`);
+    } catch (error: any) {
+      this.toastService.error('Menu import failed: ' + (error?.message || 'Unable to read the Excel file.'));
+    } finally {
+      input.value = '';
+      this.isImportingMenu.set(false);
+    }
+  }
+
+  private firstMenuImportValue(row: Record<string, unknown>, keys: string[]): string {
+    for (const key of keys) {
+      const value = row[key];
+      if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+    }
+    return '';
+  }
 
   filteredCategories() {
     const search = this.categorySearch().toLowerCase();
@@ -344,6 +485,11 @@ export class BusinessEditorComponent implements OnInit {
         this.normalizeGalleryUrls(doc.gallery).forEach((url) => {
           if (url) this.galleryArray.push(this.fb.control(url));
         });
+
+        this.menuItemsArray.clear();
+        if (Array.isArray(doc.menuItems)) {
+          doc.menuItems.forEach((item: MenuCatalogItem) => this.addMenuItem(item));
+        }
 
         this.businessLocationsArray.clear();
         const savedLocations = Array.isArray(doc.locations) && doc.locations.length > 0
@@ -744,6 +890,16 @@ export class BusinessEditorComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
     const file = input.files[0];
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      this.toastService.error('Please upload the catalog in PDF format.');
+      input.value = '';
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      this.toastService.error('The PDF must be 15 MB or smaller.');
+      input.value = '';
+      return;
+    }
     this.isUploading.set(true);
     try {
       let fileToUpload = file;
@@ -757,6 +913,7 @@ export class BusinessEditorComponent implements OnInit {
     } catch (e) {
       this.toastService.error('Catalog upload failed');
     } finally {
+      input.value = '';
       this.isUploading.set(false);
     }
   }
@@ -955,6 +1112,13 @@ export class BusinessEditorComponent implements OnInit {
       imageUrl: raw.imageUrl,
       logoUrl: raw.logoUrl,
       menuUrl: raw.menuUrl, // Save catalog URL
+      menuItems: (raw.menuItems || []).map((item: MenuCatalogItem) => ({
+        name: String(item.name || '').trim(),
+        category: String(item.category || '').trim(),
+        description: String(item.description || '').trim(),
+        price: String(item.price || '').trim(),
+        imageUrl: String(item.imageUrl || '').trim()
+      })).filter((item: MenuCatalogItem) => item.name),
       googlePlaceId: primaryLocation.googlePlaceId,
       rating: primaryLocation.rating,
       reviews: primaryLocation.reviews,
@@ -981,6 +1145,13 @@ export class BusinessEditorComponent implements OnInit {
     if (!this.isEditing()) {
        (dataToSave as any).createdDate = new Date().toISOString();
        (dataToSave as any).publishedDate = new Date().toISOString();
+       try {
+         (dataToSave as any).referralCode = await this.referralCodeService.generateNextCode();
+       } catch (error) {
+         console.error('Referral code generation failed:', error);
+         this.toastService.error('Could not generate a referral code. Please try saving again.');
+         return;
+       }
     }
 
     try {

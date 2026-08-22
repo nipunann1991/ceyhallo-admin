@@ -99,6 +99,68 @@
       </div>
     }
   </div>
+
+  <div class="rounded-xl border border-slate-200 bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+      <div>
+        <h4 class="text-sm font-bold text-slate-800">Business Referral Codes</h4>
+        <p class="mt-1 text-xs text-slate-500">Codes use the sequential format CH01, CH02, … CH100. Existing codes are never replaced.</p>
+      </div>
+      <button
+        type="button"
+        (click)="showReferralConfirm.set(true)"
+        [disabled]="isLoadingBusinesses() || isGeneratingReferralCodes() || missingReferralCodeCount() === 0"
+        class="inline-flex items-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#062a71] disabled:cursor-not-allowed disabled:opacity-50">
+        @if (isGeneratingReferralCodes()) {
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+          Generating...
+        } @else {
+          <span class="material-icons text-base">confirmation_number</span>
+          Generate Missing ({{ missingReferralCodeCount() }})
+        }
+      </button>
+    </div>
+
+    @if (isLoadingBusinesses()) {
+      <div class="flex items-center justify-center gap-2 px-5 py-12 text-sm text-slate-500">
+        <span class="h-5 w-5 animate-spin rounded-full border-2 border-[#083594] border-t-transparent"></span>
+        Loading businesses...
+      </div>
+    } @else if (businesses().length === 0) {
+      <div class="px-5 py-12 text-center text-sm text-slate-400">No businesses found.</div>
+    } @else {
+      <div class="max-h-[520px] overflow-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="sticky top-0 bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="w-16 px-4 py-3 text-right">Index</th>
+              <th class="px-4 py-3">Business</th>
+              <th class="px-4 py-3">Category</th>
+              <th class="px-4 py-3">Referral code</th>
+              <th class="px-4 py-3">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (business of businesses(); track business.id; let index = $index) {
+              <tr class="hover:bg-slate-50">
+                <td class="px-4 py-3 text-right tabular-nums text-slate-400">{{ index + 1 }}</td>
+                <td class="px-4 py-3 font-medium text-slate-800">{{ business.title }}</td>
+                <td class="px-4 py-3 text-slate-600">{{ business.category || '—' }}</td>
+                <td class="px-4 py-3 font-mono text-xs font-semibold" [class.text-[#083594]]="business.referralCode" [class.text-slate-400]="!business.referralCode">{{ business.referralCode || 'Not generated' }}</td>
+                <td class="px-4 py-3">
+                  @if (business.referralCode) {
+                    <span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Ready</span>
+                  } @else {
+                    <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Missing</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
 </div>
 
 @if (showReplaceConfirm()) {
@@ -108,5 +170,15 @@
     confirmLabel="Replace All"
     (confirm)="confirmReplace()"
     (cancel)="showReplaceConfirm.set(false)">
+  </app-confirm-modal>
+}
+
+@if (showReferralConfirm()) {
+  <app-confirm-modal
+    title="Generate Referral Codes"
+    [message]="'Generate referral codes for ' + missingReferralCodeCount() + ' business(es)? Businesses that already have a code will not be changed.'"
+    confirmLabel="Generate Codes"
+    (confirm)="generateMissingReferralCodes()"
+    (cancel)="showReferralConfirm.set(false)">
   </app-confirm-modal>
 }

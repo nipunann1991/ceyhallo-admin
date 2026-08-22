@@ -25,6 +25,7 @@ import {
   selectBusinessTypeFilter
 } from '../../store/business-admin.selectors';
 import { BusinessAdminState, BusinessSortOption } from '../../store/business-admin.state';
+import { ReferralCodeService } from '../../services/referral-code.service';
 
 @Component({
   selector: 'app-businesses',
@@ -36,6 +37,7 @@ export class BusinessesComponent implements OnInit {
   authService = inject(AuthService);
   firebaseService = inject(FirebaseService);
   toastService = inject(ToastService);
+  referralCodeService = inject(ReferralCodeService);
   private store = inject(Store);
   route = inject(ActivatedRoute);
 
@@ -1016,6 +1018,7 @@ export class BusinessesComponent implements OnInit {
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, ...data } = item;
+    delete data.referralCode;
     const newItem = {
       ...data,
       title: `${data.title} (Copy)`,
@@ -1025,7 +1028,8 @@ export class BusinessesComponent implements OnInit {
       isVerified: false,
       isFeatured: false,
       isPremium: false,
-      createdDate: new Date().toISOString()
+      createdDate: new Date().toISOString(),
+      referralCode: await this.referralCodeService.generateNextCode()
     };
 
     try {
