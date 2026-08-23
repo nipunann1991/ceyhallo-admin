@@ -23,6 +23,7 @@ export class SidebarComponent {
   
   // Outputs  
   logout = output<void>();
+  closeSidebar = output<void>();
   
   currentUser = computed(() => this.authService.currentUser());
   

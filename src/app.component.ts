@@ -23,6 +23,7 @@ export class AppComponent implements OnInit, OnDestroy {
   isMobile = signal(false);
   
   private routerSub!: Subscription;
+  private readonly resizeHandler = () => this.checkScreenSize();
   private readonly onActionMenuToggle = (event: Event) => {
     const dropdown = event.target as HTMLDetailsElement;
     if (!dropdown.matches('details.table-action-menu')) return;
@@ -43,6 +44,11 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
+  @HostListener('document:keydown.escape')
+  closeMobileSidebar(): void {
+    if (this.isMobile() && this.isSidebarOpen()) this.isSidebarOpen.set(false);
+  }
+
   constructor() {
     effect(() => {
       const user = this.authService.currentUser();
@@ -54,7 +60,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.checkScreenSize();
-    window.addEventListener('resize', this.onResize.bind(this));
+    window.addEventListener('resize', this.resizeHandler);
     document.addEventListener('toggle', this.onActionMenuToggle, true);
     document.addEventListener('scroll', this.repositionActionMenus, true);
     window.addEventListener('resize', this.repositionActionMenus);
@@ -74,7 +80,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    window.removeEventListener('resize', this.onResize.bind(this));
+    window.removeEventListener('resize', this.resizeHandler);
     document.removeEventListener('toggle', this.onActionMenuToggle, true);
     document.removeEventListener('scroll', this.repositionActionMenus, true);
     window.removeEventListener('resize', this.repositionActionMenus);

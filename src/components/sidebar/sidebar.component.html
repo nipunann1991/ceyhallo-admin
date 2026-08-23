@@ -1,12 +1,17 @@
 <div class="flex flex-col h-full bg-slate-900 text-white">
-  <div class="p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
+  <div class="p-5 md:p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
     <img src="https://i.ibb.co/pBdzCDQd/196.png" alt="CeyHallo" class="w-10 h-10 rounded-lg object-contain shrink-0 shadow-lg border border-slate-700">
     <h1 class="text-xl font-bold tracking-tight whitespace-nowrap overflow-hidden transition-opacity duration-300" [class.opacity-0]="!isSidebarOpen() && !isMobile()">CeyHallo Admin</h1>
+    @if (isMobile()) {
+      <button type="button" (click)="closeSidebar.emit()" class="ml-auto grid h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-400" aria-label="Close navigation">
+        <span class="material-icons">close</span>
+      </button>
+    }
   </div>
 
   <nav class="flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar">
     @for (link of visibleNavLinks(); track link.path) {
-      <a routerLink="{{link.path}}" routerLinkActive="bg-slate-800 text-[#FFD700]" class="flex items-center text-[0.95rem] gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors group nav-link">
+      <a routerLink="{{link.path}}" (click)="isMobile() && closeSidebar.emit()" routerLinkActive="bg-slate-800 text-[#FFD700]" class="flex items-center text-[0.95rem] gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors group nav-link">
         <span class="material-icons text-inherit text-[1.35rem] shrink-0 nav-icon">{{link.matIcon}}</span>
         <span class="font-medium whitespace-nowrap">{{link.label}}</span>
       </a>

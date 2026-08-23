@@ -14,23 +14,28 @@
       <!-- Mobile Backdrop -->
       @if (isMobile() && isSidebarOpen()) {
         <div 
-          class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity" 
+          class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity md:hidden"
           (click)="isSidebarOpen.set(false)"
           aria-hidden="true">
         </div>
       }
 
       <!-- Sidebar -->
-      <aside class="fixed left-0 top-0 z-50 hidden h-screen w-[240px] md:block">
-        <app-sidebar class="block h-full w-full" [isSidebarOpen]="isSidebarOpen()" [isMobile]="isMobile()" (logout)="authService.logout()"></app-sidebar>
+      <aside
+        id="admin-navigation"
+        class="fixed left-0 top-0 z-50 h-[100dvh] w-[min(86vw,280px)] transition-transform duration-300 ease-out md:h-screen md:w-[240px] md:translate-x-0"
+        [class.-translate-x-full]="isMobile() && !isSidebarOpen()"
+        [class.translate-x-0]="!isMobile() || isSidebarOpen()"
+        [attr.aria-hidden]="isMobile() && !isSidebarOpen()">
+        <app-sidebar class="block h-full w-full" [isSidebarOpen]="isSidebarOpen()" [isMobile]="isMobile()" (closeSidebar)="isSidebarOpen.set(false)" (logout)="authService.logout()"></app-sidebar>
       </aside>
 
       <!-- Main Content -->
       <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full md:ml-[240px]">
         <!-- Header -->
-        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 z-30">
+        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-3 sm:px-6 shrink-0 z-30">
           <div class="flex items-center gap-3">
-            <button (click)="toggleSidebar()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <button (click)="toggleSidebar()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-500 md:hidden" aria-label="Toggle navigation" aria-controls="admin-navigation" [attr.aria-expanded]="isSidebarOpen()">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
           </div>
@@ -43,7 +48,7 @@
         </header>
 
         <!-- Scrollable Content Area -->
-        <div class="flex-1 overflow-auto bg-slate-50 p-4 sm:p-6 w-full">
+        <div class="flex-1 overflow-auto bg-slate-50 p-3 sm:p-6 w-full">
           <router-outlet></router-outlet>
         </div>
       </main>
