@@ -1,0 +1,140 @@
+<div class="space-y-6">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+    <h3 class="text-xl font-bold tracking-[-.02em] text-slate-900">Pricing &amp; Subscriptions</h3>
+    <p class="mt-1 text-sm text-slate-500">Manage business plans, annual savings and campaign prices available in invoices.</p>
+    </div>
+    @if (authService.isAdmin()) {
+      <div class="flex shrink-0 items-center gap-2">
+        <button type="button" (click)="addItem(activeTab() === 'campaigns' ? 'one_time' : 'subscription')" [disabled]="busy()" class="inline-flex items-center gap-2 rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#062a71] disabled:opacity-50"><span class="material-icons text-lg" aria-hidden="true">add</span>Add Pricing</button>
+        <details class="relative">
+          <summary aria-label="More pricing actions" class="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"><span class="material-icons" aria-hidden="true">more_vert</span></summary>
+          <div class="absolute right-0 z-30 mt-2 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+            <button type="button" [disabled]="busy()" (click)="loadBusinessPlan()" class="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"><span class="material-icons text-lg" aria-hidden="true">table_view</span>Load CeyHallo Plan</button>
+            <label class="flex cursor-pointer items-center gap-2 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50"><input type="file" accept=".xlsx" class="sr-only" [disabled]="busy()" (change)="importWorkbook($event)"><span class="material-icons text-lg" aria-hidden="true">upload_file</span>{{ isImporting() ? 'Importing…' : 'Import Excel' }}</label>
+          </div>
+        </details>
+      </div>
+    }
+  </div>
+
+  @if (loadError()) {
+    <div role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ loadError() }} <button type="button" (click)="load()" class="ml-2 font-semibold underline">Retry</button></div>
+  }
+  @if (isLoading()) {
+    <div class="rounded-lg border border-slate-200 bg-slate-50 p-12 text-center text-sm text-slate-500" role="status">Loading pricing…</div>
+  } @else {
+    <div class="flex flex-wrap gap-1 border-b border-slate-200" role="tablist" aria-label="Pricing sections">
+      <button id="plans-tab" type="button" role="tab" [attr.aria-selected]="activeTab() === 'plans'" aria-controls="pricing-panel" (click)="activeTab.set('plans')" [class]="activeTab() === 'plans' ? 'border-[#083594] text-[#083594]' : 'border-transparent text-slate-500'" class="border-b-2 px-4 py-3 text-sm font-semibold">Business Plans ({{ plans().length }})</button>
+      <button id="campaigns-tab" type="button" role="tab" [attr.aria-selected]="activeTab() === 'campaigns'" aria-controls="pricing-panel" (click)="activeTab.set('campaigns')" [class]="activeTab() === 'campaigns' ? 'border-[#083594] text-[#083594]' : 'border-transparent text-slate-500'" class="border-b-2 px-4 py-3 text-sm font-semibold">Campaigns &amp; Add-ons ({{ campaigns().length }})</button>
+      <button id="reference-tab" type="button" role="tab" [attr.aria-selected]="activeTab() === 'reference'" aria-controls="pricing-panel" (click)="activeTab.set('reference')" [class]="activeTab() === 'reference' ? 'border-[#083594] text-[#083594]' : 'border-transparent text-slate-500'" class="border-b-2 px-4 py-3 text-sm font-semibold">Workbook Reference</button>
+    </div>
+
+    <div id="pricing-panel" role="tabpanel" [attr.aria-labelledby]="activeTab() + '-tab'">
+      @if (activeTab() === 'reference') {
+        <p class="mb-4 text-sm text-slate-500">Original workbook values, including Smart Menu inclusions, monetization stages, referrals and roadmap. Reference tables do not change when you edit pricing above.</p>
+        @if (referenceSheets().length) {
+          <label for="reference-sheet" class="mb-1 block text-sm font-medium text-slate-700">Worksheet</label>
+          <select id="reference-sheet" [ngModel]="selectedSheet()" (ngModelChange)="selectedSheet.set($event)" class="mb-4 w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm sm:w-auto">
+            @for (sheet of referenceSheets(); track sheet.name) { <option [value]="sheet.name">{{ sheet.name }}</option> }
+          </select>
+          @if (currentSheet(); as sheet) {
+            <div class="overflow-x-auto rounded-xl border border-slate-200">
+              <table class="w-full text-left text-sm"><caption class="bg-slate-50 px-4 py-3 text-left font-semibold text-slate-800">{{ sheet.name }}</caption><tbody class="divide-y divide-slate-100">
+                @for (row of sheet.rows; track $index) {
+                  <tr class="even:bg-slate-50/50">@for (cell of row.cells; track $index; let first = $first) { <td class="min-w-[140px] max-w-[360px] whitespace-normal break-words px-4 py-3 align-top text-slate-600" [class.font-semibold]="first">{{ cell }}</td> }</tr>
+                }
+              </tbody></table>
+            </div>
+          }
+        } @else { <p class="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">Load or import the workbook to view its reference tables.</p> }
+      } @else {
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div class="flex items-center gap-3 border-b border-slate-200 p-3">
+            <div class="relative w-full max-w-xl">
+              <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-lg text-slate-400" aria-hidden="true">search</span>
+              <input type="search" aria-label="Search pricing" placeholder="Search by product or description..." [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" class="w-full rounded-lg border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-4 text-[.9rem] text-slate-700 placeholder:text-slate-400 focus:border-[#083594] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#083594]/10">
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[1050px] text-left text-[.925rem] text-slate-600">
+              <caption class="sr-only">{{ activeTab() === 'plans' ? 'Business plan pricing' : 'Campaign and add-on pricing' }}</caption>
+              <thead class="border-b border-slate-200 bg-slate-50/70 text-[.82rem] font-bold uppercase leading-5 tracking-[.055em] text-slate-500">
+                <tr>
+                  <th scope="col" class="w-12 px-4 py-3.5 text-center">#</th>
+                  <th scope="col" class="min-w-[230px] px-4 py-3.5">Product</th>
+                  <th scope="col" class="px-4 py-3.5">Billing</th>
+                  <th scope="col" class="px-4 py-3.5">Price</th>
+                  @if (activeTab() === 'plans') {
+                    <th scope="col" class="whitespace-nowrap px-4 py-3.5 text-right">Yearly Price</th>
+                    <th scope="col" class="whitespace-nowrap px-4 py-3.5 text-right">12-month Cost</th>
+                    <th scope="col" class="whitespace-nowrap px-4 py-3.5 text-right">Annual Saving</th>
+                  }
+                  <th scope="col" class="px-4 py-3.5 text-center">Status</th>
+                  @if (authService.isAdmin()) { <th scope="col" class="px-4 py-3.5 text-right"><span class="sr-only">Actions</span></th> }
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (item of visibleItems(); track item.id; let i = $index) {
+                    <tr class="transition-colors hover:bg-blue-50/30">
+                      <td class="px-4 py-4 text-center text-xs text-slate-400">{{ i + 1 }}</td>
+                      <td class="px-4 py-4"><p class="font-semibold text-slate-800">{{ item.name }}</p><p class="mt-1 whitespace-pre-line text-xs leading-5 text-slate-500">{{ item.description || '—' }}</p></td>
+                      <td class="px-4 py-4"><p class="capitalize text-slate-700">{{ item.type === 'subscription' ? item.billingPeriod : 'One-time' }}</p>@if (item.billingLabel) { <p class="mt-1 text-xs text-slate-500">{{ item.billingLabel }}</p> }</td>
+                      <td class="whitespace-nowrap px-4 py-4 tabular-nums text-slate-700">{{ item.priceMode === 'from' ? 'From ' : '' }}{{ item.currency }} {{ item.price | number:'1.0-2' }}</td>
+                      @if (activeTab() === 'plans') {
+                        <td class="whitespace-nowrap px-4 py-4 text-right tabular-nums text-slate-700">@if (item.type === 'subscription' && item.billingPeriod === 'monthly' && item.yearlyPrice != null) { {{ item.currency }} {{ item.yearlyPrice | number:'1.0-2' }} } @else { <span class="text-slate-400">—</span> }</td>
+                        <td class="whitespace-nowrap px-4 py-4 text-right tabular-nums text-slate-700">@if (item.type === 'subscription' && item.billingPeriod === 'monthly') { {{ item.currency }} {{ item.price * 12 | number:'1.0-2' }} } @else { <span class="text-slate-400">—</span> }</td>
+                        <td class="whitespace-nowrap px-4 py-4 text-right font-semibold tabular-nums text-[#083594]">@if (item.type === 'subscription' && item.billingPeriod === 'monthly' && item.yearlyPrice != null) { {{ item.currency }} {{ item.price * 12 - item.yearlyPrice | number:'1.0-2' }} } @else { <span class="font-normal text-slate-400">—</span> }</td>
+                      }
+                      <td class="px-4 py-4 text-center"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" [class]="item.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'">{{ item.isActive ? 'Available' : 'Inactive' }}</span></td>
+                      @if (authService.isAdmin()) {
+                        <td class="px-4 py-4 text-right"><div class="flex justify-end gap-1">
+                          <button type="button" (click)="editItem(item)" [disabled]="busy()" [attr.aria-label]="'Edit ' + item.name" title="Edit" class="rounded-lg p-2 text-slate-500 hover:bg-blue-50 hover:text-[#083594] disabled:opacity-50"><span class="material-icons text-lg" aria-hidden="true">edit</span></button>
+                          <button type="button" (click)="deleteItem.set(item)" [disabled]="busy()" [attr.aria-label]="'Delete ' + item.name" title="Delete" class="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"><span class="material-icons text-lg" aria-hidden="true">delete_outline</span></button>
+                        </div></td>
+                      }
+                    </tr>
+                } @empty {
+                  <tr><td [attr.colspan]="(activeTab() === 'plans' ? 8 : 5) + (authService.isAdmin() ? 1 : 0)" class="px-4 py-12 text-center text-sm text-slate-400">{{ searchQuery() ? 'No pricing matches your search.' : 'No pricing options in this section.' }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="border-t border-slate-200 px-4 py-3 text-xs text-slate-500">{{ visibleItems().length }} pricing item{{ visibleItems().length === 1 ? '' : 's' }}</div>
+        </div>
+      }
+    </div>
+    @if (dirty()) {
+      <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-100 bg-[#eef3fc] p-4">
+        <p class="text-sm text-[#083594]" role="status">Workbook changes are not saved yet. Review the table and save pricing to apply.</p>
+        <button type="button" (click)="save()" [disabled]="busy() || !authService.isAdmin()" class="rounded-lg bg-[#083594] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#062a71] disabled:opacity-50">{{ isSaving() ? 'Saving…' : 'Save Pricing' }}</button>
+      </div>
+    }
+  }
+</div>
+
+@if (editorItem(); as item) {
+  <app-modal [title]="isNewItem() ? 'Add Pricing' : 'Edit Pricing'" (close)="closeEditor()">
+    <div body>
+      <fieldset [disabled]="isSaving()" class="grid min-w-0 gap-4 sm:grid-cols-2">
+        <div><label for="pricing-name" class="mb-1 block text-sm font-medium text-slate-700">Name</label><input id="pricing-name" [ngModel]="item.name" (ngModelChange)="updateDraft('name', $event)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm" type="text"></div>
+        <div><label for="pricing-description" class="mb-1 block text-sm font-medium text-slate-700">Description / Notes</label><textarea id="pricing-description" [ngModel]="item.description" (ngModelChange)="updateDraft('description', $event)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm" rows="3"></textarea></div>
+        <div><label for="pricing-type" class="mb-1 block text-sm font-medium text-slate-700">Type</label><select id="pricing-type" [ngModel]="item.type" (ngModelChange)="updateDraft('type', $event)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm"><option value="subscription">Subscription</option><option value="one_time">One-time / Free</option></select></div>
+        <div><label for="pricing-billingPeriod" class="mb-1 block text-sm font-medium text-slate-700">Billing</label><select id="pricing-billingPeriod" [ngModel]="item.billingPeriod" (ngModelChange)="updateDraft('billingPeriod', $event)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm" [disabled]="item.type === 'one_time'">@if (item.type === 'one_time') { <option value="one_time">One-time</option> } @else { <option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option> }</select></div>
+        <div><label for="pricing-currency" class="mb-1 block text-sm font-medium text-slate-700">Currency</label><input id="pricing-currency" [ngModel]="item.currency" (ngModelChange)="updateDraft('currency', $event)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm" type="text" maxlength="3"></div>
+        <div><label for="pricing-price" class="mb-1 block text-sm font-medium text-slate-700">Price</label><input id="pricing-price" [ngModel]="item.price" (ngModelChange)="updateDraft('price', $event)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm" type="number" min="0" step="0.01"></div>
+        @if (item.type === 'subscription' && item.billingPeriod === 'monthly') {
+        <div><label for="pricing-yearlyPrice" class="mb-1 block text-sm font-medium text-slate-700">Yearly Price (optional)</label><input id="pricing-yearlyPrice" [ngModel]="item.yearlyPrice" (ngModelChange)="updateDraft('yearlyPrice', $event)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm" type="number" min="0" step="0.01"></div>
+        }
+        <div><label for="pricing-billingLabel" class="mb-1 block text-sm font-medium text-slate-700">Duration / Billing label</label><input id="pricing-billingLabel" [ngModel]="item.billingLabel" (ngModelChange)="updateDraft('billingLabel', $event)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm" type="text"></div>
+        <div><label for="pricing-priceMode" class="mb-1 block text-sm font-medium text-slate-700">Price basis</label><select id="pricing-priceMode" [ngModel]="item.priceMode" (ngModelChange)="updateDraft('priceMode', $event)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm"><option value="fixed">Fixed price</option><option value="from">Starting from</option></select></div>
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-600 sm:col-span-2"><input type="checkbox" [ngModel]="item.isActive" (ngModelChange)="updateDraft('isActive', $event)" class="h-4 w-4 rounded border-slate-300 text-[#083594]">Available in invoices</label>
+      </fieldset>
+    </div>
+    <button footer type="button" (click)="saveItem()" [disabled]="isSaving()" class="rounded-lg bg-[#083594] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#062a71] disabled:opacity-50">{{ isSaving() ? 'Saving…' : dirty() ? 'Apply Changes' : 'Save Changes' }}</button>
+    <button footer type="button" (click)="closeEditor()" [disabled]="isSaving()" class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50">Cancel</button>
+  </app-modal>
+}
+@if (deleteItem(); as item) {
+  <app-confirm-modal title="Delete Pricing" [message]="'Remove ' + item.name + ' from pricing options? Existing invoices will stay unchanged.'" [confirmLabel]="isSaving() ? 'Deleting…' : 'Delete'" (confirm)="confirmDelete()" (cancel)="!isSaving() && deleteItem.set(null)"></app-confirm-modal>
+}

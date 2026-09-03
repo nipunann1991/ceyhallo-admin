@@ -16,6 +16,7 @@ export const ADMIN_PAGE_OPTIONS: AdminPageOption[] = [
   { key: 'news', label: 'News', path: '/news', description: 'News publishing workflow' },
   { key: 'notifications', label: 'Notifications', path: '/notifications', description: 'Push notifications' },
   { key: 'emails', label: 'Emails', path: '/emails', description: 'Email templates and campaigns' },
+  { key: 'invoices', label: 'Invoices', path: '/invoices', description: 'Invoice creation and delivery' },
   { key: 'media', label: 'Media Library', path: '/media', description: 'Media uploads and assets' },
   { key: 'settings', label: 'Settings', path: '/settings', description: 'App and taxonomy settings' }
 ];

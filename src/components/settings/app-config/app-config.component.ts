@@ -32,6 +32,10 @@ export class AppConfigComponent implements OnInit {
   ) {
     this.form = this.fb.group({
       showSocialLogin: [true],
+      companyName: ['', Validators.maxLength(150)],
+      companyAddress: ['', Validators.maxLength(500)],
+      businessRegistrationNumber: ['', Validators.maxLength(100)],
+      contactNumber: ['', [Validators.maxLength(40), Validators.pattern(/^[+()\-\s\d]*$/)]],
       showFacebookLogin: [true],
       showGoogleLogin: [true],
       showAppleLogin: [true],
@@ -65,7 +69,12 @@ export class AppConfigComponent implements OnInit {
       if (doc) {
         const socialLogin = doc.socialLogin || {};
         const socialMediaLinks = doc.socialMediaLinks || {};
+        const companyDetails = doc.companyDetails || {};
         this.form.patchValue({
+          companyName: companyDetails.companyName ?? doc.companyName ?? '',
+          companyAddress: companyDetails.address ?? doc.companyAddress ?? '',
+          businessRegistrationNumber: companyDetails.businessRegistrationNumber ?? doc.businessRegistrationNumber ?? '',
+          contactNumber: companyDetails.contactNumber ?? doc.contactNumber ?? '',
           showSocialLogin: doc.showSocialLogin ?? socialLogin.visible ?? true,
           showFacebookLogin: socialLogin.facebook ?? doc.showFacebookLogin ?? true,
           showGoogleLogin: socialLogin.google ?? doc.showGoogleLogin ?? true,
@@ -161,13 +170,19 @@ export class AppConfigComponent implements OnInit {
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.toastService.error('Please check the social media details and try again.');
+      this.toastService.error('Please check the configuration details and try again.');
       return;
     }
 
     this.isSaving.set(true);
     try {
       const dataToSave = {
+        companyDetails: {
+          companyName: this.form.get('companyName')?.value?.trim() || '',
+          address: this.form.get('companyAddress')?.value?.trim() || '',
+          businessRegistrationNumber: this.form.get('businessRegistrationNumber')?.value?.trim() || '',
+          contactNumber: this.form.get('contactNumber')?.value?.trim() || ''
+        },
         showSocialLogin: !!this.form.get('showSocialLogin')?.value,
         socialLogin: {
           facebook: !!this.form.get('showFacebookLogin')?.value,

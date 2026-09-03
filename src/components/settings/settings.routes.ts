@@ -2,7 +2,9 @@ import { Routes } from '@angular/router';
 
 export const settingsRoutes: Routes = [
   { path: '', redirectTo: 'home-page', pathMatch: 'full' },
+  { path: 'qr-code', loadComponent: () => import('./qr-code/qr-code.component').then(m => m.QrCodeComponent) },
   { path: 'app-config', loadComponent: () => import('./app-config/app-config.component').then(m => m.AppConfigComponent) },
+  { path: 'pricing', loadComponent: () => import('./pricing/pricing.component').then(m => m.PricingComponent) },
   { path: 'home-page', loadComponent: () => import('./home-sections/home-sections.component').then(m => m.HomeSectionsComponent) },
   { path: 'locations', loadComponent: () => import('./locations/locations.component').then(m => m.LocationsComponent) },
   { path: 'categories', loadComponent: () => import('./categories/categories.component').then(m => m.CategoriesComponent) },

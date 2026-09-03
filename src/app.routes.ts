@@ -4,6 +4,7 @@ import { businessesRoutes } from './components/businesses/businesses.routes';
 import { emailsRoutes } from './components/emails/emails.routes';
 import { eventsRoutes } from './components/events/events.routes';
 import { jobsRoutes } from './components/jobs/jobs.routes';
+import { invoicesRoutes } from './components/invoices/invoices.routes';
 import { newsRoutes } from './components/news/news.routes';
 import { notificationsRoutes } from './components/notifications/notifications.routes';
 import { offersRoutes } from './components/offers/offers.routes';
@@ -24,6 +25,7 @@ export const routes: Routes = [
   { path: 'news', canActivate: [authGuard], children: newsRoutes },
   { path: 'notifications', canActivate: [authGuard], children: notificationsRoutes },
   { path: 'emails', canActivate: [authGuard], children: emailsRoutes },
+  { path: 'invoices', canActivate: [authGuard], children: invoicesRoutes },
   { path: 'media', canActivate: [authGuard], loadComponent: () => import('./components/media/media.component').then(m => m.MediaComponent) },
   { path: 'users', canActivate: [authGuard], loadComponent: () => import('./components/users/users.component').then(m => m.UsersComponent) },
   {

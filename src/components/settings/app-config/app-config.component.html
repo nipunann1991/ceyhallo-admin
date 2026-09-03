@@ -96,6 +96,35 @@
          </div>
       </div>
 
+      <!-- Company Details -->
+      <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+         <div class="border-b border-slate-200 bg-slate-50 px-6 py-3">
+            <h4 class="font-semibold text-slate-700">Company Details</h4>
+            <p class="mt-0.5 text-xs text-slate-500">Company information used across administrative documents.</p>
+         </div>
+         <div class="grid gap-5 p-6 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+               <label for="companyName" class="mb-1.5 block text-sm font-medium text-slate-700">Company name</label>
+               <input id="companyName" formControlName="companyName" type="text" maxlength="150" placeholder="Enter the registered company name" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-[#083594] focus:ring-[#083594]">
+            </div>
+            <div class="sm:col-span-2">
+               <label for="companyAddress" class="mb-1.5 block text-sm font-medium text-slate-700">Company address</label>
+               <textarea id="companyAddress" formControlName="companyAddress" rows="3" maxlength="500" placeholder="Enter the registered business address" class="w-full resize-y rounded-lg border border-slate-300 p-2.5 text-sm focus:border-[#083594] focus:ring-[#083594]"></textarea>
+            </div>
+            <div>
+               <label for="businessRegistrationNumber" class="mb-1.5 block text-sm font-medium text-slate-700">Business registration number</label>
+               <input id="businessRegistrationNumber" formControlName="businessRegistrationNumber" type="text" maxlength="100" placeholder="e.g. CN-123456" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-[#083594] focus:ring-[#083594]">
+            </div>
+            <div>
+               <label for="contactNumber" class="mb-1.5 block text-sm font-medium text-slate-700">Contact number</label>
+               <input id="contactNumber" formControlName="contactNumber" type="tel" maxlength="40" placeholder="e.g. +971 50 123 4567" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-[#083594] focus:ring-[#083594]">
+               @if (form.get('contactNumber')?.touched && form.get('contactNumber')?.invalid) {
+                  <p class="mt-1.5 text-xs text-red-600">Enter a valid contact number.</p>
+               }
+            </div>
+         </div>
+      </div>
+
       <!-- Social Media Links -->
       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
          <div class="bg-slate-50 px-6 py-3 border-b border-slate-200 flex items-center justify-between gap-4">

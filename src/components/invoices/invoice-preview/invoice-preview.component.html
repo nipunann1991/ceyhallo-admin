@@ -1,0 +1,57 @@
+<article class="mx-auto w-full max-w-3xl rounded-2xl bg-[#f1f3f7] p-5 text-slate-700 sm:p-10">
+  <div class="overflow-hidden rounded-2xl bg-white shadow-[0_12px_40px_rgba(15,23,42,.08)]">
+    <header class="grid gap-8 border-b border-slate-100 p-6 sm:grid-cols-2 sm:p-8">
+      <div class="min-w-0 text-left">
+        <img src="https://firebasestorage.googleapis.com/v0/b/ceyhallo-eu/o/uploads%2F1775977446535_logo.png?alt=media&token=2fdb63e1-ee1e-4ae8-8cf7-14fc6438439a" alt="CeyHallo" class="h-auto max-h-28 w-auto max-w-full object-contain object-left sm:max-w-[240px]">
+        <div class="mt-4">
+          <p class="text-lg font-extrabold text-slate-900">{{ company().companyName || 'CeyHallo' }}</p>
+          @if (company().address) { <p class="mt-2 whitespace-pre-line break-words text-sm leading-6 text-slate-600">{{ company().address }}</p> }
+          @if (company().businessRegistrationNumber || company().contactNumber) {
+            <div class="mt-3 flex flex-col gap-1 break-words text-sm leading-6 text-slate-600">
+              @if (company().businessRegistrationNumber) { <span><span class="font-semibold text-slate-600">Registration:</span> {{ company().businessRegistrationNumber }}</span> }
+              @if (company().contactNumber) { <span><span class="font-semibold text-slate-600">Contact:</span> {{ company().contactNumber }}</span> }
+            </div>
+          }
+        </div>
+      </div>
+      <div class="flex min-w-0 flex-col sm:border-l sm:border-slate-200 sm:pl-8 sm:text-right">
+        <div class="mb-6 text-right">
+          <p class="mb-2 text-xs font-bold uppercase tracking-[.22em] text-[#083594]">Invoice</p>
+          <h2 class="break-words text-xl font-extrabold tracking-tight text-slate-900">{{ invoice().invoiceNumber || 'Invoice number' }}</h2>
+        </div>
+        <div>
+          <p class="mb-2 text-xs font-bold uppercase tracking-[.1em] text-slate-400">Bill to</p>
+          <p class="break-words text-base font-bold text-slate-900">{{ invoice().customerName || 'Customer name' }}</p>
+          @if (invoice().businessAddress) { <p class="mt-1 whitespace-pre-line break-words text-sm leading-5 text-slate-500">{{ invoice().businessAddress }}</p> }
+          <p class="mt-1 break-words text-sm text-slate-500">{{ invoice().customerEmail || 'customer@example.com' }}</p>
+        </div>
+        <dl class="mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-3 border-t border-slate-100 pt-4 text-sm">
+          <dt class="text-left text-slate-400">Issue date</dt><dd class="text-right font-semibold text-slate-700">{{ invoice().issueDate ? (invoice().issueDate | date:'mediumDate') : '—' }}</dd>
+          <dt class="text-left text-slate-400">Payment</dt><dd class="break-words text-right font-semibold text-slate-700">{{ invoice().paymentMethod || 'Cash' }}</dd>
+          @if (invoice().paymentTerms === 'custom') {<dt class="text-left text-slate-400">Due date</dt><dd class="text-right font-semibold text-slate-700">{{ invoice().dueDate | date:'mediumDate' }}</dd>}
+        </dl>
+      </div>
+    </header>
+
+    <div class="space-y-8 p-6 sm:p-8">
+      <section class="overflow-hidden rounded-xl border border-slate-200">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-[#f7f9fc] text-xs font-bold uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3.5">Description</th><th class="px-3 py-3.5 text-right">Qty</th><th class="px-3 py-3.5 text-right">Price</th><th class="px-4 py-3.5 text-right">Amount</th></tr></thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (item of invoice().items || []; track $index) {
+              <tr><td class="px-4 py-4 font-semibold text-slate-800">{{ item.description || 'Untitled item' }}</td><td class="px-3 py-4 text-right text-slate-500">{{ item.quantity }}</td><td class="px-3 py-4 text-right text-slate-500">{{ item.unitPrice | number:'1.2-2' }}</td><td class="px-4 py-4 text-right font-bold text-slate-800">{{ lineTotal(item) | number:'1.2-2' }}</td></tr>
+            } @empty {
+              <tr><td colspan="4" class="px-4 py-10 text-center text-slate-400">No line items added.</td></tr>
+            }
+          </tbody>
+        </table>
+      </section>
+
+      <section class="flex justify-end"><dl class="w-full space-y-3 text-sm sm:w-72"><div class="flex justify-between"><dt class="text-slate-500">Subtotal</dt><dd class="pr-4 font-semibold text-slate-700">{{ invoice().subtotal | number:'1.2-2' }}</dd></div><div class="flex justify-between"><dt class="text-slate-500">Tax ({{ invoice().taxRate || 0 }}%)</dt><dd class="pr-4 font-semibold text-slate-700">{{ invoice().taxAmount | number:'1.2-2' }}</dd></div><div class="flex justify-between rounded-xl bg-[#edf3ff] px-4 py-4 text-lg"><dt class="font-extrabold text-slate-900">Total</dt><dd class="font-extrabold text-[#083594]">{{ invoice().currency || 'AED' }} {{ invoice().total | number:'1.2-2' }}</dd></div></dl></section>
+
+      @if (invoice().notes) {<section class="rounded-xl bg-[#f7f9fc] p-5"><p class="mb-2 text-xs font-bold uppercase tracking-[.1em] text-slate-400">Notes</p><p class="whitespace-pre-line text-sm leading-6 text-slate-600">{{ invoice().notes }}</p></section>}
+
+      <footer class="border-t border-slate-200 pt-5 text-sm leading-6 text-slate-500"><p>Thanks,</p><p class="font-semibold text-slate-700">The CeyHallo Team</p></footer>
+    </div>
+  </div>
+</article>

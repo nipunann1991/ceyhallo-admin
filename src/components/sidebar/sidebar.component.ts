@@ -39,6 +39,7 @@ export class SidebarComponent {
     { path: '/news', label: 'News', matIcon: 'article' },
     { path: '/notifications', label: 'Notifications', matIcon: 'notifications' },
     { path: '/emails', label: 'Emails', matIcon: 'email' },
+    { path: '/invoices', label: 'Invoices', matIcon: 'receipt_long' },
     { path: '/media', label: 'Media Library', matIcon: 'photo_library' },
     { path: '/settings', label: 'Settings', matIcon: 'settings' }
   ].filter((link) => ADMIN_PAGE_OPTIONS.some((page) => page.path === link.path));

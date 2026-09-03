@@ -75,6 +75,7 @@ const defaultTextReplaceCollections = [
   'settings',
   'email_templates',
   'email_queue',
+  'invoices',
   'countries',
   'legal',
   'users'
